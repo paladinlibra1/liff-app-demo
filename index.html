@@ -2,72 +2,218 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Colorfashion 預約系統</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; }
-        h2 { text-align: center; color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        button:disabled { background-color: #ccc; }
-        .cancel-btn { background-color: #dc3545; margin-top: 10px; display: none; }
-        #loading { text-align: center; display: none; color: #666; }
+        /* --- 全域設定 --- */
+        :root {
+            --primary-color: #9b8c83; /* 莫蘭迪棕色 (主色調) */
+            --accent-color: #d4a5a5;  /* 柔和粉 (強調色) */
+            --bg-color: #f4f4f4;      /* 背景色 */
+            --text-color: #4a4a4a;    /* 文字色 */
+            --card-bg: #ffffff;       /* 卡片背景 */
+            --input-bg: #f8f9fa;      /* 輸入框背景 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- 卡片容器 --- */
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* 柔和陰影 */
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--text-color);
+            font-weight: 600;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        /* --- 表單元件 --- */
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid transparent;
+            background-color: var(--input-bg);
+            border-radius: 12px;
+            font-size: 16px; /* 防止 iOS 自動縮放 */
+            color: #333;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            appearance: none; /* 移除原生樣式 */
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            background-color: #fff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(212, 165, 165, 0.15);
+        }
+
+        /* 下拉選單的小箭頭優化 */
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+
+        /* --- 按鈕樣式 --- */
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #submitBtn {
+            background: linear-gradient(135deg, var(--primary-color), #b0a198);
+            color: white;
+            box-shadow: 0 4px 15px rgba(155, 140, 131, 0.3);
+        }
+
+        #submitBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .cancel-btn {
+            background-color: transparent;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+            margin-top: 15px;
+            display: none; /* 預設隱藏 */
+        }
+        
+        .cancel-btn:hover {
+            background-color: #fff5f5;
+        }
+
+        /* --- 載入動畫 (Loading Overlay) --- */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 9999;
+            backdrop-filter: blur(5px);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
     </style>
 </head>
 <body>
 
-    <h2 id="pageTitle">線上預約</h2>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div style="color: #666; font-size: 14px;">資料處理中...</div>
+    </div>
 
-    <div id="loading">處理中，請稍候...</div>
+    <div class="container">
+        <h2 id="pageTitle">Colorfashion 預約</h2>
 
-    <form id="bookingForm" onsubmit="submitBooking(event)">
-        <input type="hidden" id="editId" name="editId">
-        <input type="hidden" id="lineId" name="lineId">
+        <form id="bookingForm" onsubmit="submitBooking(event)">
+            <input type="hidden" id="editId" name="editId">
+            <input type="hidden" id="lineId" name="lineId">
 
-        <div class="form-group">
-            <label>姓名 1</label>
-            <input type="text" id="name" required placeholder="請輸入姓名">
-        </div>
+            <div class="form-group">
+                <label>姓名 1</label>
+                <input type="text" id="name" required placeholder="請輸入您的姓名">
+            </div>
 
-        <div class="form-group">
-            <label>姓名 2 (雙人預約選填)</label>
-            <input type="text" id="name2" placeholder="同行者姓名">
-        </div>
+            <div class="form-group">
+                <label>姓名 2 (選填)</label>
+                <input type="text" id="name2" placeholder="如有同行者請輸入">
+            </div>
 
-        <div class="form-group">
-            <label>電話</label>
-            <input type="tel" id="phone" required placeholder="09xx...">
-        </div>
+            <div class="form-group">
+                <label>聯絡電話</label>
+                <input type="tel" id="phone" required placeholder="09xx-xxx-xxx">
+            </div>
 
-        <div class="form-group">
-            <label>預約日期</label>
-            <select id="date" required onchange="loadBusyTimes()">
-                <option value="">載入中...</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>預約日期</label>
+                <select id="date" required onchange="loadBusyTimes()">
+                    <option value="">載入中...</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label>預約時間</label>
-            <select id="time" required>
-                <option value="">請先選擇日期</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label>預約時間</label>
+                <select id="time" required>
+                    <option value="">請先選擇日期</option>
+                </select>
+            </div>
 
-        <button type="submit" id="submitBtn">確認預約</button>
-        <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
-    </form>
+            <button type="submit" id="submitBtn">確認預約</button>
+            <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
+        </form>
+    </div>
 
     <script>
         // 🔴 請填入你的 GAS 部署網址 (結尾是 /exec)
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzq8QoWuBjWrjvMv6FvsttGmEdHIF9DrsmMQdw9XTfvlT2ywYJUZRnflROibd0kEOQ6/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
         
         // 🔴 請填入你的 LIFF ID
         const MY_LIFF_ID = "2009018559-AeGOURPY";
 
-        // 全域變數
+        // ✅ 時間陣列 (已修正格式)
         let availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
 
         // 初始化
@@ -83,18 +229,18 @@
                 const profile = await liff.getProfile();
                 document.getElementById('lineId').value = profile.userId;
 
-                // 2. 判斷是否為「修改/取消模式」 (網址有 ?id=...)
+                // 2. 判斷是否為「修改/取消模式」
                 const urlParams = new URLSearchParams(window.location.search);
                 const editId = urlParams.get('id');
 
                 // 3. 載入營業日
                 await loadOpenDates();
 
-                // 4. 如果是修改模式，載入舊資料
+                // 4. 修改模式載入舊資料
                 if (editId) {
                     document.getElementById('editId').value = editId;
-                    document.getElementById('pageTitle').innerText = "修改/取消預約";
-                    document.getElementById('submitBtn').innerText = "更新預約";
+                    document.getElementById('pageTitle').innerText = "修改預約";
+                    document.getElementById('submitBtn').innerText = "更新預約內容";
                     document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
                 }
@@ -106,11 +252,11 @@
             }
         };
 
-        // 呼叫後端 API 的通用函式
+        // API 呼叫
         async function callApi(action, payload = {}) {
             const response = await fetch(GAS_API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain" }, // 避開 CORS
+                headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: action, payload: payload })
             });
             return await response.json();
@@ -137,21 +283,29 @@
                 return;
             }
 
-            timeSelect.innerHTML = '<option value="">讀取中...</option>';
-            const res = await callApi("getBusyTimes", { date: date });
+            timeSelect.innerHTML = '<option value="">查詢時段中...</option>';
+            timeSelect.disabled = true; // 鎖定直到載入完成
             
-            // 過濾掉已被預約的時間 (如果是修改模式，要保留原本自己的時間)
+            const res = await callApi("getBusyTimes", { date: date });
             const busyList = res.times || [];
             
             timeSelect.innerHTML = '';
+            timeSelect.disabled = false;
+
+            // 預設選項
+            let defaultOption = document.createElement("option");
+            defaultOption.text = "請選擇時間";
+            defaultOption.value = "";
+            timeSelect.appendChild(defaultOption);
+
             availableTimes.forEach(t => {
                 let option = document.createElement("option");
                 option.value = t;
                 option.text = t;
-                // 如果該時段忙碌，則禁用 (除非是目前選中的時段-編輯模式下)
                 if (busyList.includes(t)) {
                     option.disabled = true;
-                    option.text += " (已額滿)";
+                    option.text += " (額滿)";
+                    option.style.color = "#ccc"; // 讓額滿的看起來灰灰的
                 }
                 timeSelect.appendChild(option);
             });
@@ -165,8 +319,6 @@
                 document.getElementById('name2').value = data.name2;
                 document.getElementById('phone').value = data.phone;
                 document.getElementById('date').value = data.date;
-                
-                // 觸發時間載入，並預選原本的時間
                 await loadBusyTimes();
                 document.getElementById('time').value = data.time;
             } else {
@@ -194,9 +346,9 @@
             if (res.status === "success") {
                 alert(res.message);
                 if(liff.isInClient()){
-                    liff.closeWindow(); // 手機版直接關閉視窗
+                    liff.closeWindow();
                 } else {
-                    window.location.reload(); // 電腦版重新整理
+                    window.location.reload();
                 }
             } else {
                 alert("錯誤：" + res.message);
@@ -204,7 +356,7 @@
         }
 
         async function cancelBooking() {
-            if (!confirm("確定要取消此預約嗎？")) return;
+            if (!confirm("確定要取消此預約嗎？\n(取消後無法復原)")) return;
             
             setLoading(true);
             const id = document.getElementById('editId').value;
@@ -220,8 +372,15 @@
         }
 
         function setLoading(isLoading) {
-            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
-            document.getElementById('submitBtn').disabled = isLoading;
+            const overlay = document.getElementById('loading-overlay');
+            const btn = document.getElementById('submitBtn');
+            if (isLoading) {
+                overlay.style.display = 'flex';
+                btn.disabled = true;
+            } else {
+                overlay.style.display = 'none';
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
