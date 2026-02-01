@@ -323,21 +323,29 @@
             renderTimeOptions(window.lastCounts);
         }
 
+        // 獨立出來的渲染函式：負責處理 1人 vs 2人 + ⛔ 過期時間判斷
         function renderTimeOptions(counts) {
             const timeSelect = document.getElementById('time');
             const name2 = document.getElementById('name2').value.trim();
             const isTwoPeople = (name2 !== "");
+            const dateValue = document.getElementById('date').value; // 取得日期字串
+            
+            // 記住目前選中的值
             const currentSelected = timeSelect.value;
 
             timeSelect.innerHTML = '';
             timeSelect.disabled = false;
 
+            // 預設選項
             let defaultOption = document.createElement("option");
             defaultOption.text = "請選擇時間";
             defaultOption.value = "";
             timeSelect.appendChild(defaultOption);
 
-            // 🔥 這裡改用 currentAvailableTimes (動態時間表)
+            // 取得現在時間
+            const now = new Date();
+
+            // 使用 currentAvailableTimes (會根據平日/週六變動)
             currentAvailableTimes.forEach((t, index) => {
                 let option = document.createElement("option");
                 option.value = t;
@@ -347,24 +355,35 @@
                 let isDisabled = false;
                 let statusText = "";
 
-                if (!isTwoPeople) {
-                    // 單人邏輯
-                    if (currentCount >= 2) {
-                        isDisabled = true;
-                        statusText = " (額滿)";
-                    } else if (currentCount === 1) {
-                        statusText = " (剩1位)";
-                    }
+                // 🔥🔥🔥【新增】判斷是否為「過去的時間」 🔥🔥🔥
+                // 組合該時段的完整時間物件 (相容 iOS 格式: YYYY/MM/DD HH:mm)
+                let slotDateTime = new Date(dateValue.replace(/-/g, '/') + ' ' + t);
+                
+                if (slotDateTime <= now) {
+                    // 如果該時段比現在早，直接停用
+                    isDisabled = true;
+                    statusText = " (已過)";
                 } else {
-                    // 雙人邏輯 (嚴格版：剩1位不能選)
-                    if (currentCount === 0) {
-                        isDisabled = false;
-                    } else if (currentCount === 1) {
-                        isDisabled = true;
-                        statusText = " (僅剩1位，請選其他)"; 
+                    // 如果還沒過期，才開始檢查人數邏輯 (原本的邏輯)
+                    if (!isTwoPeople) {
+                        // 單人邏輯
+                        if (currentCount >= 2) {
+                            isDisabled = true;
+                            statusText = " (額滿)";
+                        } else if (currentCount === 1) {
+                            statusText = " (剩1位)";
+                        }
                     } else {
-                        isDisabled = true;
-                        statusText = " (額滿)";
+                        // 雙人邏輯 (嚴格版)
+                        if (currentCount === 0) {
+                            isDisabled = false;
+                        } else if (currentCount === 1) {
+                            isDisabled = true;
+                            statusText = " (僅剩1位，請選其他)"; 
+                        } else {
+                            isDisabled = true;
+                            statusText = " (額滿)";
+                        }
                     }
                 }
 
