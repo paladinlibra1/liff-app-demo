@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub LIFF Demo</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: "Muli", sans-serif; padding: 20px; text-align: center; }
+        button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor: pointer; }
+        #log { color: red; font-size: 12px; margin-top: 20px; text-align: left; background: #f0f0f0; padding: 10px; display: none;}
+    </style>
+</head>
+<body>
+    <h2>LIFF on GitHub Pages</h2>
+    <p id="status">初始化中...</p>
+    <div id="profile" style="display:none;">
+        <p>你好，<b id="displayName"></b></p>
+        <p>User ID: <span id="userId"></span></p>
+        <button onclick="sendData()">傳送資料到 Google Sheet</button>
+    </div>
+    <div id="log"></div>
+
+    <script>
+        // 🔴 設定區
+        const MY_LIFF_ID = "2009018559-AeGOURPY"; // 請換成真實 ID
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzq8QoWuBjWrjvMv6FvsttGmEdHIF9DrsmMQdw9XTfvlT2ywYJUZRnflROibd0kEOQ6/exec"; // 請換成剛剛複製的 /exec 網址
+
+        // 顯示 Log 用
+        function showLog(msg) {
+            const log = document.getElementById('log');
+            log.style.display = 'block';
+            log.innerHTML += "📝 " + msg + "<br>";
+        }
+
+        async function main() {
+            try {
+                await liff.init({ liffId: MY_LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login(); // GitHub 是一般網頁，這裡可以直接呼叫 login，不會報錯！
+                    return;
+                }
+
+                const profile = await liff.getProfile();
+                document.getElementById('status').innerText = "登入成功！";
+                document.getElementById('profile').style.display = "block";
+                document.getElementById('displayName').innerText = profile.displayName;
+                document.getElementById('userId').innerText = profile.userId;
+
+                // 存全域變數方便傳送
+                window.userProfile = profile;
+
+            } catch (err) {
+                showLog("初始化錯誤: " + err.message);
+            }
+        }
+
+        function sendData() {
+            document.getElementById('status').innerText = "傳送中...";
+            
+            // 透過 fetch API 傳送 POST 請求給 GAS
+            fetch(GAS_API_URL, {
+                method: "POST",
+                // 這裡用 text/plain 是一個避免 CORS 錯誤的小技巧，GAS 一樣讀得到
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({
+                    userId: window.userProfile.userId,
+                    displayName: window.userProfile.displayName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("成功！後端回應：" + data.message);
+                document.getElementById('status').innerText = "傳送完成";
+            })
+            .catch(error => {
+                showLog("傳送失敗: " + error);
+                document.getElementById('status').innerText = "傳送失敗";
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
