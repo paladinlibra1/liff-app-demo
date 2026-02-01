@@ -6,14 +6,15 @@
     <title>Colorfashion 預約系統</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        /* --- 全域設定 --- */
+        /* --- 全域設定 (粉色系) --- */
         :root {
-            --primary-color: #9b8c83; /* 莫蘭迪棕色 (主色調) */
-            --accent-color: #d4a5a5;  /* 柔和粉 (強調色) */
-            --bg-color: #f4f4f4;      /* 背景色 */
-            --text-color: #4a4a4a;    /* 文字色 */
+            --primary-color: #d68095; /* 櫻花粉 (主色調) */
+            --primary-dark: #c06c82;  /* 深粉紅 (按鈕按壓) */
+            --accent-color: #e8aeb7;  /* 淺粉 (強調/外框) */
+            --bg-color: #fdf2f5;      /* 極淡粉白背景 */
+            --text-color: #5d4037;    /* 暖棕色文字 (比純黑柔和) */
             --card-bg: #ffffff;       /* 卡片背景 */
-            --input-bg: #f8f9fa;      /* 輸入框背景 */
+            --input-bg: #fffbfb;      /* 輸入框背景 */
         }
 
         body {
@@ -35,13 +36,14 @@
             max-width: 500px;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* 柔和陰影 */
+            box-shadow: 0 10px 25px rgba(214, 128, 149, 0.15); /* 粉色柔和陰影 */
+            border: 1px solid #fae1e6;
             animation: fadeIn 0.5s ease-out;
         }
 
         h2 {
             text-align: center;
-            color: var(--text-color);
+            color: var(--primary-dark);
             font-weight: 600;
             margin-bottom: 25px;
             letter-spacing: 1px;
@@ -56,9 +58,9 @@
         label {
             display: block;
             margin-bottom: 8px;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             font-weight: 500;
-            color: #666;
+            color: #8c6b6b; /* 藕粉色文字 */
         }
 
         input, select {
@@ -66,26 +68,27 @@
             padding: 14px 16px;
             border: 2px solid transparent;
             background-color: var(--input-bg);
-            border-radius: 12px;
-            font-size: 16px; /* 防止 iOS 自動縮放 */
-            color: #333;
+            border-radius: 15px; /* 圓角更圓潤 */
+            font-size: 16px;
+            color: #555;
             transition: all 0.3s ease;
             box-sizing: border-box;
-            appearance: none; /* 移除原生樣式 */
+            appearance: none;
+            border: 1px solid #f2e1e6;
         }
 
         input:focus, select:focus {
             outline: none;
             background-color: #fff;
             border-color: var(--accent-color);
-            box-shadow: 0 0 0 4px rgba(212, 165, 165, 0.15);
+            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
         }
 
-        /* 下拉選單的小箭頭優化 */
+        /* 下拉選單箭頭 (改為紅棕色) */
         select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c06c82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 12px center;
+            background-position: right 14px center;
             background-size: 16px;
         }
 
@@ -94,7 +97,7 @@
             width: 100%;
             padding: 16px;
             border: none;
-            border-radius: 12px;
+            border-radius: 15px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
@@ -107,50 +110,50 @@
         }
 
         #submitBtn {
-            background: linear-gradient(135deg, var(--primary-color), #b0a198);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
             color: white;
-            box-shadow: 0 4px 15px rgba(155, 140, 131, 0.3);
+            box-shadow: 0 6px 20px rgba(214, 128, 149, 0.4);
         }
 
         #submitBtn:disabled {
-            background: #ccc;
+            background: #e0d0d5;
             cursor: not-allowed;
             box-shadow: none;
         }
 
         .cancel-btn {
-            background-color: transparent;
-            color: #e74c3c;
-            border: 1px solid #e74c3c;
+            background-color: #fff;
+            color: #e57373;
+            border: 1px solid #ffcdd2;
             margin-top: 15px;
-            display: none; /* 預設隱藏 */
+            display: none;
         }
         
         .cancel-btn:hover {
-            background-color: #fff5f5;
+            background-color: #fffafb;
         }
 
-        /* --- 載入動畫 (Loading Overlay) --- */
+        /* --- Loading --- */
         #loading-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.9);
-            display: none; /* 預設隱藏 */
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
             z-index: 9999;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
         }
         
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
+            width: 45px;
+            height: 45px;
+            border: 4px solid #fceef2;
             border-top: 4px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -171,6 +174,15 @@
         <form id="bookingForm" onsubmit="submitBooking(event)">
             <input type="hidden" id="editId" name="editId">
             <input type="hidden" id="lineId" name="lineId">
+
+            <div class="form-group">
+                <label>預約身分</label>
+                <select id="type" required>
+                    <option value="新客">新客</option>
+                    <option value="舊客">舊客</option>
+                    <option value="複檢">複檢</option>
+                </select>
+            </div>
 
             <div class="form-group">
                 <label>姓名 1</label>
@@ -213,7 +225,7 @@
         // 🔴 請填入你的 LIFF ID
         const MY_LIFF_ID = "2009018559-AeGOURPY";
 
-        // ✅ 時間陣列 (已修正格式)
+        // ✅ 時間陣列
         let availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
 
         // 初始化
@@ -229,14 +241,11 @@
                 const profile = await liff.getProfile();
                 document.getElementById('lineId').value = profile.userId;
 
-                // 2. 判斷是否為「修改/取消模式」
                 const urlParams = new URLSearchParams(window.location.search);
                 const editId = urlParams.get('id');
 
-                // 3. 載入營業日
                 await loadOpenDates();
 
-                // 4. 修改模式載入舊資料
                 if (editId) {
                     document.getElementById('editId').value = editId;
                     document.getElementById('pageTitle').innerText = "修改預約";
@@ -244,6 +253,10 @@
                     document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
                 }
+                
+                document.getElementById('name2').addEventListener('input', function() {
+                    if (window.lastCounts) renderTimeOptions(window.lastCounts);
+                });
 
             } catch (err) {
                 alert("初始化失敗：" + err.message);
@@ -252,7 +265,6 @@
             }
         };
 
-        // API 呼叫
         async function callApi(action, payload = {}) {
             const response = await fetch(GAS_API_URL, {
                 method: "POST",
@@ -274,9 +286,12 @@
             });
         }
 
+        window.lastCounts = {};
+
         async function loadBusyTimes() {
             const date = document.getElementById('date').value;
             const timeSelect = document.getElementById('time');
+            const editId = document.getElementById('editId').value;
             
             if (!date) {
                 timeSelect.innerHTML = '<option value="">請先選擇日期</option>';
@@ -284,31 +299,78 @@
             }
 
             timeSelect.innerHTML = '<option value="">查詢時段中...</option>';
-            timeSelect.disabled = true; // 鎖定直到載入完成
+            timeSelect.disabled = true;
             
-            const res = await callApi("getBusyTimes", { date: date });
-            const busyList = res.times || [];
-            
+            const res = await callApi("getBusyTimes", { date: date, excludeId: editId });
+            window.lastCounts = res.times || {}; 
+            renderTimeOptions(window.lastCounts);
+        }
+
+        function renderTimeOptions(counts) {
+            const timeSelect = document.getElementById('time');
+            const name2 = document.getElementById('name2').value.trim();
+            const isTwoPeople = (name2 !== "");
+            const currentSelected = timeSelect.value;
+
             timeSelect.innerHTML = '';
             timeSelect.disabled = false;
 
-            // 預設選項
             let defaultOption = document.createElement("option");
             defaultOption.text = "請選擇時間";
             defaultOption.value = "";
             timeSelect.appendChild(defaultOption);
 
-            availableTimes.forEach(t => {
+            availableTimes.forEach((t, index) => {
                 let option = document.createElement("option");
                 option.value = t;
                 option.text = t;
-                if (busyList.includes(t)) {
+                
+                let currentCount = counts[t] || 0;
+                let isDisabled = false;
+                let statusText = "";
+
+                if (!isTwoPeople) {
+                    if (currentCount >= 2) {
+                        isDisabled = true;
+                        statusText = " (額滿)";
+                    } else if (currentCount === 1) {
+                        statusText = " (剩1位)";
+                    }
+                } else {
+                    if (currentCount === 0) {
+                        isDisabled = false;
+                    } else if (currentCount === 1) {
+                        let nextTime = availableTimes[index + 1];
+                        if (nextTime) {
+                            let nextCount = counts[nextTime] || 0;
+                            if (nextCount < 2) {
+                                isDisabled = false; 
+                                statusText = " (需分時段)"; 
+                            } else {
+                                isDisabled = true;
+                                statusText = " (無法連續)";
+                            }
+                        } else {
+                            isDisabled = true;
+                            statusText = " (額滿)";
+                        }
+                    } else {
+                        isDisabled = true;
+                        statusText = " (額滿)";
+                    }
+                }
+
+                if (isDisabled) {
                     option.disabled = true;
-                    option.text += " (額滿)";
-                    option.style.color = "#ccc"; // 讓額滿的看起來灰灰的
+                    option.text += statusText;
+                    option.style.color = "#ccc";
+                } else {
+                    option.text += statusText;
                 }
                 timeSelect.appendChild(option);
             });
+
+            if (currentSelected) timeSelect.value = currentSelected;
         }
 
         async function loadBookingData(id) {
@@ -319,6 +381,8 @@
                 document.getElementById('name2').value = data.name2;
                 document.getElementById('phone').value = data.phone;
                 document.getElementById('date').value = data.date;
+                // 🔥 新增：預填身分
+                document.getElementById('type').value = data.type; 
                 await loadBusyTimes();
                 document.getElementById('time').value = data.time;
             } else {
@@ -333,6 +397,8 @@
             const formData = {
                 editId: document.getElementById('editId').value,
                 lineId: document.getElementById('lineId').value,
+                // 🔥 新增：傳送身分
+                type: document.getElementById('type').value, 
                 name: document.getElementById('name').value,
                 name2: document.getElementById('name2').value,
                 phone: document.getElementById('phone').value,
@@ -357,15 +423,14 @@
 
         async function cancelBooking() {
             if (!confirm("確定要取消此預約嗎？\n(取消後無法復原)")) return;
-            
             setLoading(true);
             const id = document.getElementById('editId').value;
             const res = await callApi("cancelBooking", { id: id });
             setLoading(false);
-
             if (res.status === "success") {
                 alert(res.message);
-                liff.closeWindow();
+                if(liff.isInClient()) liff.closeWindow();
+                else window.location.href = window.location.pathname;
             } else {
                 alert("錯誤：" + res.message);
             }
