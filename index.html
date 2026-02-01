@@ -306,15 +306,19 @@
             renderTimeOptions(window.lastCounts);
         }
 
+        // 獨立出來的渲染函式：負責處理 1人 vs 2人 的邏輯
         function renderTimeOptions(counts) {
             const timeSelect = document.getElementById('time');
             const name2 = document.getElementById('name2').value.trim();
-            const isTwoPeople = (name2 !== "");
+            const isTwoPeople = (name2 !== ""); // 是否為雙人預約
+            
+            // 記住目前選中的值 (避免刷新後跑掉)
             const currentSelected = timeSelect.value;
 
             timeSelect.innerHTML = '';
             timeSelect.disabled = false;
 
+            // 預設選項
             let defaultOption = document.createElement("option");
             defaultOption.text = "請選擇時間";
             defaultOption.value = "";
@@ -325,36 +329,37 @@
                 option.value = t;
                 option.text = t;
                 
+                // 取得當前時段人數 (沒資料就是 0)
                 let currentCount = counts[t] || 0;
+                
                 let isDisabled = false;
                 let statusText = "";
 
                 if (!isTwoPeople) {
+                    // ==============================
+                    // 【單人預約邏輯】(維持不變)
+                    // ==============================
                     if (currentCount >= 2) {
                         isDisabled = true;
                         statusText = " (額滿)";
                     } else if (currentCount === 1) {
+                        // 剩一個位置，單人可以預約
                         statusText = " (剩1位)";
                     }
                 } else {
+                    // ==============================
+                    // 【雙人預約邏輯】(依照您的要求修改)
+                    // ==============================
                     if (currentCount === 0) {
+                        // 狀況A: 完全沒人 (0/2) -> 兩人可以塞進去 -> OK
                         isDisabled = false;
                     } else if (currentCount === 1) {
-                        let nextTime = availableTimes[index + 1];
-                        if (nextTime) {
-                            let nextCount = counts[nextTime] || 0;
-                            if (nextCount < 2) {
-                                isDisabled = false; 
-                                statusText = " (需分時段)"; 
-                            } else {
-                                isDisabled = true;
-                                statusText = " (無法連續)";
-                            }
-                        } else {
-                            isDisabled = true;
-                            statusText = " (額滿)";
-                        }
+                        // 狀況B: 已經有1人 (1/2) -> 剩1個位子 -> 兩人塞不下
+                        // 🔥 這裡改成：直接停用，並顯示提示
+                        isDisabled = true;
+                        statusText = " (僅剩1位，請選其他)"; 
                     } else {
+                        // 狀況C: 已經滿了 (2/2)
                         isDisabled = true;
                         statusText = " (額滿)";
                     }
@@ -363,14 +368,24 @@
                 if (isDisabled) {
                     option.disabled = true;
                     option.text += statusText;
-                    option.style.color = "#ccc";
+                    option.style.color = "#ccc"; // 停用的顏色
                 } else {
                     option.text += statusText;
                 }
+
                 timeSelect.appendChild(option);
             });
 
-            if (currentSelected) timeSelect.value = currentSelected;
+            // 嘗試恢復原本選中的值 (如果它還有效)
+            if (currentSelected) {
+                // 如果原本選的時間現在因為變成雙人而被禁用了，就重置回空值
+                let optionToCheck = timeSelect.querySelector(`option[value="${currentSelected}"]`);
+                if (optionToCheck && !optionToCheck.disabled) {
+                    timeSelect.value = currentSelected;
+                } else {
+                    timeSelect.value = "";
+                }
+            }
         }
 
         async function loadBookingData(id) {
