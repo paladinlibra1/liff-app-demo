@@ -223,10 +223,18 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
         
         // 🔴 請填入你的 LIFF ID
+        // ⚠️ 注意：請填入您正確的 LIFF ID (對應 liff.line.me 的那個)
         const MY_LIFF_ID = "2009018559-AeGOURPY";
 
-        // ✅ 時間陣列
-        let availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
+        // ✅ 定義兩組營業時間
+        // 平日 (週一~週五/週日): 12:00 ~ 20:00
+        const weekDayTimes = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
+        
+        // 週六: 10:00 ~ 17:00
+        const satTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
+
+        // 目前使用的時間表 (會隨日期變動)
+        let currentAvailableTimes = [];
 
         // 初始化
         window.onload = async function() {
@@ -289,77 +297,72 @@
         window.lastCounts = {};
 
         async function loadBusyTimes() {
-            const date = document.getElementById('date').value;
+            const dateStr = document.getElementById('date').value;
             const timeSelect = document.getElementById('time');
             const editId = document.getElementById('editId').value;
             
-            if (!date) {
+            if (!dateStr) {
                 timeSelect.innerHTML = '<option value="">請先選擇日期</option>';
                 return;
+            }
+
+            // 🔥【關鍵修改】判斷是週六還是平日，切換時間表
+            const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay(); // 0=週日, 6=週六
+            
+            if (dayOfWeek === 6) {
+                currentAvailableTimes = satTimes; // 週六用 10-17
+            } else {
+                currentAvailableTimes = weekDayTimes; // 其他用 12-20
             }
 
             timeSelect.innerHTML = '<option value="">查詢時段中...</option>';
             timeSelect.disabled = true;
             
-            const res = await callApi("getBusyTimes", { date: date, excludeId: editId });
+            const res = await callApi("getBusyTimes", { date: dateStr, excludeId: editId });
             window.lastCounts = res.times || {}; 
             renderTimeOptions(window.lastCounts);
         }
 
-        // 獨立出來的渲染函式：負責處理 1人 vs 2人 的邏輯
         function renderTimeOptions(counts) {
             const timeSelect = document.getElementById('time');
             const name2 = document.getElementById('name2').value.trim();
-            const isTwoPeople = (name2 !== ""); // 是否為雙人預約
-            
-            // 記住目前選中的值 (避免刷新後跑掉)
+            const isTwoPeople = (name2 !== "");
             const currentSelected = timeSelect.value;
 
             timeSelect.innerHTML = '';
             timeSelect.disabled = false;
 
-            // 預設選項
             let defaultOption = document.createElement("option");
             defaultOption.text = "請選擇時間";
             defaultOption.value = "";
             timeSelect.appendChild(defaultOption);
 
-            availableTimes.forEach((t, index) => {
+            // 🔥 這裡改用 currentAvailableTimes (動態時間表)
+            currentAvailableTimes.forEach((t, index) => {
                 let option = document.createElement("option");
                 option.value = t;
                 option.text = t;
                 
-                // 取得當前時段人數 (沒資料就是 0)
                 let currentCount = counts[t] || 0;
-                
                 let isDisabled = false;
                 let statusText = "";
 
                 if (!isTwoPeople) {
-                    // ==============================
-                    // 【單人預約邏輯】(維持不變)
-                    // ==============================
+                    // 單人邏輯
                     if (currentCount >= 2) {
                         isDisabled = true;
                         statusText = " (額滿)";
                     } else if (currentCount === 1) {
-                        // 剩一個位置，單人可以預約
                         statusText = " (剩1位)";
                     }
                 } else {
-                    // ==============================
-                    // 【雙人預約邏輯】(依照您的要求修改)
-                    // ==============================
+                    // 雙人邏輯 (嚴格版：剩1位不能選)
                     if (currentCount === 0) {
-                        // 狀況A: 完全沒人 (0/2) -> 兩人可以塞進去 -> OK
                         isDisabled = false;
                     } else if (currentCount === 1) {
-                        // 狀況B: 已經有1人 (1/2) -> 剩1個位子 -> 兩人塞不下
-                        // 🔥 這裡改成：直接停用，並顯示提示
                         isDisabled = true;
                         statusText = " (僅剩1位，請選其他)"; 
                     } else {
-                        // 狀況C: 已經滿了 (2/2)
                         isDisabled = true;
                         statusText = " (額滿)";
                     }
@@ -368,17 +371,15 @@
                 if (isDisabled) {
                     option.disabled = true;
                     option.text += statusText;
-                    option.style.color = "#ccc"; // 停用的顏色
+                    option.style.color = "#ccc";
                 } else {
                     option.text += statusText;
                 }
-
                 timeSelect.appendChild(option);
             });
 
-            // 嘗試恢復原本選中的值 (如果它還有效)
+            // 嘗試恢復選中值
             if (currentSelected) {
-                // 如果原本選的時間現在因為變成雙人而被禁用了，就重置回空值
                 let optionToCheck = timeSelect.querySelector(`option[value="${currentSelected}"]`);
                 if (optionToCheck && !optionToCheck.disabled) {
                     timeSelect.value = currentSelected;
@@ -396,9 +397,8 @@
                 document.getElementById('name2').value = data.name2;
                 document.getElementById('phone').value = data.phone;
                 document.getElementById('date').value = data.date;
-                // 🔥 新增：預填身分
                 document.getElementById('type').value = data.type; 
-                await loadBusyTimes();
+                await loadBusyTimes(); // 這裡會自動觸發判斷星期幾
                 document.getElementById('time').value = data.time;
             } else {
                 alert(res.message);
@@ -412,7 +412,6 @@
             const formData = {
                 editId: document.getElementById('editId').value,
                 lineId: document.getElementById('lineId').value,
-                // 🔥 新增：傳送身分
                 type: document.getElementById('type').value, 
                 name: document.getElementById('name').value,
                 name2: document.getElementById('name2').value,
