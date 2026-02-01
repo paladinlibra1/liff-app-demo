@@ -3,84 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub LIFF Demo</title>
+    <title>Colorfashion 預約系統</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
-        body { font-family: "Muli", sans-serif; padding: 20px; text-align: center; }
-        button { padding: 10px 20px; font-size: 16px; margin-top: 20px; cursor: pointer; }
-        #log { color: red; font-size: 12px; margin-top: 20px; text-align: left; background: #f0f0f0; padding: 10px; display: none;}
+        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; }
+        h2 { text-align: center; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        button:disabled { background-color: #ccc; }
+        .cancel-btn { background-color: #dc3545; margin-top: 10px; display: none; }
+        #loading { text-align: center; display: none; color: #666; }
     </style>
 </head>
 <body>
-    <h2>LIFF on GitHub Pages</h2>
-    <p id="status">初始化中...</p>
-    <div id="profile" style="display:none;">
-        <p>你好，<b id="displayName"></b></p>
-        <p>User ID: <span id="userId"></span></p>
-        <button onclick="sendData()">傳送資料到 Google Sheet</button>
-    </div>
-    <div id="log"></div>
+
+    <h2 id="pageTitle">線上預約</h2>
+
+    <div id="loading">處理中，請稍候...</div>
+
+    <form id="bookingForm" onsubmit="submitBooking(event)">
+        <input type="hidden" id="editId" name="editId">
+        <input type="hidden" id="lineId" name="lineId">
+
+        <div class="form-group">
+            <label>姓名 1</label>
+            <input type="text" id="name" required placeholder="請輸入姓名">
+        </div>
+
+        <div class="form-group">
+            <label>姓名 2 (雙人預約選填)</label>
+            <input type="text" id="name2" placeholder="同行者姓名">
+        </div>
+
+        <div class="form-group">
+            <label>電話</label>
+            <input type="tel" id="phone" required placeholder="09xx...">
+        </div>
+
+        <div class="form-group">
+            <label>預約日期</label>
+            <select id="date" required onchange="loadBusyTimes()">
+                <option value="">載入中...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>預約時間</label>
+            <select id="time" required>
+                <option value="">請先選擇日期</option>
+            </select>
+        </div>
+
+        <button type="submit" id="submitBtn">確認預約</button>
+        <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
+    </form>
 
     <script>
-        // 🔴 設定區
-        const MY_LIFF_ID = "2009018559-AeGOURPY"; // 請換成真實 ID
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzq8QoWuBjWrjvMv6FvsttGmEdHIF9DrsmMQdw9XTfvlT2ywYJUZRnflROibd0kEOQ6/exec"; // 請換成剛剛複製的 /exec 網址
+        // 🔴 請填入你的 GAS 部署網址 (結尾是 /exec)
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzq8QoWuBjWrjvMv6FvsttGmEdHIF9DrsmMQdw9XTfvlT2ywYJUZRnflROibd0kEOQ6/exec";
+        
+        // 🔴 請填入你的 LIFF ID
+        const MY_LIFF_ID = "2009018559-AeGOURPY";
 
-        // 顯示 Log 用
-        function showLog(msg) {
-            const log = document.getElementById('log');
-            log.style.display = 'block';
-            log.innerHTML += "📝 " + msg + "<br>";
-        }
+        // 全域變數
+        let availableTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00"];
 
-        async function main() {
+        // 初始化
+        window.onload = async function() {
+            setLoading(true);
             try {
+                // 1. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
-                
                 if (!liff.isLoggedIn()) {
-                    liff.login(); // GitHub 是一般網頁，這裡可以直接呼叫 login，不會報錯！
+                    liff.login();
                     return;
                 }
-
                 const profile = await liff.getProfile();
-                document.getElementById('status').innerText = "登入成功！";
-                document.getElementById('profile').style.display = "block";
-                document.getElementById('displayName').innerText = profile.displayName;
-                document.getElementById('userId').innerText = profile.userId;
+                document.getElementById('lineId').value = profile.userId;
 
-                // 存全域變數方便傳送
-                window.userProfile = profile;
+                // 2. 判斷是否為「修改/取消模式」 (網址有 ?id=...)
+                const urlParams = new URLSearchParams(window.location.search);
+                const editId = urlParams.get('id');
+
+                // 3. 載入營業日
+                await loadOpenDates();
+
+                // 4. 如果是修改模式，載入舊資料
+                if (editId) {
+                    document.getElementById('editId').value = editId;
+                    document.getElementById('pageTitle').innerText = "修改/取消預約";
+                    document.getElementById('submitBtn').innerText = "更新預約";
+                    document.getElementById('cancelBtn').style.display = "block";
+                    await loadBookingData(editId);
+                }
 
             } catch (err) {
-                showLog("初始化錯誤: " + err.message);
+                alert("初始化失敗：" + err.message);
+            } finally {
+                setLoading(false);
             }
+        };
+
+        // 呼叫後端 API 的通用函式
+        async function callApi(action, payload = {}) {
+            const response = await fetch(GAS_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" }, // 避開 CORS
+                body: JSON.stringify({ action: action, payload: payload })
+            });
+            return await response.json();
         }
 
-        function sendData() {
-            document.getElementById('status').innerText = "傳送中...";
-            
-            // 透過 fetch API 傳送 POST 請求給 GAS
-            fetch(GAS_API_URL, {
-                method: "POST",
-                // 這裡用 text/plain 是一個避免 CORS 錯誤的小技巧，GAS 一樣讀得到
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify({
-                    userId: window.userProfile.userId,
-                    displayName: window.userProfile.displayName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert("成功！後端回應：" + data.message);
-                document.getElementById('status').innerText = "傳送完成";
-            })
-            .catch(error => {
-                showLog("傳送失敗: " + error);
-                document.getElementById('status').innerText = "傳送失敗";
+        async function loadOpenDates() {
+            const res = await callApi("getInitData");
+            const select = document.getElementById('date');
+            select.innerHTML = '<option value="">請選擇日期</option>';
+            res.dates.forEach(d => {
+                let option = document.createElement("option");
+                option.value = d;
+                option.text = d;
+                select.appendChild(option);
             });
         }
 
-        main();
+        async function loadBusyTimes() {
+            const date = document.getElementById('date').value;
+            const timeSelect = document.getElementById('time');
+            
+            if (!date) {
+                timeSelect.innerHTML = '<option value="">請先選擇日期</option>';
+                return;
+            }
+
+            timeSelect.innerHTML = '<option value="">讀取中...</option>';
+            const res = await callApi("getBusyTimes", { date: date });
+            
+            // 過濾掉已被預約的時間 (如果是修改模式，要保留原本自己的時間)
+            const busyList = res.times || [];
+            
+            timeSelect.innerHTML = '';
+            availableTimes.forEach(t => {
+                let option = document.createElement("option");
+                option.value = t;
+                option.text = t;
+                // 如果該時段忙碌，則禁用 (除非是目前選中的時段-編輯模式下)
+                if (busyList.includes(t)) {
+                    option.disabled = true;
+                    option.text += " (已額滿)";
+                }
+                timeSelect.appendChild(option);
+            });
+        }
+
+        async function loadBookingData(id) {
+            const res = await callApi("getBooking", { id: id });
+            if (res.status === "success") {
+                const data = res.data;
+                document.getElementById('name').value = data.name;
+                document.getElementById('name2').value = data.name2;
+                document.getElementById('phone').value = data.phone;
+                document.getElementById('date').value = data.date;
+                
+                // 觸發時間載入，並預選原本的時間
+                await loadBusyTimes();
+                document.getElementById('time').value = data.time;
+            } else {
+                alert(res.message);
+            }
+        }
+
+        async function submitBooking(e) {
+            e.preventDefault();
+            setLoading(true);
+            
+            const formData = {
+                editId: document.getElementById('editId').value,
+                lineId: document.getElementById('lineId').value,
+                name: document.getElementById('name').value,
+                name2: document.getElementById('name2').value,
+                phone: document.getElementById('phone').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value
+            };
+
+            const res = await callApi("submitBooking", formData);
+            setLoading(false);
+            
+            if (res.status === "success") {
+                alert(res.message);
+                if(liff.isInClient()){
+                    liff.closeWindow(); // 手機版直接關閉視窗
+                } else {
+                    window.location.reload(); // 電腦版重新整理
+                }
+            } else {
+                alert("錯誤：" + res.message);
+            }
+        }
+
+        async function cancelBooking() {
+            if (!confirm("確定要取消此預約嗎？")) return;
+            
+            setLoading(true);
+            const id = document.getElementById('editId').value;
+            const res = await callApi("cancelBooking", { id: id });
+            setLoading(false);
+
+            if (res.status === "success") {
+                alert(res.message);
+                liff.closeWindow();
+            } else {
+                alert("錯誤：" + res.message);
+            }
+        }
+
+        function setLoading(isLoading) {
+            document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+            document.getElementById('submitBtn').disabled = isLoading;
+        }
     </script>
 </body>
 </html>
