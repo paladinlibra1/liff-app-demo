@@ -145,6 +145,27 @@
             z-index: 9999;
             backdrop-filter: blur(4px);
         }
+
+        /* 確認出席按鈕 (綠色系) */
+        .confirm-btn {
+            background: linear-gradient(135deg, #56ab2f, #a8e063);
+            color: white;
+            box-shadow: 0 4px 15px rgba(86, 171, 47, 0.3);
+            display: none; /* ⚠️ 重點：預設是隱藏的，只有修改模式才會由 JS 打開 */
+            margin-bottom: 20px;
+        }
+        
+        .confirmed-badge {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #c8e6c9;
+            margin-bottom: 20px;
+            display: none;
+        }
         
         .spinner {
             width: 45px;
@@ -174,7 +195,12 @@
         <form id="bookingForm" onsubmit="submitBooking(event)">
             <input type="hidden" id="editId" name="editId">
             <input type="hidden" id="lineId" name="lineId">
-
+            <button type="button" id="confirmBtn" class="confirm-btn" onclick="submitConfirm()">
+                ✅ 我會如期前往
+            </button>
+            <div id="confirmedBadge" class="confirmed-badge">
+                🎉 您已確認會出席，期待見到您！
+            </div>
             <div class="form-group">
                 <label>預約身分</label>
                 <select id="type" required>
@@ -445,8 +471,20 @@
                 document.getElementById('phone').value = data.phone;
                 document.getElementById('date').value = data.date;
                 document.getElementById('type').value = data.type; 
-                await loadBusyTimes(); // 這裡會自動觸發判斷星期幾
+                await loadBusyTimes(); 
                 document.getElementById('time').value = data.time;
+
+                // 🔥🔥🔥【關鍵】控制綠色按鈕顯示 🔥🔥🔥
+                // 邏輯：如果有資料(代表是修改模式) 且 還沒確認過 -> 顯示按鈕
+                // 如果已經確認過 -> 顯示文字
+                if (data.status === "已確認") {
+                    document.getElementById('confirmBtn').style.display = 'none';
+                    document.getElementById('confirmedBadge').style.display = 'block';
+                } else {
+                    document.getElementById('confirmBtn').style.display = 'block';
+                    document.getElementById('confirmedBadge').style.display = 'none';
+                }
+
             } else {
                 alert(res.message);
             }
@@ -506,6 +544,41 @@
             } else {
                 overlay.style.display = 'none';
                 btn.disabled = false;
+            }
+        }
+
+        async function submitConfirm() {
+            setLoading(true);
+            try {
+                // 1. 抓取使用者的 LINE ID (如果是在 LINE 內開啟)
+                let currentUserLineId = "";
+                if (liff.isInClient() || liff.isLoggedIn()) {
+                    try {
+                        const profile = await liff.getProfile();
+                        currentUserLineId = profile.userId;
+                    } catch (e) { console.error(e); }
+                }
+
+                // 2. 呼叫後端
+                const id = document.getElementById('editId').value;
+                const res = await callApi("confirmBooking", { 
+                    id: id, 
+                    lineId: currentUserLineId 
+                });
+                
+                setLoading(false);
+
+                if (res.status === "success") {
+                    alert(res.message);
+                    // 成功後，隱藏按鈕，顯示已確認標籤
+                    document.getElementById('confirmBtn').style.display = 'none';
+                    document.getElementById('confirmedBadge').style.display = 'block';
+                } else {
+                    alert("錯誤：" + res.message);
+                }
+            } catch (err) {
+                setLoading(false);
+                alert("發生錯誤：" + err.message);
             }
         }
     </script>
