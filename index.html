@@ -570,9 +570,14 @@
 
                 if (res.status === "success") {
                     alert(res.message);
-                    // 成功後，隱藏按鈕，顯示已確認標籤
-                    document.getElementById('confirmBtn').style.display = 'none';
-                    document.getElementById('confirmedBadge').style.display = 'block';
+                    // 👇👇👇 新增這段：嘗試關閉視窗 👇👇👇
+                    if (liff.isInClient()) {
+                        liff.closeWindow();
+                    } else {
+                        // 如果是在外部瀏覽器(無法關閉)，就只隱藏按鈕顯示文字
+                        document.getElementById('confirmBtn').style.display = 'none';
+                        document.getElementById('confirmedBadge').style.display = 'block';
+                    }
                 } else {
                     alert("錯誤：" + res.message);
                 }
