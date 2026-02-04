@@ -179,8 +179,8 @@
                 <label>預約身分</label>
                 <select id="type" required>
                     <option value="" disabled selected>請選擇預約身分</option>                    
-                    <option value="新客">新客</option>
-                    <option value="舊客">舊客</option>
+                    <option value="新客體驗">新客體驗</option>
+                    <option value="一般預約">一般預約</option>
                     <option value="複檢">複檢</option> 
                 </select>
             </div>
@@ -241,20 +241,46 @@
         window.onload = async function() {
             setLoading(true);
             try {
-                // 1. LIFF 初始化
-                await liff.init({ liffId: MY_LIFF_ID });
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-                const profile = await liff.getProfile();
-                document.getElementById('lineId').value = profile.userId;
-
+                // 1. 先讀取網址參數，檢查有沒有 "admin" 暗號
                 const urlParams = new URLSearchParams(window.location.search);
-                const editId = urlParams.get('id');
+                const role = urlParams.get('role'); // 抓取 ?role=...
+                const editId = urlParams.get('id'); // 抓取 ?id=... (修改用)
 
+                // 2. LIFF 初始化
+                await liff.init({ liffId: MY_LIFF_ID });
+                
+                let currentUserLineId = "";
+
+                // 🔥🔥🔥【關鍵修改】判斷邏輯 🔥🔥🔥
+                // 如果網址有 ?role=admin，就強制當作店家模式 (不抓 ID)
+                if (role === 'admin') {
+                    console.log("🕵️‍♂️ 偵測到管理者模式：不抓取 LINE ID");
+                    currentUserLineId = ""; // 強制留空，觸發後端電話反查
+                    
+                    // 這裡可以偷改標題，讓您知道現在是後台模式
+                    document.getElementById('pageTitle').innerText = "店家代客預約";
+                    document.getElementById('pageTitle').style.color = "#d32f2f"; // 標題變紅色提醒您
+                
+                } else if (liff.isInClient()) {
+                    // 🟢 一般客人在 LINE 裡面：正常抓取 ID
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                        return;
+                    }
+                    const profile = await liff.getProfile();
+                    currentUserLineId = profile.userId;
+                } else {
+                    // 🔵 在外部瀏覽器：視為店家模式
+                    console.log("外部瀏覽器：不抓取 LINE ID");
+                }
+
+                // 將 ID 填入欄位
+                document.getElementById('lineId').value = currentUserLineId;
+
+                // 3. 載入日期
                 await loadOpenDates();
 
+                // 4. 如果是修改訂單
                 if (editId) {
                     document.getElementById('editId').value = editId;
                     document.getElementById('pageTitle').innerText = "修改預約";
@@ -263,6 +289,7 @@
                     await loadBookingData(editId);
                 }
                 
+                // 監聽姓名2輸入
                 document.getElementById('name2').addEventListener('input', function() {
                     if (window.lastCounts) renderTimeOptions(window.lastCounts);
                 });
