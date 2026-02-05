@@ -287,14 +287,33 @@
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f"; // 標題變紅色提醒您
                 
-                } else if (liff.isInClient()) {
-                    // 🟢 一般客人在 LINE 裡面：正常抓取 ID
+                }else if (liff.isInClient() || liff.isLoggedIn()) {
+                    // 🟢 一般客人在 LINE 裡面，或是外部瀏覽器已登入
                     if (!liff.isLoggedIn()) {
-                        liff.login();
+                        // 🔥 這裡加一個參數 bot_prompt: 'normal'
+                        // 這樣客人在登入畫面時，LINE 會自動勾選「加入好友」
+                        liff.login({ bot_prompt: 'normal' });
                         return;
                     }
+                    
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
+
+                    // 🔥🔥🔥【新增】強迫/引導加入好友檢查 🔥🔥🔥
+                    try {
+                        const friend = await liff.getFriendship();
+                        // 如果 friendFlag 是 false，代表沒加好友，或是封鎖了
+                        if (!friend.friendFlag) {
+                            if (confirm("🔔 為了接收預約成功通知，請務必先加入官方帳號好友喔！\n\n(點擊「確定」將跳轉至加入好友頁面)")) {
+                                // 👇 請把這裡換成您官方帳號的加好友連結
+                                // 格式通常是 https://line.me/R/ti/p/@您的ID
+                                window.location.href = "https://lin.ee/2q3hhmn"; 
+                            }
+                        }
+                    } catch (err) {
+                        console.error("無法檢查好友狀態 (可能後台沒綁定 Linked OA)", err);
+                    }
+                    // 🔥🔥🔥【結束】🔥🔥🔥
                 } else {
                     // 🔵 在外部瀏覽器：視為店家模式
                     console.log("外部瀏覽器：不抓取 LINE ID");
