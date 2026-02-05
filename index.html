@@ -301,21 +301,35 @@
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
 
-                    // 🔥🔥🔥【好友檢查區塊】🔥🔥🔥
+                    // 🔥🔥🔥【好友檢查區塊 - 修正版】🔥🔥🔥
                     try {
                         const friend = await liff.getFriendship();
-                        console.log("好友狀態:", friend); // 除錯用
-
+                        
                         if (!friend.friendFlag) {
-                            // 如果不是好友，跳出詢問
-                            if (confirm("🔔 為了接收預約成功通知，請務必先加入官方帳號好友喔！\n\n(點擊「確定」將跳轉至加入好友頁面)")) {
-                                // 👇 請確認這裡填的是您官方帳號的連結
-                                window.location.href = "https://lin.ee/2q3hhmn"; 
-                                return; // 跳轉後不繼續執行
+                            // 修正文字，明確告知客人要「返回」
+                            if (confirm("🔔 為了接收預約成功通知，請先加入好友！\n\n(點擊確定後將開啟加好友視窗，加入後請「手動返回」此頁面繼續預約)")) {
+                                
+                                const addFriendUrl = "https://lin.ee/2q3hhmn"; // 您的加好友連結
+
+                                // 🟢 針對 LINE App 內的操作優化
+                                if (liff.isInClient()) {
+                                    // 使用 liff.openWindow 開啟外部瀏覽器模式
+                                    // 這樣可以保留原本的 LIFF 預約頁面不被關閉
+                                    liff.openWindow({
+                                        url: addFriendUrl,
+                                        external: true 
+                                    });
+                                } else {
+                                    // 🔵 針對外部瀏覽器 (Chrome/Safari)
+                                    // 開啟新分頁 (_blank)，保留原本的預約分頁
+                                    window.open(addFriendUrl, "_blank");
+                                }
+                                // ⚠️ 不要有 return，讓程式繼續往下跑
+                                // 這樣客人切換回來時，頁面已經載入好日期選單了
                             }
                         }
                     } catch (err) {
-                        console.error("無法檢查好友狀態 (請確認 LINE Developers 有綁定 Linked OA)", err);
+                        console.error("好友檢查失敗", err);
                     }
                     // 🔥🔥🔥【結束】🔥🔥🔥
                 }
