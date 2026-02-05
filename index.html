@@ -267,56 +267,57 @@
         window.onload = async function() {
             setLoading(true);
             try {
-                // 1. 先讀取網址參數，檢查有沒有 "admin" 暗號
+                // 1. 讀取網址參數
                 const urlParams = new URLSearchParams(window.location.search);
-                const role = urlParams.get('role'); // 抓取 ?role=...
-                const editId = urlParams.get('id'); // 抓取 ?id=... (修改用)
+                const role = urlParams.get('role'); // ?role=admin
+                const editId = urlParams.get('id'); // ?id=...
 
                 // 2. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
                 
                 let currentUserLineId = "";
 
-                // 🔥🔥🔥【關鍵修改】判斷邏輯 🔥🔥🔥
-                // 如果網址有 ?role=admin，就強制當作店家模式 (不抓 ID)
+                // 🛑 邏輯修正：優先判斷是否為「管理者模式」
                 if (role === 'admin') {
+                    // 🔴 只有在此模式下，才允許「不登入」
                     console.log("🕵️‍♂️ 偵測到管理者模式：不抓取 LINE ID");
-                    currentUserLineId = ""; // 強制留空，觸發後端電話反查
+                    currentUserLineId = ""; // 留空觸發電話反查
                     
-                    // 這裡可以偷改標題，讓您知道現在是後台模式
                     document.getElementById('pageTitle').innerText = "店家代客預約";
-                    document.getElementById('pageTitle').style.color = "#d32f2f"; // 標題變紅色提醒您
+                    document.getElementById('pageTitle').style.color = "#d32f2f";
                 
-                }else if (liff.isInClient() || liff.isLoggedIn()) {
-                    // 🟢 一般客人在 LINE 裡面，或是外部瀏覽器已登入
+                } else {
+                    // 🟢 只要不是 admin (包含客人從 LINE、FB、網頁點開)，一律視為「客人」
+                    // 必須登入才能抓 ID 和檢查好友
+
                     if (!liff.isLoggedIn()) {
-                        // 🔥 這裡加一個參數 bot_prompt: 'normal'
-                        // 這樣客人在登入畫面時，LINE 會自動勾選「加入好友」
-                        liff.login({ bot_prompt: 'normal' });
-                        return;
+                        // 如果還沒登入，強制跳轉去登入頁面
+                        // bot_prompt: 'normal' 會在登入同意頁面顯示「加入好友」選項
+                        liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
+                        return; // 登入會重整網頁，所以這邊直接結束
                     }
-                    
+
+                    // 已登入，抓取資料
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
 
-                    // 🔥🔥🔥【新增】強迫/引導加入好友檢查 🔥🔥🔥
+                    // 🔥🔥🔥【好友檢查區塊】🔥🔥🔥
                     try {
                         const friend = await liff.getFriendship();
-                        // 如果 friendFlag 是 false，代表沒加好友，或是封鎖了
+                        console.log("好友狀態:", friend); // 除錯用
+
                         if (!friend.friendFlag) {
+                            // 如果不是好友，跳出詢問
                             if (confirm("🔔 為了接收預約成功通知，請務必先加入官方帳號好友喔！\n\n(點擊「確定」將跳轉至加入好友頁面)")) {
-                                // 👇 請把這裡換成您官方帳號的加好友連結
-                                // 格式通常是 https://line.me/R/ti/p/@您的ID
+                                // 👇 請確認這裡填的是您官方帳號的連結
                                 window.location.href = "https://lin.ee/2q3hhmn"; 
+                                return; // 跳轉後不繼續執行
                             }
                         }
                     } catch (err) {
-                        console.error("無法檢查好友狀態 (可能後台沒綁定 Linked OA)", err);
+                        console.error("無法檢查好友狀態 (請確認 LINE Developers 有綁定 Linked OA)", err);
                     }
                     // 🔥🔥🔥【結束】🔥🔥🔥
-                } else {
-                    // 🔵 在外部瀏覽器：視為店家模式
-                    console.log("外部瀏覽器：不抓取 LINE ID");
                 }
 
                 // 將 ID 填入欄位
