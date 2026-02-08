@@ -501,18 +501,7 @@
                 document.getElementById('type').value = data.type; 
                 await loadBusyTimes(); 
                 document.getElementById('time').value = data.time;
-
-                // 🔥🔥🔥【關鍵】控制綠色按鈕顯示 🔥🔥🔥
-                // 邏輯：如果有資料(代表是修改模式) 且 還沒確認過 -> 顯示按鈕
-                // 如果已經確認過 -> 顯示文字
-                if (data.status === "已確認") {
-                    document.getElementById('confirmBtn').style.display = 'none';
-                    document.getElementById('confirmedBadge').style.display = 'block';
-                } else {
-                    document.getElementById('confirmBtn').style.display = 'block';
-                    document.getElementById('confirmedBadge').style.display = 'none';
-                }
-
+                
             } else {
                 alert(res.message);
             }
@@ -574,46 +563,7 @@
                 btn.disabled = false;
             }
         }
-
-        async function submitConfirm() {
-            setLoading(true);
-            try {
-                // 1. 抓取使用者的 LINE ID (如果是在 LINE 內開啟)
-                let currentUserLineId = "";
-                if (liff.isInClient() || liff.isLoggedIn()) {
-                    try {
-                        const profile = await liff.getProfile();
-                        currentUserLineId = profile.userId;
-                    } catch (e) { console.error(e); }
-                }
-
-                // 2. 呼叫後端
-                const id = document.getElementById('editId').value;
-                const res = await callApi("confirmBooking", { 
-                    id: id, 
-                    lineId: currentUserLineId 
-                });
-                
-                setLoading(false);
-
-                if (res.status === "success") {
-                    alert(res.message);
-                    // 👇👇👇 新增這段：嘗試關閉視窗 👇👇👇
-                    if (liff.isInClient()) {
-                        liff.closeWindow();
-                    } else {
-                        // 如果是在外部瀏覽器(無法關閉)，就只隱藏按鈕顯示文字
-                        document.getElementById('confirmBtn').style.display = 'none';
-                        document.getElementById('confirmedBadge').style.display = 'block';
-                    }
-                } else {
-                    alert("錯誤：" + res.message);
-                }
-            } catch (err) {
-                setLoading(false);
-                alert("發生錯誤：" + err.message);
-            }
-        }
+        
     </script>
 </body>
 </html>
