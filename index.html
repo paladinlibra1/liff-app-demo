@@ -329,6 +329,16 @@
                     document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
                 }
+                // 🔥🔥🔥【補回】自動確認/綁定邏輯 🔥🔥🔥
+                // 檢查網址有沒有 &action=confirm
+                const action = urlParams.get('action');
+                if (editId && action === 'confirm') {
+                    // 自動執行「更新/確認」，藉此將 ID 和 名字 傳回後端
+                    console.log("偵測到自動確認請求...");
+                    // 這裡我們借用 submitBooking 的邏輯來更新資料
+                    // 或者您也可以只顯示提示，請客人按下按鈕
+                    alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
+                }
                 
                 // 監聽姓名2輸入
                 document.getElementById('name2').addEventListener('input', function() {
