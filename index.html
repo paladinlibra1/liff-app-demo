@@ -175,6 +175,7 @@
         <form id="bookingForm" onsubmit="submitBooking(event)">
             <input type="hidden" id="editId" name="editId">
             <input type="hidden" id="lineId" name="lineId">
+            <input type="hidden" id="lineName" name="lineName">
             <div class="form-group">
                 <label>預約身分</label>
                 <select id="type" required>
@@ -259,6 +260,9 @@
                     
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f";
+
+                    document.getElementById('phone').required = false;
+                    document.getElementById('phone').placeholder = "店家代填 (可留空)";
                 
                 } else {
                     // 🟢 只要不是 admin (包含客人從 LINE、FB、網頁點開)，一律視為「客人」
@@ -274,6 +278,7 @@
                     // 已登入，抓取資料
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
+                    const currentUserLineName = profile.displayName; // 🔥 新增：抓取 LINE 暱稱
 
                     // 🔥🔥🔥【好友檢查區塊 - 修正版】🔥🔥🔥
                     try {
@@ -310,6 +315,7 @@
 
                 // 將 ID 填入欄位
                 document.getElementById('lineId').value = currentUserLineId;
+                document.getElementById('lineName').value = currentUserLineName; // 🔥 新增
 
                 // 3. 載入日期
                 await loadOpenDates();
