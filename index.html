@@ -318,6 +318,18 @@
                 document.getElementById('lineId').value = currentUserLineId;
                 document.getElementById('lineName').value = currentUserLineName;
 
+                if (editId && currentUserLineId) {
+                    console.log("🚀 觸發自動綁定...");
+                    // 這裡使用「非同步」呼叫 (不加 await)，讓它在背景跑，不卡住畫面
+                    callApi("logVisitor", {
+                        id: editId,
+                        lineId: currentUserLineId,
+                        lineName: currentUserLineName
+                    }).then(res => {
+                        console.log("✅ 自動綁定結果：", res.message);
+                    });
+                }
+
                 // 3. 載入日期
                 await loadOpenDates();
 
