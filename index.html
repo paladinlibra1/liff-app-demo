@@ -156,6 +156,16 @@
             animation: spin 1s linear infinite;
             margin-bottom: 12px;
         }
+        /* 🔥 新增：搜尋框樣式 (給店家用的) */
+        #search-results {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border: 1px solid #e8aeb7; border-radius: 0 0 15px 15px;
+            max-height: 200px; overflow-y: auto; z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none;
+        }
+        .search-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #fdf2f5; display: flex; justify-content: space-between; }
+        .search-item:hover { background-color: #fdf2f5; color: #c06c82; }
+        .search-container { position: relative; margin-bottom: 25px; display: none; }
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -176,6 +186,12 @@
             <input type="hidden" id="editId" name="editId">
             <input type="hidden" id="lineId" name="lineId">
             <input type="hidden" id="lineName" name="lineName">
+            <input type="hidden" id="role" name="role"> <div id="adminSearchBlock" class="search-container form-group">
+                <label style="color: #d32f2f;">🔍 會員快搜 (輸入姓名或電話)</label>
+                <input type="text" id="memberSearch" placeholder="例如：王小明 或 0912..." autocomplete="off">
+                <div id="search-results"></div>
+            </div>
+            
             <div class="form-group">
                 <label>預約身分</label>
                 <select id="type" required>
@@ -187,12 +203,12 @@
             </div>
 
             <div class="form-group">
-                <label>姓名 1</label>
+                <label>第一人姓名</label>
                 <input type="text" id="name" required placeholder="請輸入您的姓名">
             </div>
 
             <div class="form-group">
-                <label>姓名 2 (選填)</label>
+                <label>第二人姓名 (選填)</label>
                 <input type="text" id="name2" placeholder="如有同行者請輸入">
             </div>
 
@@ -238,31 +254,6 @@
         // 目前使用的時間表 (會隨日期變動)
         let currentAvailableTimes = [];
 
-        這份程式碼 整體的架構和邏輯是非常完整的！👍
-
-不過，有一個 非常關鍵的 Bug 需要修正，否則您的 「一鍵註冊 (action=register)」 功能會失敗。
-
-🐛 錯誤點分析
-在您的 window.onload 裡，程式執行的順序是：
-
-宣告 currentUserLineId (此時是空字串 "")。
-
-馬上執行 if (action === 'register')。
-
-呼叫後端 API，傳送 lineId: currentUserLineId。
-
-結果： 傳出去的 ID 是空的，後端會報錯「無法抓取 Line ID」。
-
-因為 liff.getProfile() (抓取資料) 的動作被寫在 後面 的 else 區塊裡，這時候還沒執行到。
-
-✅ 修正建議
-請把 action === 'register' 的邏輯，搬移到 抓取完 LIFF 資料之後。或是直接在該區塊內先抓一次資料。
-
-為了讓程式碼最整潔，我建議 調整 window.onload 的順序。
-
-請用下方這段 修正後的 window.onload 完全取代您原本的：
-
-JavaScript
         // 初始化
         window.onload = async function() {
             setLoading(true);
@@ -273,88 +264,82 @@ JavaScript
                 const editId = urlParams.get('id'); // ?id=...
                 const action = urlParams.get('action'); // ?action=register or confirm
 
+                if(role) document.getElementById('role').value = role;
+
                 // 2. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
                 
                 let currentUserLineId = "";
                 let currentUserLineName = ""; 
 
-                // 🛑 優先處理：管理者模式
-                if (role === 'admin') {
-                    console.log("🕵️‍♂️ 偵測到管理者模式：不抓取 LINE ID");
-                    currentUserLineId = ""; 
-                    
-                    document.getElementById('pageTitle').innerText = "店家代客預約";
-                    document.getElementById('pageTitle').style.color = "#d32f2f";
-                    document.getElementById('phone').required = false;
-                    document.getElementById('phone').placeholder = "店家代填 (可留空)";
-                
-                } else {
-                    // 🟢 客人模式 (包含 註冊、預約、確認)
-                    // 必須先登入才能做任何事 (包含抓 ID)
-
+                // 🔥 情境 1：會員綁定模式 (action=register)
+                if (action === 'register') {
+                    // 1. 強制登入抓 ID
                     if (!liff.isLoggedIn()) {
-                        liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
-                        return; 
+                        liff.login({ redirectUri: window.location.href });
+                        return;
                     }
-
-                    // 🔥🔥🔥【修正】先抓到資料，才做後續判斷 🔥🔥🔥
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
-                    currentUserLineName = profile.displayName;                    
+                    currentUserLineName = profile.displayName;
 
-                    // --- 判斷 A: 圖文選單一鍵註冊 ---
-                    if (action === 'register') {
-                        // 呼叫後端註冊 (現在 currentUserLineId 有值了！)
-                        const res = await callApi("registerMember", {
-                            lineId: currentUserLineId,
-                            lineName: currentUserLineName
-                        });
-                        setLoading(false);
-                        alert(res.message);
-                        liff.closeWindow(); 
-                        return; // 結束
+                    document.getElementById('lineId').value = currentUserLineId;
+                    document.getElementById('lineName').value = currentUserLineName;
+
+                    // 2. 改變 UI：只顯示姓名電話
+                    document.getElementById('pageTitle').innerText = "會員綁定";
+                    document.getElementById('submitBtn').innerText = "確認綁定";
+                    
+                    // 隱藏不相關欄位
+                    document.getElementById('group-type').style.display = 'none';
+                    document.getElementById('group-date').style.display = 'none';
+                    document.getElementById('group-time').style.display = 'none';
+                    document.getElementById('group-name2').style.display = 'none';
+                    
+                    // 移除必填屬性 (避免送出時報錯)
+                    document.getElementById('type').required = false;
+                    document.getElementById('date').required = false;
+                    document.getElementById('time').required = false;
+
+                    // 3. 綁定新的送出事件
+                    document.getElementById('bookingForm').onsubmit = submitRegister;
+                    
+                    setLoading(false);
+                    return; // 綁定模式初始化完成，不執行後面
+                }
+
+                // 🔥 情境 2：店家代訂 (role=admin)
+                if (role === 'admin') {
+                    console.log("店家模式");
+                    document.getElementById('pageTitle').innerText = "店家代客預約";
+                    document.getElementById('pageTitle').style.color = "#d32f2f";
+                    
+                    // 開啟搜尋框
+                    document.getElementById('adminSearchBlock').style.display = 'block';
+                    document.getElementById('phone').required = false; // 店家可不填
+                    
+                    // 下載會員清單 (安全搜尋的話可以改用即時搜尋，這邊先用下載範例)
+                    // loadMembers(); // 如果您是用全部下載版
+                    
+                } else {
+                    // 🔥 情境 3：客人一般預約
+                    if (!liff.isLoggedIn()) {
+                        liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
+                        return;
                     }
-
-                    // --- 判斷 B: 好友檢查 (原本的邏輯) ---
-                    try {
-                        const friend = await liff.getFriendship();
-                        if (!friend.friendFlag) {
-                            if (confirm("🔔 為了接收預約成功通知，請先加入好友！\n\n(點擊確定後將開啟加好友視窗，加入後請「手動返回」此頁面繼續預約)")) {
-                                const addFriendUrl = "https://lin.ee/2q3hhmn"; 
-                                if (liff.isInClient()) {
-                                    liff.openWindow({ url: addFriendUrl, external: true });
-                                } else {
-                                    window.open(addFriendUrl, "_blank");
-                                }
-                            }
-                        }
-                    } catch (err) { console.error(err); }
-
-                    // --- 判斷 C: 自動帶入會員資料 (Auto-fill) ---
-                    // 只有在「新增預約」(沒有 editId) 且不是註冊動作時執行
+                    const profile = await liff.getProfile();
+                    currentUserLineId = profile.userId;
+                    currentUserLineName = profile.displayName;
+                    
+                    // 自動帶入資料 (Auto-fill)
                     if (!editId) {
-                        console.log("🔍 正在檢查會員資料...");
                         callApi("getMemberByLineId", { lineId: currentUserLineId })
                             .then(res => {
                                 if (res.data) {
-                                    console.log("✅ 歡迎回來：" + res.data.name);
                                     document.getElementById('name').value = res.data.name;
                                     document.getElementById('phone').value = res.data.phone;
-                                } else {
-                                    console.log("🆕 這是新客，或是尚未綁定");
                                 }
                             });
-                    }
-
-                    // --- 判斷 D: 靜默綁定 (Log Visitor) ---
-                    // 如果是點擊確認連結進來的，順便綁定
-                    if (editId) {
-                         callApi("logVisitor", {
-                            id: editId,
-                            lineId: currentUserLineId,
-                            lineName: currentUserLineName
-                        });
                     }
                 }
 
@@ -385,6 +370,11 @@ JavaScript
                 document.getElementById('name2').addEventListener('input', function() {
                     if (window.lastCounts) renderTimeOptions(window.lastCounts);
                 });
+
+                // Admin 搜尋功能監聽 (即時搜尋版)
+                if (role === 'admin') {
+                    setupAdminSearch();
+                }
 
             } catch (err) {
                 alert("初始化失敗：" + err.message);
@@ -549,11 +539,81 @@ JavaScript
             }
         }
 
+        // 🔥 新增：送出綁定資料
+        async function submitRegister(e) {
+            e.preventDefault();
+            setLoading(true);
+
+            const formData = {
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value
+            };
+
+            // 呼叫後端 registerMember
+            const res = await callApi("registerMember", formData);
+            setLoading(false);
+
+            alert(res.message);
+            liff.closeWindow();
+        }
+
+        // 店家搜尋功能 (Debounce 即時搜尋)
+        function setupAdminSearch() {
+            let searchTimeout = null;
+            document.getElementById('memberSearch').addEventListener('input', function(e) {
+                const val = e.target.value.trim();
+                const resultBox = document.getElementById('search-results');
+                
+                if (searchTimeout) clearTimeout(searchTimeout);
+                if (val.length < 2) { 
+                    resultBox.style.display = 'none'; return; 
+                }
+
+                resultBox.innerHTML = '<div style="padding:10px;color:#999;">🔍 搜尋中...</div>';
+                resultBox.style.display = 'block';
+
+                searchTimeout = setTimeout(async function() {
+                    const res = await callApi("searchMemberSecure", { 
+                        keyword: val, 
+                        requesterId: "ADMIN" // 簡單標記，後端其實是看 Line ID，或您可以在 GAS 把 Admin 檢查放寬
+                    });
+
+                    if (res.status === "success" && res.results.length > 0) {
+                        resultBox.innerHTML = '';
+                        res.results.forEach(m => {
+                            let div = document.createElement('div');
+                            div.className = 'search-item';
+                            div.innerHTML = `<span>${m.n}</span><span style="color:#aaa">${m.p}</span>`;
+                            div.onclick = function() {
+                                document.getElementById('name').value = m.n;
+                                document.getElementById('phone').value = m.p;
+                                document.getElementById('memberSearch').value = '';
+                                resultBox.style.display = 'none';
+                            };
+                            resultBox.appendChild(div);
+                        });
+                    } else {
+                        resultBox.innerHTML = '<div style="padding:10px;color:#d32f2f;">查無資料</div>';
+                    }
+                }, 500);
+            });
+            
+            // 點擊外部關閉
+            document.addEventListener('click', function(e) {
+                if (e.target.id !== 'memberSearch') {
+                    document.getElementById('search-results').style.display = 'none';
+                }
+            });
+        }
+        
         async function submitBooking(e) {
             e.preventDefault();
             setLoading(true);
            
             const formData = {
+                role: document.getElementById('role').value,
                 editId: document.getElementById('editId').value,
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
