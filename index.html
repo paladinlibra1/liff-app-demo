@@ -354,28 +354,13 @@
 
                 // 4. 如果是修改訂單 (載入舊資料)
                 if (editId) {
-                    document.getElementById('editId').value = editId;
-                    document.getElementById('pageTitle').innerText = "修改預約";
-                    document.getElementById('submitBtn').innerText = "更新預約內容";
-                    document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
-                    
-                    // 自動確認提示
-                    if (action === 'confirm') {
-                        alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
-                    }
                 }
-                
-                // 監聽姓名2輸入
-                document.getElementById('name2').addEventListener('input', function() {
-                    if (window.lastCounts) renderTimeOptions(window.lastCounts);
-                });
 
-                // Admin 搜尋功能監聽 (即時搜尋版)
                 if (role === 'admin') {
                     setupAdminSearch();
-                }
-
+                }               
+                
             } catch (err) {
                 alert("初始化失敗：" + err.message);
             } finally {
@@ -386,7 +371,7 @@
                 }
             }
         };
-
+    
         async function callApi(action, payload = {}) {
             const response = await fetch(GAS_API_URL, {
                 method: "POST",
@@ -538,27 +523,7 @@
                 alert(res.message);
             }
         }
-
-        // 🔥 新增：送出綁定資料
-        async function submitRegister(e) {
-            e.preventDefault();
-            setLoading(true);
-
-            const formData = {
-                lineId: document.getElementById('lineId').value,
-                lineName: document.getElementById('lineName').value,
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value
-            };
-
-            // 呼叫後端 registerMember
-            const res = await callApi("registerMember", formData);
-            setLoading(false);
-
-            alert(res.message);
-            liff.closeWindow();
-        }
-
+        
         // 店家搜尋功能 (Debounce 即時搜尋)
         function setupAdminSearch() {
             let searchTimeout = null;
@@ -606,6 +571,25 @@
                     document.getElementById('search-results').style.display = 'none';
                 }
             });
+        }
+
+        // 🔥🔥🔥【移出來】送出綁定資料 🔥🔥🔥
+        async function submitRegister(e) {
+            e.preventDefault();
+            setLoading(true);
+
+            const formData = {
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value
+            };
+
+            const res = await callApi("registerMember", formData);
+            setLoading(false);
+
+            alert(res.message);
+            liff.closeWindow();
         }
         
         async function submitBooking(e) {
