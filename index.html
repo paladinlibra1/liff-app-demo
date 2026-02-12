@@ -354,7 +354,23 @@
 
                 // 4. 如果是修改訂單 (載入舊資料)
                 if (editId) {
+                    // 🔥 補回：填入 hidden ID
+                    document.getElementById('editId').value = editId;
+                    
+                    // 🔥 補回：改變標題與按鈕文字
+                    document.getElementById('pageTitle').innerText = "修改預約";
+                    document.getElementById('submitBtn').innerText = "更新預約內容";
+                    
+                    // 🔥🔥🔥【關鍵】顯示取消按鈕 🔥🔥🔥
+                    document.getElementById('cancelBtn').style.display = "block";
+                    
+                    // 載入資料
                     await loadBookingData(editId);
+                    
+                    // 自動確認提示 (如果有需要的話)
+                    if (action === 'confirm') {
+                        alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
+                    }
                 }
 
                 if (role === 'admin') {
