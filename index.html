@@ -238,6 +238,31 @@
         // 目前使用的時間表 (會隨日期變動)
         let currentAvailableTimes = [];
 
+        這份程式碼 整體的架構和邏輯是非常完整的！👍
+
+不過，有一個 非常關鍵的 Bug 需要修正，否則您的 「一鍵註冊 (action=register)」 功能會失敗。
+
+🐛 錯誤點分析
+在您的 window.onload 裡，程式執行的順序是：
+
+宣告 currentUserLineId (此時是空字串 "")。
+
+馬上執行 if (action === 'register')。
+
+呼叫後端 API，傳送 lineId: currentUserLineId。
+
+結果： 傳出去的 ID 是空的，後端會報錯「無法抓取 Line ID」。
+
+因為 liff.getProfile() (抓取資料) 的動作被寫在 後面 的 else 區塊裡，這時候還沒執行到。
+
+✅ 修正建議
+請把 action === 'register' 的邏輯，搬移到 抓取完 LIFF 資料之後。或是直接在該區塊內先抓一次資料。
+
+為了讓程式碼最整潔，我建議 調整 window.onload 的順序。
+
+請用下方這段 修正後的 window.onload 完全取代您原本的：
+
+JavaScript
         // 初始化
         window.onload = async function() {
             setLoading(true);
@@ -246,6 +271,7 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const role = urlParams.get('role'); // ?role=admin
                 const editId = urlParams.get('id'); // ?id=...
+                const action = urlParams.get('action'); // ?action=register or confirm
 
                 // 2. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
@@ -253,103 +279,106 @@
                 let currentUserLineId = "";
                 let currentUserLineName = ""; 
 
-                // 🛑 邏輯修正：優先判斷是否為「管理者模式」
+                // 🛑 優先處理：管理者模式
                 if (role === 'admin') {
-                    // 🔴 只有在此模式下，才允許「不登入」
                     console.log("🕵️‍♂️ 偵測到管理者模式：不抓取 LINE ID");
-                    currentUserLineId = ""; // 留空觸發電話反查
+                    currentUserLineId = ""; 
                     
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f";
-
                     document.getElementById('phone').required = false;
                     document.getElementById('phone').placeholder = "店家代填 (可留空)";
                 
                 } else {
-                    // 🟢 只要不是 admin (包含客人從 LINE、FB、網頁點開)，一律視為「客人」
-                    // 必須登入才能抓 ID 和檢查好友
+                    // 🟢 客人模式 (包含 註冊、預約、確認)
+                    // 必須先登入才能做任何事 (包含抓 ID)
 
                     if (!liff.isLoggedIn()) {
-                        // 如果還沒登入，強制跳轉去登入頁面
-                        // bot_prompt: 'normal' 會在登入同意頁面顯示「加入好友」選項
                         liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
-                        return; // 登入會重整網頁，所以這邊直接結束
+                        return; 
                     }
 
-                    // 已登入，抓取資料
+                    // 🔥🔥🔥【修正】先抓到資料，才做後續判斷 🔥🔥🔥
                     const profile = await liff.getProfile();
                     currentUserLineId = profile.userId;
                     currentUserLineName = profile.displayName;                    
 
-                    // 🔥🔥🔥【好友檢查區塊 - 修正版】🔥🔥🔥
+                    // --- 判斷 A: 圖文選單一鍵註冊 ---
+                    if (action === 'register') {
+                        // 呼叫後端註冊 (現在 currentUserLineId 有值了！)
+                        const res = await callApi("registerMember", {
+                            lineId: currentUserLineId,
+                            lineName: currentUserLineName
+                        });
+                        setLoading(false);
+                        alert(res.message);
+                        liff.closeWindow(); 
+                        return; // 結束
+                    }
+
+                    // --- 判斷 B: 好友檢查 (原本的邏輯) ---
                     try {
                         const friend = await liff.getFriendship();
-                        
                         if (!friend.friendFlag) {
-                            // 修正文字，明確告知客人要「返回」
                             if (confirm("🔔 為了接收預約成功通知，請先加入好友！\n\n(點擊確定後將開啟加好友視窗，加入後請「手動返回」此頁面繼續預約)")) {
-                                
-                                const addFriendUrl = "https://lin.ee/2q3hhmn"; // 您的加好友連結
-
-                                // 🟢 針對 LINE App 內的操作優化
+                                const addFriendUrl = "https://lin.ee/2q3hhmn"; 
                                 if (liff.isInClient()) {
-                                    // 使用 liff.openWindow 開啟外部瀏覽器模式
-                                    // 這樣可以保留原本的 LIFF 預約頁面不被關閉
-                                    liff.openWindow({
-                                        url: addFriendUrl,
-                                        external: true 
-                                    });
+                                    liff.openWindow({ url: addFriendUrl, external: true });
                                 } else {
-                                    // 🔵 針對外部瀏覽器 (Chrome/Safari)
-                                    // 開啟新分頁 (_blank)，保留原本的預約分頁
                                     window.open(addFriendUrl, "_blank");
                                 }
-                                // ⚠️ 不要有 return，讓程式繼續往下跑
-                                // 這樣客人切換回來時，頁面已經載入好日期選單了
                             }
                         }
-                    } catch (err) {
-                        console.error("好友檢查失敗", err);
+                    } catch (err) { console.error(err); }
+
+                    // --- 判斷 C: 自動帶入會員資料 (Auto-fill) ---
+                    // 只有在「新增預約」(沒有 editId) 且不是註冊動作時執行
+                    if (!editId) {
+                        console.log("🔍 正在檢查會員資料...");
+                        callApi("getMemberByLineId", { lineId: currentUserLineId })
+                            .then(res => {
+                                if (res.data) {
+                                    console.log("✅ 歡迎回來：" + res.data.name);
+                                    document.getElementById('name').value = res.data.name;
+                                    document.getElementById('phone').value = res.data.phone;
+                                } else {
+                                    console.log("🆕 這是新客，或是尚未綁定");
+                                }
+                            });
                     }
-                    // 🔥🔥🔥【結束】🔥🔥🔥
+
+                    // --- 判斷 D: 靜默綁定 (Log Visitor) ---
+                    // 如果是點擊確認連結進來的，順便綁定
+                    if (editId) {
+                         callApi("logVisitor", {
+                            id: editId,
+                            lineId: currentUserLineId,
+                            lineName: currentUserLineName
+                        });
+                    }
                 }
 
-                // 將 ID 填入欄位
+                // --- 通用邏輯 ---
+
+                // 將 ID 填入隱藏欄位 (給 submitBooking 用)
                 document.getElementById('lineId').value = currentUserLineId;
                 document.getElementById('lineName').value = currentUserLineName;
-
-                if (editId && currentUserLineId) {
-                    console.log("🚀 觸發自動綁定...");
-                    // 這裡使用「非同步」呼叫 (不加 await)，讓它在背景跑，不卡住畫面
-                    callApi("logVisitor", {
-                        id: editId,
-                        lineId: currentUserLineId,
-                        lineName: currentUserLineName
-                    }).then(res => {
-                        console.log("✅ 自動綁定結果：", res.message);
-                    });
-                }
 
                 // 3. 載入日期
                 await loadOpenDates();
 
-                // 4. 如果是修改訂單
+                // 4. 如果是修改訂單 (載入舊資料)
                 if (editId) {
                     document.getElementById('editId').value = editId;
                     document.getElementById('pageTitle').innerText = "修改預約";
                     document.getElementById('submitBtn').innerText = "更新預約內容";
                     document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
-                }
-                // 🔥🔥🔥【補回】自動確認/綁定邏輯 🔥🔥🔥
-                // 檢查網址有沒有 &action=confirm
-                const action = urlParams.get('action');
-                if (editId && action === 'confirm') {
-                    // 自動執行「更新/確認」，藉此將 ID 和 名字 傳回後端
-                    console.log("偵測到自動確認請求...");
-                    // 這裡我們借用 submitBooking 的邏輯來更新資料
-                    // 或者您也可以只顯示提示，請客人按下按鈕
-                    alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
+                    
+                    // 自動確認提示
+                    if (action === 'confirm') {
+                        alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
+                    }
                 }
                 
                 // 監聽姓名2輸入
@@ -360,7 +389,11 @@
             } catch (err) {
                 alert("初始化失敗：" + err.message);
             } finally {
-                setLoading(false);
+                // 如果是 register 動作，上面已經 return 並 setLoading(false) 了，所以這裡沒關係
+                // 如果不是 register，這裡會確保 loading 消失
+                if (window.location.search.indexOf('action=register') === -1) {
+                    setLoading(false);
+                }
             }
         };
 
