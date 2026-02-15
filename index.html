@@ -256,7 +256,6 @@
             setLoading(true);
             try {
                 // 🔥🔥🔥【優化 1】並行處理：一進來立刻先偷抓「日期資料」，不要等 LIFF 🔥🔥🔥
-                // 讓這個請求在背景跑，我們先繼續做別的事 (不用 await)
                 const datesPromise = callApi("getInitData"); 
 
                 // 1. 讀取網址參數
@@ -267,7 +266,7 @@
 
                 if(role) document.getElementById('role').value = role;
 
-                // 2. LIFF 初始化 (這時候上面的 datesPromise 已經在跑了，省下等待時間)
+                // 2. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
                 
                 let currentUserLineId = "";
@@ -288,9 +287,7 @@
 
                     // 檢查是否已經綁定過
                     try {
-                        // 綁定檢查比較重要，這裡維持 await
                         const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
-                        
                         if (checkRes.data) {
                             setLoading(false);
                             alert(`👋 哈囉 ${checkRes.data.name}！\n\n您已經是綁定會員囉，不需要重複綁定。\n(系統將自動關閉視窗)`);
@@ -331,8 +328,8 @@
                     document.getElementById('pageTitle').style.color = "#d32f2f";
                     document.getElementById('adminSearchBlock').style.display = 'block';
                     document.getElementById('phone').required = false; 
-                // B. 客人預約 (Guest)
-                }else {
+                } else {
+                    // 客人模式
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
                         return;
@@ -344,55 +341,45 @@
                     // 填入隱藏欄位
                     document.getElementById('lineId').value = currentUserLineId;
                     document.getElementById('lineName').value = currentUserLineName;
-
-                    // 🔥🔥🔥【關鍵修改】強制檢查會員狀態 🔥🔥🔥
+                    
+                    // 🔥 強制綁定檢查 (如果是新預約)
                     if (!editId) {
-                        // 呼叫後端檢查
+                        // 這裡使用 await 確保檢查完才決定要不要顯示日期
                         const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
-
+                        
                         if (!checkRes.data) {
-                            // ❌ 沒抓到資料 -> 強制轉成「綁定模式」
-                            console.log("尚未綁定，強制轉導...");
-                            setLoading(false); // 先關閉 loading 讓畫面出來
-                            
-                            alert(`👋 您好！\n為了確保您的預約權益，\n請先完成【會員綁定】才能繼續預約喔！`);
+                            // ❌ 未綁定 -> 強制轉註冊 UI
+                            setLoading(false);
+                            alert(`👋 您好！\n為了確保預約權益，請先完成【會員綁定】才能繼續預約喔！`);
 
-                            // 1. 改變 UI
                             document.getElementById('pageTitle').innerText = "會員綁定 (初次預約)";
                             document.getElementById('submitBtn').innerText = "確認綁定並繼續";
                             
-                            // 2. 隱藏預約相關欄位
-                            const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2'];
-                            idsToHide.forEach(id => {
-                                let el = document.getElementById(id);
-                                if (el) el.style.display = 'none';
+                            // 隱藏欄位
+                            ['group-type', 'group-date', 'group-time', 'group-name2'].forEach(id => {
+                                let el = document.getElementById(id); if (el) el.style.display = 'none';
                             });
-
-                            // 3. 移除必填
+                            
+                            // 移除必填
                             let elType = document.getElementById('type'); if(elType) elType.required = false;
                             let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
                             let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
-                            // 4. 🔥 重點：綁定特殊的送出事件 (綁定完要重新整理)
+                            // 綁定「註冊並重整」函式
                             document.getElementById('bookingForm').onsubmit = submitRegisterAndReload;
                             
-                            return; // ⛔ 結束！不讓程式往下跑 (不顯示日期)
+                            return; // ⛔ 停止執行，不顯示日期
                         } else {
-                            // ✅ 有資料 -> 自動填入 -> 繼續往下跑
-                            console.log("會員確認：" + checkRes.data.name);
+                            // ✅ 已綁定 -> 自動帶入資料
                             document.getElementById('name').value = checkRes.data.name;
                             document.getElementById('phone').value = checkRes.data.phone;
                         }
                     }
                 }
 
-                // 填入隱藏欄位
-                document.getElementById('lineId').value = currentUserLineId;
-                document.getElementById('lineName').value = currentUserLineName;
+                // --- 只有通過檢查才會執行到這裡 ---
 
                 // 🔥🔥🔥【優化 2】等待日期資料回來並渲染 🔥🔥🔥
-                // 到這裡 LIFF 處理完了，我們回來拿剛剛偷跑的日期資料
-                // 如果 API 很快，這裡會馬上完成；如果 API 慢，我們也已經省下了 LIFF 初始化的時間
                 const dateRes = await datesPromise; 
                 
                 // 渲染日期選單
@@ -426,7 +413,9 @@
                 alert("初始化失敗：" + err.message);
             } finally {
                 // 確保 Loading 消失
-                setLoading(false);
+                if (window.location.search.indexOf('action=register') === -1) {
+                    setLoading(false);
+                }
             }
         };
 
@@ -439,6 +428,83 @@
             });
             return await response.json();
         }
+
+        // --- 功能函式 ---
+
+        // 1. 單純註冊 (給圖文選單用，註冊完關閉)
+        async function submitRegister(e) {
+            e.preventDefault();
+            setLoading(true);
+
+            const formData = {
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value
+            };
+
+            const res = await callApi("registerMember", formData);
+            setLoading(false);
+
+            alert(res.message);
+            liff.closeWindow();
+        }
+
+        // 🔥🔥🔥【補上的函式】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
+        async function submitRegisterAndReload(e) {
+            e.preventDefault();
+            setLoading(true);
+
+            const formData = {
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value
+            };
+
+            const res = await callApi("registerMember", formData);
+            
+            if (res.message) {
+                alert("🎉 綁定成功！\n\n按確定後將自動跳轉至預約畫面...");
+                window.location.reload(); // 重整網頁，重新進入流程
+            } else {
+                setLoading(false);
+                alert("綁定失敗，請稍後再試");
+            }
+        }
+        
+        async function submitBooking(e) {
+            e.preventDefault();
+            setLoading(true);
+            
+            const formData = {
+                role: document.getElementById('role').value,
+                editId: document.getElementById('editId').value,
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                type: document.getElementById('type').value, 
+                name: document.getElementById('name').value,
+                name2: document.getElementById('name2').value,
+                phone: document.getElementById('phone').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value
+            };
+
+            const res = await callApi("submitBooking", formData);
+            setLoading(false);
+            
+            if (res.status === "success") {
+                alert(res.message);
+                if(liff.isInClient()){
+                    liff.closeWindow();
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                alert("錯誤：" + res.message);
+            }
+        }
+
         async function loadBusyTimes() {
             const dateStr = document.getElementById('date').value;
             const timeSelect = document.getElementById('time');
@@ -449,12 +515,12 @@
                 return;
             }
 
-            const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay(); // 0=週日, 6=週六
+            const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay(); 
             
             if (dayOfWeek === 6) {
-                currentAvailableTimes = satTimes; // 週六用 10-17
+                currentAvailableTimes = satTimes; 
             } else {
-                currentAvailableTimes = weekDayTimes; // 其他用 12-20
+                currentAvailableTimes = weekDayTimes; 
             }
 
             timeSelect.innerHTML = '<option value="">查詢時段中...</option>';
@@ -599,56 +665,6 @@
                     document.getElementById('search-results').style.display = 'none';
                 }
             });
-        }
-
-        async function submitRegister(e) {
-            e.preventDefault();
-            setLoading(true);
-
-            const formData = {
-                lineId: document.getElementById('lineId').value,
-                lineName: document.getElementById('lineName').value,
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value
-            };
-
-            const res = await callApi("registerMember", formData);
-            setLoading(false);
-
-            alert(res.message);
-            liff.closeWindow();
-        }
-        
-        async function submitBooking(e) {
-            e.preventDefault();
-            setLoading(true);
-            
-            const formData = {
-                role: document.getElementById('role').value,
-                editId: document.getElementById('editId').value,
-                lineId: document.getElementById('lineId').value,
-                lineName: document.getElementById('lineName').value,
-                type: document.getElementById('type').value, 
-                name: document.getElementById('name').value,
-                name2: document.getElementById('name2').value,
-                phone: document.getElementById('phone').value,
-                date: document.getElementById('date').value,
-                time: document.getElementById('time').value
-            };
-
-            const res = await callApi("submitBooking", formData);
-            setLoading(false);
-            
-            if (res.status === "success") {
-                alert(res.message);
-                if(liff.isInClient()){
-                    liff.closeWindow();
-                } else {
-                    window.location.reload();
-                }
-            } else {
-                alert("錯誤：" + res.message);
-            }
         }
 
         async function cancelBooking() {
