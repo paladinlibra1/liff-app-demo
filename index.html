@@ -241,23 +241,24 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
         
         // 🔴 請填入你的 LIFF ID
-        // ⚠️ 注意：請填入您正確的 LIFF ID (對應 liff.line.me 的那個)
         const MY_LIFF_ID = "2009018559-AeGOURPY";
 
         // ✅ 定義兩組營業時間
-        // 平日 (週一~週五/週日): 12:00 ~ 20:00
         const weekDayTimes = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
-        
-        // 週六: 10:00 ~ 17:00
         const satTimes = ["10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
 
         // 目前使用的時間表 (會隨日期變動)
         let currentAvailableTimes = [];
+        window.lastCounts = {};
 
         // 初始化
         window.onload = async function() {
             setLoading(true);
             try {
+                // 🔥🔥🔥【優化 1】並行處理：一進來立刻先偷抓「日期資料」，不要等 LIFF 🔥🔥🔥
+                // 讓這個請求在背景跑，我們先繼續做別的事 (不用 await)
+                const datesPromise = callApi("getInitData"); 
+
                 // 1. 讀取網址參數
                 const urlParams = new URLSearchParams(window.location.search);
                 const role = urlParams.get('role'); // ?role=admin
@@ -266,7 +267,7 @@
 
                 if(role) document.getElementById('role').value = role;
 
-                // 2. LIFF 初始化
+                // 2. LIFF 初始化 (這時候上面的 datesPromise 已經在跑了，省下等待時間)
                 await liff.init({ liffId: MY_LIFF_ID });
                 
                 let currentUserLineId = "";
@@ -274,7 +275,6 @@
 
                 // 🔥 情境 1：會員綁定模式 (action=register)
                 if (action === 'register') {
-                    // 1. 強制登入抓 ID
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href });
                         return;
@@ -286,43 +286,53 @@
                     document.getElementById('lineId').value = currentUserLineId;
                     document.getElementById('lineName').value = currentUserLineName;
 
-                    // 2. 改變 UI：只顯示姓名電話
+                    // 檢查是否已經綁定過
+                    try {
+                        // 綁定檢查比較重要，這裡維持 await
+                        const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
+                        
+                        if (checkRes.data) {
+                            setLoading(false);
+                            alert(`👋 哈囉 ${checkRes.data.name}！\n\n您已經是綁定會員囉，不需要重複綁定。\n(系統將自動關閉視窗)`);
+                            liff.closeWindow();
+                            return; 
+                        }
+                    } catch (e) {
+                        console.error("檢查會員失敗", e);
+                    }
+
+                    // 顯示註冊表單
                     document.getElementById('pageTitle').innerText = "會員綁定";
                     document.getElementById('submitBtn').innerText = "確認綁定";
                     
-                    // 隱藏不相關欄位
-                    document.getElementById('group-type').style.display = 'none';
-                    document.getElementById('group-date').style.display = 'none';
-                    document.getElementById('group-time').style.display = 'none';
-                    document.getElementById('group-name2').style.display = 'none';
+                    // 安全隱藏不相關欄位
+                    const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2'];
+                    idsToHide.forEach(id => {
+                        let el = document.getElementById(id);
+                        if (el) el.style.display = 'none';
+                    });
                     
-                    // 移除必填屬性 (避免送出時報錯)
-                    document.getElementById('type').required = false;
-                    document.getElementById('date').required = false;
-                    document.getElementById('time').required = false;
+                    // 移除必填屬性
+                    let elType = document.getElementById('type'); if(elType) elType.required = false;
+                    let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
+                    let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
-                    // 3. 綁定新的送出事件
                     document.getElementById('bookingForm').onsubmit = submitRegister;
                     
                     setLoading(false);
-                    return; // 綁定模式初始化完成，不執行後面
+                    return; // 綁定模式不需要載入日期，直接結束
                 }
 
-                // 🔥 情境 2：店家代訂 (role=admin)
+                // 🔥 情境 2 & 3：預約模式
+                // 處理登入與身分
                 if (role === 'admin') {
                     console.log("店家模式");
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f";
-                    
-                    // 開啟搜尋框
                     document.getElementById('adminSearchBlock').style.display = 'block';
-                    document.getElementById('phone').required = false; // 店家可不填
-                    
-                    // 下載會員清單 (安全搜尋的話可以改用即時搜尋，這邊先用下載範例)
-                    // loadMembers(); // 如果您是用全部下載版
-                    
+                    document.getElementById('phone').required = false; 
                 } else {
-                    // 🔥 情境 3：客人一般預約
+                    // 客人模式
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
                         return;
@@ -331,7 +341,7 @@
                     currentUserLineId = profile.userId;
                     currentUserLineName = profile.displayName;
                     
-                    // 自動帶入資料 (Auto-fill)
+                    // 自動帶入資料 (Auto-fill) - 這裡用非同步讓它自己跑，不卡住日期顯示
                     if (!editId) {
                         callApi("getMemberByLineId", { lineId: currentUserLineId })
                             .then(res => {
@@ -343,31 +353,33 @@
                     }
                 }
 
-                // --- 通用邏輯 ---
-
-                // 將 ID 填入隱藏欄位 (給 submitBooking 用)
+                // 填入隱藏欄位
                 document.getElementById('lineId').value = currentUserLineId;
                 document.getElementById('lineName').value = currentUserLineName;
 
-                // 3. 載入日期
-                await loadOpenDates();
+                // 🔥🔥🔥【優化 2】等待日期資料回來並渲染 🔥🔥🔥
+                // 到這裡 LIFF 處理完了，我們回來拿剛剛偷跑的日期資料
+                // 如果 API 很快，這裡會馬上完成；如果 API 慢，我們也已經省下了 LIFF 初始化的時間
+                const dateRes = await datesPromise; 
+                
+                // 渲染日期選單
+                const select = document.getElementById('date');
+                select.innerHTML = '<option value="">請選擇日期</option>';
+                dateRes.dates.forEach(d => {
+                    let option = document.createElement("option");
+                    option.value = d;
+                    option.text = d;
+                    select.appendChild(option);
+                });
 
                 // 4. 如果是修改訂單 (載入舊資料)
                 if (editId) {
-                    // 🔥 補回：填入 hidden ID
                     document.getElementById('editId').value = editId;
-                    
-                    // 🔥 補回：改變標題與按鈕文字
                     document.getElementById('pageTitle').innerText = "修改預約";
                     document.getElementById('submitBtn').innerText = "更新預約內容";
-                    
-                    // 🔥🔥🔥【關鍵】顯示取消按鈕 🔥🔥🔥
                     document.getElementById('cancelBtn').style.display = "block";
-                    
-                    // 載入資料
                     await loadBookingData(editId);
                     
-                    // 自動確認提示 (如果有需要的話)
                     if (action === 'confirm') {
                         alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
                     }
@@ -375,19 +387,17 @@
 
                 if (role === 'admin') {
                     setupAdminSearch();
-                }               
+                }                
                 
             } catch (err) {
                 alert("初始化失敗：" + err.message);
             } finally {
-                // 如果是 register 動作，上面已經 return 並 setLoading(false) 了，所以這裡沒關係
-                // 如果不是 register，這裡會確保 loading 消失
-                if (window.location.search.indexOf('action=register') === -1) {
-                    setLoading(false);
-                }
+                // 確保 Loading 消失
+                setLoading(false);
             }
         };
-    
+
+        // --- API 呼叫函式 ---
         async function callApi(action, payload = {}) {
             const response = await fetch(GAS_API_URL, {
                 method: "POST",
@@ -397,19 +407,9 @@
             return await response.json();
         }
 
-        async function loadOpenDates() {
-            const res = await callApi("getInitData");
-            const select = document.getElementById('date');
-            select.innerHTML = '<option value="">請選擇日期</option>';
-            res.dates.forEach(d => {
-                let option = document.createElement("option");
-                option.value = d;
-                option.text = d;
-                select.appendChild(option);
-            });
-        }
-
-        window.lastCounts = {};
+        // --- 其餘功能函式 (保持不變) ---
+        
+        // 註：loadOpenDates 已經被整併到 window.onload 裡了，所以這裡可以移除，或者留著也沒關係，不會被呼叫到。
 
         async function loadBusyTimes() {
             const dateStr = document.getElementById('date').value;
@@ -421,7 +421,6 @@
                 return;
             }
 
-            // 🔥【關鍵修改】判斷是週六還是平日，切換時間表
             const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay(); // 0=週日, 6=週六
             
             if (dayOfWeek === 6) {
@@ -438,29 +437,24 @@
             renderTimeOptions(window.lastCounts);
         }
 
-        // 獨立出來的渲染函式：負責處理 1人 vs 2人 + ⛔ 過期時間判斷
         function renderTimeOptions(counts) {
             const timeSelect = document.getElementById('time');
             const name2 = document.getElementById('name2').value.trim();
             const isTwoPeople = (name2 !== "");
-            const dateValue = document.getElementById('date').value; // 取得日期字串
+            const dateValue = document.getElementById('date').value; 
             
-            // 記住目前選中的值
             const currentSelected = timeSelect.value;
 
             timeSelect.innerHTML = '';
             timeSelect.disabled = false;
 
-            // 預設選項
             let defaultOption = document.createElement("option");
             defaultOption.text = "請選擇時間";
             defaultOption.value = "";
             timeSelect.appendChild(defaultOption);
 
-            // 取得現在時間
             const now = new Date();
 
-            // 使用 currentAvailableTimes (會根據平日/週六變動)
             currentAvailableTimes.forEach((t, index) => {
                 let option = document.createElement("option");
                 option.value = t;
@@ -470,18 +464,13 @@
                 let isDisabled = false;
                 let statusText = "";
 
-                // 🔥🔥🔥【新增】判斷是否為「過去的時間」 🔥🔥🔥
-                // 組合該時段的完整時間物件 (相容 iOS 格式: YYYY/MM/DD HH:mm)
                 let slotDateTime = new Date(dateValue.replace(/-/g, '/') + ' ' + t);
                 
                 if (slotDateTime <= now) {
-                    // 如果該時段比現在早，直接停用
                     isDisabled = true;
                     statusText = " (已過)";
                 } else {
-                    // 如果還沒過期，才開始檢查人數邏輯 (原本的邏輯)
                     if (!isTwoPeople) {
-                        // 單人邏輯
                         if (currentCount >= 2) {
                             isDisabled = true;
                             statusText = " (額滿)";
@@ -489,12 +478,11 @@
                             statusText = " (剩1位)";
                         }
                     } else {
-                        // 雙人邏輯 (嚴格版)
                         if (currentCount === 0) {
                             isDisabled = false;
                         } else if (currentCount === 1) {
                             isDisabled = true;
-                            statusText = " (僅剩1位，請選其他)"; 
+                            statusText = " (僅剩1位)"; 
                         } else {
                             isDisabled = true;
                             statusText = " (額滿)";
@@ -512,7 +500,6 @@
                 timeSelect.appendChild(option);
             });
 
-            // 嘗試恢復選中值
             if (currentSelected) {
                 let optionToCheck = timeSelect.querySelector(`option[value="${currentSelected}"]`);
                 if (optionToCheck && !optionToCheck.disabled) {
@@ -534,13 +521,11 @@
                 document.getElementById('type').value = data.type; 
                 await loadBusyTimes(); 
                 document.getElementById('time').value = data.time;
-                
             } else {
                 alert(res.message);
             }
         }
         
-        // 店家搜尋功能 (Debounce 即時搜尋)
         function setupAdminSearch() {
             let searchTimeout = null;
             document.getElementById('memberSearch').addEventListener('input', function(e) {
@@ -558,7 +543,7 @@
                 searchTimeout = setTimeout(async function() {
                     const res = await callApi("searchMemberSecure", { 
                         keyword: val, 
-                        requesterId: "ADMIN" // 簡單標記，後端其實是看 Line ID，或您可以在 GAS 把 Admin 檢查放寬
+                        requesterId: "ADMIN"
                     });
 
                     if (res.status === "success" && res.results.length > 0) {
@@ -581,7 +566,6 @@
                 }, 500);
             });
             
-            // 點擊外部關閉
             document.addEventListener('click', function(e) {
                 if (e.target.id !== 'memberSearch') {
                     document.getElementById('search-results').style.display = 'none';
@@ -589,7 +573,6 @@
             });
         }
 
-        // 🔥🔥🔥【移出來】送出綁定資料 🔥🔥🔥
         async function submitRegister(e) {
             e.preventDefault();
             setLoading(true);
@@ -611,7 +594,7 @@
         async function submitBooking(e) {
             e.preventDefault();
             setLoading(true);
-           
+            
             const formData = {
                 role: document.getElementById('role').value,
                 editId: document.getElementById('editId').value,
