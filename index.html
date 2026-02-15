@@ -476,6 +476,10 @@
         
         async function submitBooking(e) {
             e.preventDefault();
+    
+            // 🔥🔥🔥【除錯用】加入這行，送出前彈窗顯示 role 是什麼 🔥🔥🔥
+            alert("目前的權限是：" + document.getElementById('role').value); 
+
             setLoading(true);
             
             const formData = {
