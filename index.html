@@ -146,7 +146,6 @@
             backdrop-filter: blur(4px);
         }
 
-                
         .spinner {
             width: 45px;
             height: 45px;
@@ -186,7 +185,9 @@
             <input type="hidden" id="editId" name="editId">
             <input type="hidden" id="lineId" name="lineId">
             <input type="hidden" id="lineName" name="lineName">
-            <input type="hidden" id="role" name="role"> <div id="adminSearchBlock" class="search-container form-group">
+            <input type="hidden" id="role" name="role"> 
+            
+            <div id="adminSearchBlock" class="search-container form-group">
                 <label style="color: #d32f2f;">🔍 會員快搜 (輸入姓名或電話)</label>
                 <input type="text" id="memberSearch" placeholder="例如：王小明 或 0912..." autocomplete="off">
                 <div id="search-results"></div>
@@ -344,7 +345,6 @@
                     
                     // 🔥 強制綁定檢查 (如果是新預約)
                     if (!editId) {
-                        // 這裡使用 await 確保檢查完才決定要不要顯示日期
                         const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
                         
                         if (!checkRes.data) {
@@ -450,7 +450,7 @@
             liff.closeWindow();
         }
 
-        // 🔥🔥🔥【補上的函式】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
+        // 🔥🔥🔥【補回】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
         async function submitRegisterAndReload(e) {
             e.preventDefault();
             setLoading(true);
@@ -466,10 +466,11 @@
             
             if (res.message) {
                 alert("🎉 綁定成功！\n\n按確定後將自動跳轉至預約畫面...");
-                window.location.reload(); // 重整網頁，重新進入流程
+                // 重整網頁，讓系統重新偵測
+                window.location.reload(); 
             } else {
                 setLoading(false);
-                alert("綁定失敗，請稍後再試");
+                alert("綁定失敗，請重試");
             }
         }
         
