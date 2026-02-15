@@ -331,8 +331,8 @@
                     document.getElementById('pageTitle').style.color = "#d32f2f";
                     document.getElementById('adminSearchBlock').style.display = 'block';
                     document.getElementById('phone').required = false; 
-                } else {
-                    // 客人模式
+                // B. 客人預約 (Guest)
+                }else {
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
                         return;
@@ -341,15 +341,48 @@
                     currentUserLineId = profile.userId;
                     currentUserLineName = profile.displayName;
                     
-                    // 自動帶入資料 (Auto-fill) - 這裡用非同步讓它自己跑，不卡住日期顯示
+                    // 填入隱藏欄位
+                    document.getElementById('lineId').value = currentUserLineId;
+                    document.getElementById('lineName').value = currentUserLineName;
+
+                    // 🔥🔥🔥【關鍵修改】強制檢查會員狀態 🔥🔥🔥
                     if (!editId) {
-                        callApi("getMemberByLineId", { lineId: currentUserLineId })
-                            .then(res => {
-                                if (res.data) {
-                                    document.getElementById('name').value = res.data.name;
-                                    document.getElementById('phone').value = res.data.phone;
-                                }
+                        // 呼叫後端檢查
+                        const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
+
+                        if (!checkRes.data) {
+                            // ❌ 沒抓到資料 -> 強制轉成「綁定模式」
+                            console.log("尚未綁定，強制轉導...");
+                            setLoading(false); // 先關閉 loading 讓畫面出來
+                            
+                            alert(`👋 您好！\n為了確保您的預約權益，\n請先完成【會員綁定】才能繼續預約喔！`);
+
+                            // 1. 改變 UI
+                            document.getElementById('pageTitle').innerText = "會員綁定 (初次預約)";
+                            document.getElementById('submitBtn').innerText = "確認綁定並繼續";
+                            
+                            // 2. 隱藏預約相關欄位
+                            const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2'];
+                            idsToHide.forEach(id => {
+                                let el = document.getElementById(id);
+                                if (el) el.style.display = 'none';
                             });
+
+                            // 3. 移除必填
+                            let elType = document.getElementById('type'); if(elType) elType.required = false;
+                            let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
+                            let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
+
+                            // 4. 🔥 重點：綁定特殊的送出事件 (綁定完要重新整理)
+                            document.getElementById('bookingForm').onsubmit = submitRegisterAndReload;
+                            
+                            return; // ⛔ 結束！不讓程式往下跑 (不顯示日期)
+                        } else {
+                            // ✅ 有資料 -> 自動填入 -> 繼續往下跑
+                            console.log("會員確認：" + checkRes.data.name);
+                            document.getElementById('name').value = checkRes.data.name;
+                            document.getElementById('phone').value = checkRes.data.phone;
+                        }
                     }
                 }
 
@@ -406,11 +439,6 @@
             });
             return await response.json();
         }
-
-        // --- 其餘功能函式 (保持不變) ---
-        
-        // 註：loadOpenDates 已經被整併到 window.onload 裡了，所以這裡可以移除，或者留著也沒關係，不會被呼叫到。
-
         async function loadBusyTimes() {
             const dateStr = document.getElementById('date').value;
             const timeSelect = document.getElementById('time');
