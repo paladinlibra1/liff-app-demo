@@ -645,8 +645,26 @@
                 document.getElementById('remark').value = data.remark || "";
                 await loadBusyTimes(); 
                 document.getElementById('time').value = data.time;
-            } else {
-                alert(res.message);
+            } else {                
+                // ❌ 找不到訂單 (已被取消或刪除)
+                alert("找不到該筆預約，可能已經被取消。\n系統將自動為您切換至「新增預約」模式。");
+                
+                // 1. 清空隱藏的 editId，這樣送出時就會變成「新增」而不是「修改」
+                document.getElementById('editId').value = "";
+                
+                // 2. 恢復標題與按鈕文字 (判斷一下是不是店家)
+                const role = document.getElementById('role').value;
+                document.getElementById('pageTitle').innerText = (role === 'admin') ? "店家代客預約" : "Colorfashion 預約";
+                document.getElementById('submitBtn').innerText = "確認預約";
+                
+                // 3. 隱藏「取消預約」的按鈕
+                document.getElementById('cancelBtn').style.display = "none";
+
+                // 4. 🔥 把網址上的 ?id=xxx 清掉 (替換當前網址但不重新整理)
+                // 這樣如果客人手癢按了瀏覽器的重新整理，就不會再次觸發修改模式
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.delete('id');
+                window.history.replaceState({}, document.title, newUrl.toString());
             }
         }
         
