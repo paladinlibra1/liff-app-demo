@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorfashion 後台管理系統</title>
+    <style>
+        :root {
+            --primary-color: #d68095; 
+            --primary-dark: #c06c82;  
+            --bg-color: #fdf2f5;      
+            --card-bg: #ffffff;       
+            --text-color: #5d4037;    
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* 登入畫面 */
+        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
+        .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(214, 128, 149, 0.15); text-align: center; }
+        .login-box input { padding: 10px; font-size: 16px; border: 1px solid #e8aeb7; border-radius: 8px; margin-bottom: 15px; width: 80%; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: white; border: 1px solid var(--primary-color); color: var(--primary-color); }
+        .btn-outline:hover { background: #fff0f3; }
+        
+        /* 後台主畫面 */
+        #dashboard { display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .header h1 { color: var(--primary-dark); margin: 0; }
+        
+        /* 搜尋與過濾 */
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); align-items: center;}
+        .controls input, .controls select { padding: 8px; border: 1px solid #e8aeb7; border-radius: 5px; font-size: 14px; outline: none; }
+        .controls input:focus, .controls select:focus { border-color: var(--primary-dark); }
+        
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #fdf2f5; }
+        th { background-color: var(--primary-color); color: white; font-weight: 600; white-space: nowrap; }
+        tr:hover { background-color: #faf5f6; }
+        
+        /* 狀態標籤 */
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .bg-green { background: #e8f5e9; color: #2e7d32; } /* 已確認/已報到 */
+        .bg-yellow { background: #fff8e1; color: #f57f17; } /* 待確認 */
+        .bg-gray { background: #f5f5f5; color: #616161; } /* 已取消 */
+        .bg-blue { background: #e3f2fd; color: #1565c0; } /* 已完成 */
+
+        /* 動作按鈕 */
+        .action-btns { display: flex; gap: 5px; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 5px; }
+        .btn-edit { background: #64b5f6; color: white; }
+        .btn-cancel { background: #e57373; color: white; }
+        .btn-status { background: #ffb74d; color: white; }
+
+        /* Loading */
+        #loading { display: none; text-align: center; padding: 50px; color: var(--primary-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="color: var(--primary-dark);">🔒 Colorfashion 後台</h2>
+            <p>請輸入管理員密碼</p>
+            <input type="password" id="adminPwd" placeholder="輸入密碼" onkeypress="if(event.key === 'Enter') checkLogin()">
+            <br>
+            <button class="btn btn-primary" onclick="checkLogin()">登入系統</button>
+        </div>
+    </div>
+
+    <div id="dashboard" class="container">
+        <div class="header">
+            <h1>🌸 預約管理中心</h1>
+            <button class="btn btn-primary" onclick="loadData()">🔄 重新整理</button>
+        </div>
+
+        <div class="controls">
+            <div style="font-weight: bold; color: var(--primary-dark);">📅 日期：</div>
+            <input type="date" id="dateFilter" onchange="filterTable()">
+            <button class="btn btn-outline" style="padding: 8px 12px;" onclick="clearDateFilter()">顯示全部</button>
+            
+            <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
+
+            <input type="text" id="searchInput" placeholder="🔍 搜尋姓名或電話..." onkeyup="filterTable()">
+            <select id="statusFilter" onchange="filterTable()">
+                <option value="all">所有狀態</option>
+                <option value="待確認">待確認</option>
+                <option value="已確認">已確認</option>
+                <option value="已完成">已完成</option>
+                <option value="已取消">已取消</option>
+            </select>
+        </div>
+
+        <div id="loading">資料載入中，請稍候...</div>
+
+        <div style="overflow-x: auto;">
+            <table id="bookingTable">
+                <thead>
+                    <tr>
+                        <th>預約時間</th>
+                        <th>身分</th>
+                        <th>姓名 (同行)</th>
+                        <th>電話</th>
+                        <th>狀態</th>
+                        <th>建單時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 1. 填入您的 GAS 網址
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
+        
+        // 🔴 2. 填入您的 前端預約網址 (為了產生編輯連結)
+        const FRONTEND_URL = "https://liff.line.me/2009018559-AeGOURPY";
+
+        // 🔴 3. 設定一組後台登入密碼 (簡單防護用)
+        const ADMIN_PASSWORD = "888"; 
+
+        let allData = []; // 儲存所有資料以便搜尋
+
+        function checkLogin() {
+            const pwd = document.getElementById('adminPwd').value;
+            if (pwd === ADMIN_PASSWORD) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadData(true); // 傳入 true 代表是初次登入
+            } else {
+                alert("密碼錯誤！");
+            }
+        }
+
+        async function callApi(action, payload = {}) {
+            const res = await fetch(GAS_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: action, payload: payload })
+            });
+            return await res.json();
+        }
+
+        // 載入資料 (isInit 用來判斷是否要自動切換到今天)
+        async function loadData(isInit = false) {
+            document.getElementById('tableBody').innerHTML = '';
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const res = await callApi("getAllBookings");
+                if (res.status === "success") {
+                    allData = res.data;
+
+                    // 🔥 如果是剛登入，自動將日期篩選器設定為「今天」
+                    if (isInit) {
+                        const today = new Date();
+                        const yyyy = today.getFullYear();
+                        const mm = String(today.getMonth() + 1).padStart(2, '0');
+                        const dd = String(today.getDate()).padStart(2, '0');
+                        document.getElementById('dateFilter').value = `${yyyy}-${mm}-${dd}`;
+                    }
+
+                    filterTable(); // 載入完後執行一次篩選與渲染
+                } else {
+                    alert("讀取失敗：" + res.message);
+                }
+            } catch (err) {
+                alert("網路錯誤：" + err.message);
+            }
+            
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // 清除日期篩選，顯示全部
+        function clearDateFilter() {
+            document.getElementById('dateFilter').value = "";
+            filterTable();
+        }
+
+        // 渲染表格
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">目前沒有符合的預約資料</td></tr>';
+                return;
+            }
+
+            data.forEach(row => {
+                let tr = document.createElement('tr');
+                
+                // 決定狀態標籤的顏色
+                let badgeClass = "bg-yellow";
+                if (row.status === "已確認" || row.status === "已報到") badgeClass = "bg-green";
+                if (row.status === "已完成") badgeClass = "bg-blue";
+                if (row.status.includes("取消")) badgeClass = "bg-gray";
+
+                let combinedName = row.name;
+                if(row.name2) combinedName += ` <span style="color:#aaa; font-size:12px;">(+${row.name2})</span>`;
+
+                tr.innerHTML = `
+                    <td><strong>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
+                    <td>${row.type}</td>
+                    <td>${combinedName}</td>
+                    <td>${row.phone}</td>
+                    <td><span class="badge ${badgeClass}">${row.status}</span></td>
+                    <td style="font-size:12px; color:#888;">${row.timestamp}</td>
+                    <td class="action-btns">
+                        <button class="btn btn-sm btn-status" onclick="changeStatus('${row.id}')">狀態</button>
+                        <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
+                        <button class="btn btn-sm btn-cancel" onclick="cancelBooking('${row.id}')">取消</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 綜合搜尋與過濾功能 ---
+        function filterTable() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value; // 格式會是 YYYY-MM-DD
+
+            let filteredData = allData.filter(row => {
+                const matchKeyword = row.name.toLowerCase().includes(keyword) || 
+                                     row.phone.includes(keyword) || 
+                                     (row.name2 && row.name2.toLowerCase().includes(keyword));
+                const matchStatus = statusFilter === "all" || row.status === statusFilter;
+                
+                // 比對日期
+                const matchDate = (dateFilter === "") || (row.date === dateFilter);
+
+                return matchKeyword && matchStatus && matchDate;
+            });
+
+            // 🔥 排序優化：如果有選擇特定日期，將時間改為「由早到晚」排序，方便店家看當日行程
+            if (dateFilter !== "") {
+                filteredData.sort((a, b) => {
+                    return new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time);
+                });
+            } else {
+                // 如果是顯示全部，則維持「最新預約在最上面 (由晚到早)」
+                filteredData.sort((a, b) => {
+                    return new Date(b.date + " " + b.time) - new Date(a.date + " " + a.time);
+                });
+            }
+
+            renderTable(filteredData);
+        }
+
+        // --- 動作函式 ---
+        async function changeStatus(id) {
+            const newStatus = prompt("請輸入新狀態\n(例如：已確認、已報到、已完成)：", "已完成");
+            if (!newStatus) return;
+
+            document.getElementById('loading').style.display = 'block';
+            const res = await callApi("updateBookingStatus", { id: id, status: newStatus });
+            if (res.status === "success") {
+                // 不用重新 call API，直接在前端修改 allData 的值，然後重新渲染畫面 (速度更快)
+                let targetRow = allData.find(r => r.id === id);
+                if (targetRow) targetRow.status = newStatus;
+                filterTable();
+            } else {
+                alert("錯誤：" + res.message);
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function editBooking(id) {
+            const url = `${FRONTEND_URL}?role=admin&id=${id}`;
+            window.open(url, '_blank');
+        }
+
+        async function cancelBooking(id) {
+            if (!confirm("確定要取消此筆預約嗎？\n(日曆與試算表資料將被刪除)")) return;
+            
+            document.getElementById('loading').style.display = 'block';
+            const res = await callApi("cancelBooking", { id: id });
+            if (res.status === "success") {
+                // 從前端陣列中移除該筆資料
+                allData = allData.filter(r => r.id !== id);
+                filterTable();
+            } else {
+                alert("取消失敗：" + res.message);
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
