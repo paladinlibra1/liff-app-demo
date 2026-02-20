@@ -84,6 +84,26 @@
             box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
         }
 
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #f2e1e6;
+            background-color: var(--input-bg);
+            border-radius: 15px;
+            font-size: 16px;
+            color: #555;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            font-family: inherit;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            background-color: #fff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
+        }
+
         /* 下拉選單箭頭 (改為紅棕色) */
         select {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c06c82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -232,6 +252,8 @@
                 </select>
             </div>
 
+            
+
             <button type="submit" id="submitBtn">確認預約</button>
             <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
         </form>
@@ -304,7 +326,7 @@
                     document.getElementById('submitBtn').innerText = "確認綁定";
                     
                     // 安全隱藏不相關欄位
-                    const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2'];
+                    const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'];
                     idsToHide.forEach(id => {
                         let el = document.getElementById(id);
                         if (el) el.style.display = 'none';
@@ -356,7 +378,7 @@
                             document.getElementById('submitBtn').innerText = "確認綁定並繼續";
                             
                             // 隱藏欄位
-                            ['group-type', 'group-date', 'group-time', 'group-name2'].forEach(id => {
+                            ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'].forEach(id => {
                                 let el = document.getElementById(id); if (el) el.style.display = 'none';
                             });
                             
@@ -491,7 +513,8 @@
                 name2: document.getElementById('name2').value,
                 phone: document.getElementById('phone').value,
                 date: document.getElementById('date').value,
-                time: document.getElementById('time').value
+                time: document.getElementById('time').value,
+                remark: document.getElementById('remark').value
             };
 
             const res = await callApi("submitBooking", formData);
@@ -617,6 +640,7 @@
                 document.getElementById('phone').value = data.phone;
                 document.getElementById('date').value = data.date;
                 document.getElementById('type').value = data.type; 
+                document.getElementById('remark').value = data.remark || "";
                 await loadBusyTimes(); 
                 document.getElementById('time').value = data.time;
             } else {
