@@ -92,17 +92,46 @@
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
             .header .btn { width: 100%; margin: 0 !important; }
 
-            /* 2. 篩選列：按鈕變成 2x2 排列，輸入框填滿螢幕 */
-            .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 12px; }
-            .controls > div:first-child { grid-column: 1 / -1; margin-bottom: -5px; }
-            /* 縮小內距與字體，強制不換行，確保 4 個按鈕完美塞進手機寬度 */
-            .controls > .quick-btn { 
-                width: 100%; margin: 0; border-radius: 8px; 
-                padding: 8px 0; font-size: 13px; white-space: nowrap; 
+            /* 2. 篩選列：改為 Flex 佈局，讓箭頭能靠右並排 */
+            .controls { 
+                display: flex; 
+                flex-wrap: wrap; /* 空間不夠時自動換行 */
+                gap: 6px; 
+                padding: 12px; 
+                align-items: center; /* 垂直置中 */
             }
-            .controls > div[style*="border-left"] { display: none !important; } /* 隱藏分隔線 */
-            .controls > div:nth-of-type(3) { grid-column: 1 / -1; margin-top: 5px; }
-            .controls > input { grid-column: 1 / -1; max-width: 100% !important; }
+
+            /* 隱藏標籤與分隔線，節省手機空間 */
+            .controls > div:first-child, 
+            .controls > .pc-only,
+            .controls > div[style*="border-left"] { 
+                display: none !important; 
+            }
+
+            /* 讓 4 個功能按鈕平分寬度，但留一點空間給右邊的箭頭 */
+            .controls > .quick-btn { 
+                flex: 1 1 20%; /* 基礎寬度 20% */
+                margin: 0; 
+                border-radius: 8px; 
+                padding: 8px 0; 
+                font-size: 13px; 
+                white-space: nowrap; 
+            }
+
+            /* 🔥 讓小導覽列靠右對齊 🔥 */
+            #list-nav-mini {
+                display: flex;
+                margin-left: auto; /* 這是關鍵：把剩下的空間推開，讓它靠最右邊 */
+                gap: 5px;
+                align-items: center;
+            }
+
+            /* 讓輸入框（日期與搜尋）在下一排佔滿全寬 */
+            .controls > input { 
+                flex: 1 0 100%; /* 強制換行並佔滿 100% */
+                max-width: 100% !important; 
+                margin-top: 5px;
+            }
             
             /* 3. 表格防擠壓 (強制不換行，改為左右滑動) */
             th, td { white-space: nowrap !important; padding: 10px; font-size: 14px; }
@@ -284,19 +313,15 @@
                     <button class="btn btn-outline quick-btn" id="btn-month" onclick="setFilterMode('month')">單月</button>
                     <button class="btn btn-outline quick-btn" id="btn-all" onclick="setFilterMode('all')">全部</button>
 
-                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
-                    <div style="font-size: 14px; color: #888;">特定日：</div>
+                    <div id="list-nav-mini" style="display: none; align-items: center; gap: 8px; margin-left: auto;">
+                        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="changeListOffset(-1)">＜</button>
+                        <span id="list-nav-label" style="font-weight: bold; color: var(--primary-dark); font-size: 14px; white-space: nowrap;"></span>
+                        <button class="btn btn-outline" style="padding: 4px 8px;" onclick="changeListOffset(1)">＞</button>
+                    </div>
+
+                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
                     <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
-                    
-                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
-                    <input type="text" id="searchBookingInput" placeholder="🔍 搜尋姓名、電話或備註..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 250px;">
-
-                </div>
-
-                <div id="list-nav" style="display: none; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 8px; margin: 0 12px 10px 12px; border: 1px solid #ddd;">
-                    <button id="nav-prev-btn" class="btn btn-outline" style="padding: 4px 12px; font-size: 13px;" onclick="changeListOffset(-1)">⬅️ 上一...</button>
-                    <span id="list-nav-label" style="font-weight: bold; color: var(--primary-dark); font-size: 14px;"></span>
-                    <button id="nav-next-btn" class="btn btn-outline" style="padding: 4px 12px; font-size: 13px;" onclick="changeListOffset(1)">下一... ➡️</button>
+                    <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
                 </div>
 
                 <div class="box-container" style="overflow-x: auto;">
@@ -568,7 +593,31 @@
             filterBookingTable();
         }
 
-        // 相容特定日的舊寫法
+        function setFilterMode(mode) {
+            currentFilterMode = mode;
+            listOffset = 0; // 切換模式時時間歸零
+
+            // 更新按鈕顏色
+            ['btn-day', 'btn-week', 'btn-month', 'btn-all'].forEach(id => {
+                let btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('btn-primary'); btn.classList.add('btn-outline'); }
+            });
+            
+            if (mode !== 'custom' && document.getElementById(`btn-${mode}`)) {
+                document.getElementById(`btn-${mode}`).classList.remove('btn-outline');
+                document.getElementById(`btn-${mode}`).classList.add('btn-primary');
+                document.getElementById('dateFilter').value = ''; 
+            }
+            filterBookingTable();
+        }
+
+        // 供導覽箭頭呼叫
+        function changeListOffset(step) {
+            listOffset += step;
+            filterBookingTable();
+        }
+
+        // 相容舊的特定日調用
         function setQuickFilter(mode) {
             if (mode === 'custom') setFilterMode('custom');
         }
@@ -583,15 +632,13 @@
         function filterBookingTable() {
             const keyword = document.getElementById('searchBookingInput').value.toLowerCase();
             const customDate = document.getElementById('dateFilter').value;
-
-            let startOfFilter, endOfFilter;
-            let now = new Date();
+            const now = new Date();
             
-            let navDiv = document.getElementById('list-nav');
+            let startOfFilter, endOfFilter;
+            let navDiv = document.getElementById('list-nav-mini');
             let navLabel = document.getElementById('list-nav-label');
-            let prevBtn = document.getElementById('nav-prev-btn');
-            let nextBtn = document.getElementById('nav-next-btn');
 
+            // 🌟 核心：根據不同模式計算開始與結束日期
             if (currentFilterMode === 'all') {
                 if (navDiv) navDiv.style.display = 'none';
                 startOfFilter = "1970-01-01"; endOfFilter = "2100-12-31";
@@ -599,44 +646,37 @@
                 if (navDiv) navDiv.style.display = 'none';
                 startOfFilter = customDate; endOfFilter = customDate;
             } else {
-                if (navDiv) navDiv.style.display = 'flex';
+                if (navDiv) navDiv.style.display = 'flex'; // 顯示導覽箭頭
 
                 if (currentFilterMode === 'day') {
-                    prevBtn.innerText = "⬅️ 上一天"; nextBtn.innerText = "下一天 ➡️";
-                    let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + listOffset);
-                    startOfFilter = getFormattedDate(targetDate);
-                    endOfFilter = getFormattedDate(targetDate);
-                    navLabel.innerText = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`;
+                    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + listOffset);
+                    startOfFilter = getFormattedDate(target); endOfFilter = startOfFilter;
+                    navLabel.innerText = `${target.getMonth()+1}/${target.getDate()}`;
                 } else if (currentFilterMode === 'week') {
-                    prevBtn.innerText = "⬅️ 上週"; nextBtn.innerText = "下週 ➡️";
-                    let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
-                    let day = targetDate.getDay() || 7; 
-                    let s = new Date(targetDate); s.setDate(targetDate.getDate() - day + 1);
+                    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
+                    let day = target.getDay() || 7; 
+                    let s = new Date(target); s.setDate(target.getDate() - day + 1);
                     let e = new Date(s); e.setDate(s.getDate() + 6);
-                    startOfFilter = getFormattedDate(s);
-                    endOfFilter = getFormattedDate(e);
-                    navLabel.innerText = `${s.getMonth()+1}/${s.getDate()} - ${e.getMonth()+1}/${e.getDate()}`;
+                    startOfFilter = getFormattedDate(s); endOfFilter = getFormattedDate(e);
+                    navLabel.innerText = `${s.getMonth()+1}/${s.getDate()}-${e.getDate()}`;
                 } else if (currentFilterMode === 'month') {
-                    prevBtn.innerText = "⬅️ 上個月"; nextBtn.innerText = "下個月 ➡️";
-                    let targetDate = new Date(now.getFullYear(), now.getMonth() + listOffset, 1);
-                    let s = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-                    let e = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
-                    startOfFilter = getFormattedDate(s);
-                    endOfFilter = getFormattedDate(e);
-                    navLabel.innerText = `${targetDate.getFullYear()}年${targetDate.getMonth()+1}月`;
+                    let target = new Date(now.getFullYear(), now.getMonth() + listOffset, 1);
+                    let s = new Date(target.getFullYear(), target.getMonth(), 1);
+                    let e = new Date(target.getFullYear(), target.getMonth() + 1, 0);
+                    startOfFilter = getFormattedDate(s); endOfFilter = getFormattedDate(e);
+                    navLabel.innerText = `${target.getMonth()+1}月`;
                 }
             }
 
             let filteredData = allBookings.filter(row => {
                 const mKeyword = row.name.toLowerCase().includes(keyword) || row.phone.includes(keyword) || 
                                  (row.name2 && row.name2.toLowerCase().includes(keyword)) || (row.remark && row.remark.toLowerCase().includes(keyword));
-                
                 let mDate = (row.date >= startOfFilter && row.date <= endOfFilter);
                 if (currentFilterMode === 'custom' && customDate === "") mDate = true; 
-
                 return mKeyword && mDate;
             });
 
+            // 排序：全部模式降序(最新在前)，其他模式升序
             if (currentFilterMode === 'all') filteredData.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
             else filteredData.sort((a, b) => new Date(a.date+" "+a.time) - new Date(b.date+" "+b.time));
 
