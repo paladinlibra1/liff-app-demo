@@ -182,6 +182,18 @@
                 padding: 4px 8px !important;
             }
 
+            /* ================= 強制週曆方塊左右 100% 填滿，不留縫隙 ================= */
+            .fc .fc-timegrid-event-harness {
+                left: 0 !important;
+                right: 0 !important;
+            }
+        
+            /* 讓外層方塊完全貼合，不留預設邊距 */
+            .fc .fc-timegrid-event {
+                margin: 0 !important;
+                border-radius: 0 !important; /* 取消預設圓角，讓它像磚塊一樣完美卡進格子裡 */
+            }
+
             .top-action-bar {
                 display: flex;
                 flex-direction: row !important; /* 強制橫向排列 */
@@ -475,7 +487,7 @@
                             <div class="inner-booking" data-id="${row.id}" 
                                  title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
                                  style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                        border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                        border-radius: 1px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                         overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                 ${row.name}
                             </div>
@@ -487,7 +499,7 @@
                                 <div class="inner-booking" data-id="${row.id}" 
                                      title="[${row.type} - 同行] ${row.name2}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
                                      style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                            border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                            border-radius: 1px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                             overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                     ${row.name2}
                                 </div>
