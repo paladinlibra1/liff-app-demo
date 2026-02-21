@@ -99,12 +99,24 @@
             /* 🔥 修改：讓「特定日」標籤在手機版換行顯示在日期選取器上方 */
             /* 讓文字標籤這格佔滿 100% 寬度（達到換行效果） */
             .controls > .label-text { 
-                flex: 1 0 100%; 
+                flex: 0 0 auto;    /* 不伸縮，依文字長度 */
                 margin-top: 10px; 
-                margin-bottom: 0; 
-                display: flex; 
-                align-items: center; 
-                gap: 5px; 
+                margin-bottom: 0;
+            }
+
+            /* 第二排：日期框緊跟在特定日後面，並強迫後面的元素換行 */
+            #dateFilter { 
+                flex: 0 1 150px;   /* 限制長度，避免擠掉空間 */
+                width: auto !important; 
+                margin-top: 10px !important;
+                margin-right: auto; /* 將右邊空間推開，確保搜尋框掉到下一行 */
+            }
+
+            /* 第三排：搜尋框強制換行並佔滿全寬 */
+            #searchBookingInput { 
+                flex: 1 0 100%;    /* 強制換行並佔滿 100% */
+                max-width: 100% !important; 
+                margin-top: 10px !important;
             }
             .controls > .quick-btn { flex: 0 1 auto; padding: 8px 12px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
 
