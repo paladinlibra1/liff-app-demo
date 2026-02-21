@@ -122,6 +122,26 @@
             .fc .fc-toolbar { flex-direction: column; gap: 10px; }
             .fc .fc-toolbar-title { font-size: 1.3em !important; }
 
+            /* 1. 殺掉整條時間軸為了「留白給人點」的預設右邊距 (這就是真兇！) */
+            .fc-direction-ltr .fc-timegrid-col-events {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* 2. 強迫外層綁帶 100% 伸展 */
+            .fc .fc-timegrid-event-harness {
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+            }
+        
+            /* 3. 強迫方塊本身 100% 填滿，不准縮水，並且把圓角拔掉變直角 */
+            .fc .fc-timegrid-event {
+                margin: 0 !important;
+                border-radius: 0 !important; 
+                width: 100% !important;
+            }
+            
             /* ================= 日曆文字縮小 & 自動換行優化 ================= */
             /* 1. 頂部星期標題 (一、二、三...) */
             .fc .fc-col-header-cell-cushion { 
@@ -487,7 +507,7 @@
                             <div class="inner-booking" data-id="${row.id}" 
                                  title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
                                  style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                        border-radius: 1px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                        border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                         overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                 ${row.name}
                             </div>
@@ -499,7 +519,7 @@
                                 <div class="inner-booking" data-id="${row.id}" 
                                      title="[${row.type} - 同行] ${row.name2}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
                                      style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                            border-radius: 1px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                            border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                             overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                     ${row.name2}
                                 </div>
