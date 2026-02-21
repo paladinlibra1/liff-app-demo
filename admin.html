@@ -347,49 +347,91 @@
                 initialView: 'timeGridWeek', locale: 'zh-tw',             
                 slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,
                 
-                // 🔥 新增這兩行：強制切換為 30 分鐘刻度 🔥
-                slotDuration: '00:30:00',       // 每一格代表 30 分鐘
-                slotLabelInterval: '00:30',     // 左側時間軸每 30 分鐘顯示一次數字 (10:00, 10:30...)
-
-                defaultTimedEventDuration: '00:30:00', // 🔥 新增這行：強制所有預約方塊的長度都是剛好 30 分鐘 🔥
+                slotDuration: '00:30:00',       
+                slotLabelInterval: '00:30',     
+                defaultTimedEventDuration: '00:30:00', 
                 displayEventTime: false,
-
                 slotLabelFormat: { hour: '2-digit', minute: '2-digit', omitZeroMinute: false, hour12: false },
-                
+
+                dayHeaderContent: function(arg) {
+                    const days = ['日', '一', '二', '三', '四', '五', '六'];
+                    let weekday = '週' + days[arg.date.getDay()]; 
+                    let dateStr = (arg.date.getMonth() + 1) + '/' + arg.date.getDate(); 
+                    
+                    let wrapper = document.createElement('div');
+                    wrapper.innerHTML = `
+                        <div style="text-align: center; line-height: 1.2;">
+                            <div style="font-size: 13px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                            <div style="font-size: 11px; color: #888; font-weight: normal;">${dateStr}</div>
+                        </div>
+                    `;
+                    return { domNodes: [wrapper] };
+                },
+
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                
+                // 🔥 核心修改 1：把同一個時間的預約「合併打包」 🔥
                 events: function(fetchInfo, successCallback) {
-                    let events = allBookings.map(row => {
+                    let grouped = {};
+                    allBookings.forEach(row => {
+                        let dt = `${row.date}T${row.time}:00`;
+                        if (!grouped[dt]) grouped[dt] = [];
+                        grouped[dt].push(row);
+                    });
+
+                    let fcEvents = [];
+                    for (let dt in grouped) {
+                        fcEvents.push({
+                            start: dt,
+                            backgroundColor: 'transparent', // 透明背景，因為我們要自己畫裡面的方塊
+                            borderColor: 'transparent',
+                            extendedProps: { bookings: grouped[dt] }
+                        });
+                    }
+                    successCallback(fcEvents);
+                },
+
+                // 🔥 核心修改 2：在同一個大格子裡，讓方塊「上下堆疊」排列 🔥
+                eventContent: function(info) {
+                    let bookings = info.event.extendedProps.bookings;
+                    
+                    // 把每一筆訂單畫成一個小方塊
+                    let htmlDivs = bookings.map(row => {
                         let titleText = row.name + (row.name2 ? ` (+${row.name2})` : "");
                         
-                        // 🔥 根據身分自動判斷日曆方塊顏色
-                        let bgColor = '#4CAF50'; // 預設綠色 (一般預約 / 沒寫)
-                        let bdColor = '#388E3C'; // 預設深綠邊框
-                        let txtColor = '#ffffff';// 預設白字
+                        let bgColor = '#4CAF50'; 
+                        let bdColor = '#388E3C'; 
+                        let txtColor = '#ffffff';
 
                         if (row.type === '新客體驗' || row.type === '新客預約') {
-                            bgColor = '#FFCA28'; // 黃色
-                            bdColor = '#FF8F00'; // 深黃邊框
-                            txtColor = '#333333';// 黃底配深色字比較清楚
+                            bgColor = '#FFCA28'; bdColor = '#FF8F00'; txtColor = '#333333';
                         } else if (row.type === '複檢') {
-                            bgColor = '#29B6F6'; // 藍色
-                            bdColor = '#0288D1'; // 深藍邊框
+                            bgColor = '#29B6F6'; bdColor = '#0288D1';
                         }
 
-                        return {
-                            id: row.id,
-                            title: titleText,
-                            start: `${row.date}T${row.time}:00`,
-                            backgroundColor: bgColor,
-                            borderColor: bdColor,
-                            textColor: txtColor,
-                            extendedProps: { phone: row.phone, remark: row.remark || '無', type: row.type }
-                        };
+                        // 用 data-id 偷偷記錄這塊磚頭是哪筆訂單
+                        return `<div class="inner-booking" data-id="${row.id}" 
+                                     title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
+                                     style="flex: 1; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
+                                            border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                            overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                    ${titleText}
+                                </div>`;
                     });
-                    successCallback(events);
+
+                    // 外層用 flex-direction: column 強迫它們「上下排」
+                    let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%;">${htmlDivs.join('')}</div>`;
+                    return { html: html };
                 },
-                eventClick: function(info) { editBooking(info.event.id); },
-                eventDidMount: function(info) {
-                    info.el.title = `[${info.event.extendedProps.type}]\n姓名: ${info.event.title}\n電話: ${info.event.extendedProps.phone}\n備註: ${info.event.extendedProps.remark}`;
+
+                // 🔥 核心修改 3：精準判斷手指點到的是上面還是下面那個客人 🔥
+                eventClick: function(info) {
+                    // 找出滑鼠/手指真正點到的那個小方塊
+                    let clickedEl = info.jsEvent.target.closest('.inner-booking');
+                    if (clickedEl) {
+                        let bookingId = clickedEl.getAttribute('data-id');
+                        editBooking(bookingId); // 載入該筆訂單資料
+                    }
                 }
             });
             fcBookingCalendar.render();
