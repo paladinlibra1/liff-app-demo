@@ -85,9 +85,13 @@
             .header .btn { width: 100%; margin: 0 !important; }
 
             /* 2. 篩選列：按鈕變成 2x2 排列，輸入框填滿螢幕 */
-            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+            .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 12px; }
             .controls > div:first-child { grid-column: 1 / -1; margin-bottom: -5px; }
-            .controls > .quick-btn { width: 100%; margin: 0; border-radius: 8px; }
+            /* 縮小內距與字體，強制不換行，確保 4 個按鈕完美塞進手機寬度 */
+            .controls > .quick-btn { 
+                width: 100%; margin: 0; border-radius: 8px; 
+                padding: 8px 0; font-size: 13px; white-space: nowrap; 
+            }
             .controls > div[style*="border-left"] { display: none !important; } /* 隱藏分隔線 */
             .controls > div:nth-of-type(3) { grid-column: 1 / -1; margin-top: 5px; }
             .controls > input { grid-column: 1 / -1; max-width: 100% !important; }
@@ -95,6 +99,19 @@
             /* 3. 表格防擠壓 (強制不換行，改為左右滑動) */
             th, td { white-space: nowrap !important; padding: 10px; font-size: 14px; }
             .box-container { overflow-x: auto; }
+
+            /* 讓「代客預約」和「列表模式」這兩個按鈕自動平分剩下的寬度 */
+            .top-action-bar .btn:nth-child(1),
+            .top-action-bar .btn:nth-child(2) {
+                flex: 1; 
+            }
+        
+            /* 讓「重新整理」圖示變成一個完美的正方形小方塊 */
+            .top-action-bar .btn-icon {
+                flex: 0 0 42px;                 /* 固定寬度 42px */
+                font-size: 18px;                /* 圖示放大一點 */
+                padding: 0;
+            }
             
             /* 4. 日曆上方標題自動折行 */
             .fc .fc-toolbar { flex-direction: column; gap: 10px; }
@@ -162,19 +179,14 @@
                 justify-content: center;
                 white-space: nowrap;            /* 防止文字被擠到換行 */
             }
-        
-            /* 讓「代客預約」和「列表模式」這兩個按鈕自動平分剩下的寬度 */
-            .top-action-bar .btn:nth-child(1),
-            .top-action-bar .btn:nth-child(2) {
-                flex: 1; 
-            }
-        
-            /* 讓「重新整理」圖示變成一個完美的正方形小方塊 */
-            .top-action-bar .btn-icon {
-                flex: 0 0 42px;                 /* 固定寬度 42px */
-                font-size: 18px;                /* 圖示放大一點 */
-                padding: 0;
-            }
+
+            .calendar-wrapper { padding: 5px !important; }
+            
+            /* 2. 🔥 將每一個 30 分鐘的格子「物理拉高」 (例如變成 55px) */
+            .fc .fc-timegrid-slot-lane, .fc .fc-timegrid-slot-label {
+                height: 55px !important; 
+            }       
+            
         }
     </style>
 </head>
@@ -379,7 +391,7 @@
             fcBookingCalendar = new FullCalendar.Calendar(el, {
                 initialView: 'timeGridWeek', locale: 'zh-tw',             
                 slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,
-                
+                height: 'auto',
                 slotDuration: '00:30:00',       
                 slotLabelInterval: '00:30',     
                 defaultTimedEventDuration: '00:30:00', 
@@ -392,10 +404,10 @@
                     let dateStr = (arg.date.getMonth() + 1) + '/' + arg.date.getDate(); 
                     
                     let wrapper = document.createElement('div');
-                   wrapper.innerHTML = `
+                    wrapper.innerHTML = `
                         <div style="text-align: center; line-height: 1.4; padding: 2px 0;">
                             <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
-                            <div style="font-size: 13px; color: #888; font-weight: normal;">${dateStr}</div>
+                            <div style="font-size: 13px; color: var(--text-color); font-weight: normal;">${dateStr}</div>
                         </div>
                     `;
                     return { domNodes: [wrapper] };
