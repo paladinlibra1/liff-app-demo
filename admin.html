@@ -132,6 +132,18 @@
                 margin-top: 2px !important; 
                 padding: 2px 0 !important; 
             }
+
+            /* 縮小日曆正上方正中央的「年月」大標題 */
+            .fc .fc-toolbar-title { 
+                font-size: 16px !important; 
+                color: var(--primary-dark);
+            }
+
+            /* 讓左右兩邊的切換按鈕 (今天、月、週) 也變精緻一點 */
+            .fc .fc-button {
+                font-size: 12px !important;
+                padding: 4px 8px !important;
+            }
         }
     </style>
 </head>
@@ -341,6 +353,9 @@
 
                 defaultTimedEventDuration: '00:30:00', // 🔥 新增這行：強制所有預約方塊的長度都是剛好 30 分鐘 🔥
                 displayEventTime: false,
+
+                slotLabelFormat: { hour: '2-digit', minute: '2-digit', omitZeroMinute: false, hour12: false },
+                
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                 events: function(fetchInfo, successCallback) {
                     let events = allBookings.map(row => {
