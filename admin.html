@@ -92,7 +92,7 @@
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
             .header .btn { width: 100%; margin: 0 !important; }
 
-            /* 2. 篩選列：改為 Flex 佈局，讓箭頭能靠右並排 */
+            /* 2. 篩選列：改為 Flex 佈局，讓箭頭能靠右並排，並確保標籤文字不消失 */
             .controls { 
                 display: flex; 
                 flex-wrap: wrap; 
@@ -100,9 +100,19 @@
                 padding: 12px; 
                 align-items: center; 
             }
-            /* 隱藏不必要的文字與分隔線 */
-            .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { 
+            /* 僅隱藏電腦版的分隔線，保留 label-text */
+            .pc-only, .controls > div[style*="border-left"] { 
                 display: none !important; 
+            }
+            .controls > .label-text:nth-of-type(2) {
+                    flex: 1 0 100%; /* 強制換行到下一排開頭 */
+                    margin-top: 5px;
+                    margin-bottom: -5px;
+            }
+
+            .label-text {
+                font-size: 13px;
+                color: #555;
             }
 
             /* 按鈕根據內容撐開 */
@@ -316,6 +326,7 @@
                     </div>
 
                     <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
+                    <div class="label-text" style="font-size: 14px; color: #888;">特定日：</div>
                     <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
                     <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
                 </div>
