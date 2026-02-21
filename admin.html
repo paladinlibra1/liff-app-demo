@@ -271,7 +271,14 @@
             const el = document.getElementById('bookingCalendar');
             fcBookingCalendar = new FullCalendar.Calendar(el, {
                 initialView: 'timeGridWeek', locale: 'zh-tw',             
-                slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,           
+                slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,
+                
+                // 🔥 新增這兩行：強制切換為 30 分鐘刻度 🔥
+                slotDuration: '00:30:00',       // 每一格代表 30 分鐘
+                slotLabelInterval: '00:30',     // 左側時間軸每 30 分鐘顯示一次數字 (10:00, 10:30...)
+
+                defaultTimedEventDuration: '00:30:00', // 🔥 新增這行：強制所有預約方塊的長度都是剛好 30 分鐘 🔥
+                
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                 events: function(fetchInfo, successCallback) {
                     let events = allBookings.map(row => {
