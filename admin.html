@@ -629,12 +629,27 @@
                     startOfFilter = getFormattedDate(target); endOfFilter = startOfFilter;
                     navLabel.innerText = `${target.getMonth()+1}/${target.getDate()}`;
                 } else if (currentFilterMode === 'week') {
-                    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
-                    let day = target.getDay() || 7; 
-                    let s = new Date(target); s.setDate(target.getDate() - day + 1);
+                    let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
+                    let day = targetDate.getDay() || 7; 
+                    let s = new Date(targetDate); s.setDate(targetDate.getDate() - day + 1);
                     let e = new Date(s); e.setDate(s.getDate() + 6);
-                    startOfFilter = getFormattedDate(s); endOfFilter = getFormattedDate(e);
-                    navLabel.innerText = `${s.getMonth()+1}/${s.getDate()}-${e.getDate()}`;
+                    
+                    startOfFilter = getFormattedDate(s); 
+                    endOfFilter = getFormattedDate(e);
+
+                    // 🔥 修正後的智慧標籤邏輯 🔥
+                    let startLabel = `${s.getMonth() + 1}/${s.getDate()}`;
+                    let endLabel = "";
+                    
+                    if (s.getMonth() === e.getMonth()) {
+                        // 如果在同一個月，只顯示「日」 (例如：2/16-22)
+                        endLabel = e.getDate();
+                    } else {
+                        // 如果跨月了，就必須顯示「月/日」 (例如：2/23-3/1)
+                        endLabel = `${e.getMonth() + 1}/${e.getDate()}`;
+                    }
+                    
+                    navLabel.innerText = `${startLabel}-${endLabel}`;
                 } else if (currentFilterMode === 'month') {
                     let target = new Date(now.getFullYear(), now.getMonth() + listOffset, 1);
                     let s = new Date(target.getFullYear(), target.getMonth(), 1);
