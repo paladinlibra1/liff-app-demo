@@ -75,9 +75,12 @@
             border: none !important;          /* 殺掉套件預設的外框 */
             background: transparent !important; /* 確保外層絕對透明 */
         }
+        .fc .fc-timegrid-slot {
+            height: 65px !important; /* 調整這個數字可以控制時間軸的疏密程度 */
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
+        
         /* ================= 手機版 (RWD) 畫面優化 ================= */
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -534,13 +537,26 @@
 
                 // 🔥 核心修改 3：精準判斷手指點到的是上面還是下面那個客人 🔥
                 eventClick: function(info) {
-                    // 找出滑鼠/手指真正點到的那個小方塊
-                    let clickedEl = info.jsEvent.target.closest('.inner-booking');
-                    if (clickedEl) {
-                        let bookingId = clickedEl.getAttribute('data-id');
-                        editBooking(bookingId); // 載入該筆訂單資料
+                    // 1. 阻止 FullCalendar 預設的點擊行為
+                    info.jsEvent.preventDefault();
+
+                    // 2. 利用滑鼠事件，找出真正被點擊的那一塊「彩色小磚頭」
+                    let clickedBlock = info.jsEvent.target.closest('.inner-booking');
+                    
+                    if (clickedBlock) {
+                        // 3. 抓出我們寫在 div 上的專屬訂單 ID (data-id)
+                        let bookingId = clickedBlock.getAttribute('data-id');
+                        
+                        // 4. 🔥 執行跳轉到前端修改頁面 🔥
+                        let frontendUrl = `index.html?id=${bookingId}`; 
+                        
+                        // 開啟前端修改頁面
+                        window.open(frontendUrl, '_blank');
+                        
+                        // (如果您原本是用呼叫彈出視窗的方式，請改成執行您的編輯函式，例如：)
+                        // editBooking(bookingId); 
                     }
-                }
+                },
             });
             fcBookingCalendar.render();
         }
