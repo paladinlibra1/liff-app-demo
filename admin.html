@@ -93,36 +93,12 @@
             .header .btn { width: 100%; margin: 0 !important; }
 
             /* 2. 篩選列：改為 Flex 佈局，讓箭頭能靠右並排，並確保標籤文字不消失 */
-            .controls { 
-                display: flex; 
-                flex-wrap: wrap; 
-                gap: 8px; 
-                padding: 12px; 
-                align-items: center; 
-            }
-            /* 僅隱藏電腦版的分隔線，保留 label-text */
-            .pc-only, .controls > div[style*="border-left"] { 
-                display: none !important; 
-            }
-            .controls > .label-text:nth-of-type(2) {
-                    flex: 1 0 100%; /* 強制換行到下一排開頭 */
-                    margin-top: 5px;
-                    margin-bottom: -5px;
-            }
-
-            .label-text {
-                font-size: 13px;
-                color: #555;
-            }
-
-            /* 按鈕根據內容撐開 */
-            .controls > .quick-btn { 
-                flex: 0 1 auto; 
-                padding: 8px 12px; 
-                font-size: 13px; 
-                white-space: nowrap;
-                border-radius: 20px;
-            }
+            .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; }
+            .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { display: none !important; }
+            .label-text { font-size: 13px; color: #555; }
+            /* 🔥 修改：讓「特定日」標籤在手機版換行顯示在日期選取器上方 */
+            .controls > .label-text { flex: 1 0 100%; margin-top: 5px; margin-bottom: -5px; }
+            .controls > .quick-btn { flex: 0 1 auto; padding: 8px 12px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
 
             /* 🔥 強制讓小導覽列靠最右邊 🔥 */
             #list-nav-mini {
