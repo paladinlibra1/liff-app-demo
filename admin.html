@@ -120,7 +120,16 @@
                 font-size: 18px;                /* 圖示放大一點 */
                 padding: 0;
             }
-            
+            /* 讓列表模式的「編輯」與「取消」按鈕在手機上更寬、更好按 */
+            .action-btns { 
+                display: flex; 
+                flex-direction: row; /* 維持橫排 */
+                gap: 8px; 
+            }
+            .btn-sm { 
+                padding: 10px 15px !important; /* 加大按鈕觸控面積 */
+                font-size: 14px !important;
+            }
             /* 4. 日曆上方標題自動折行 */
             .fc .fc-toolbar { flex-direction: column; gap: 10px; }
             .fc .fc-toolbar-title { font-size: 1.3em !important; }
@@ -270,17 +279,24 @@
             <div id="listViewWrapper">
                 <div class="controls">
                     <div style="font-weight: bold; color: var(--primary-dark);">📅 檢視：</div>
-                    <button class="btn btn-primary quick-btn" id="btn-today" onclick="setQuickFilter('today')">今天</button>
-                    <button class="btn btn-outline quick-btn" id="btn-week" onclick="setQuickFilter('week')">本週</button>
-                    <button class="btn btn-outline quick-btn" id="btn-month" onclick="setQuickFilter('month')">本月</button>
-                    <button class="btn btn-outline quick-btn" id="btn-all" onclick="setQuickFilter('all')">全部</button>
-                    
+                    <button class="btn btn-outline quick-btn" id="btn-day" onclick="setFilterMode('day')">單日</button>
+                    <button class="btn btn-outline quick-btn" id="btn-week" onclick="setFilterMode('week')">單週</button>
+                    <button class="btn btn-outline quick-btn" id="btn-month" onclick="setFilterMode('month')">單月</button>
+                    <button class="btn btn-outline quick-btn" id="btn-all" onclick="setFilterMode('all')">全部</button>
+
                     <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
                     <div style="font-size: 14px; color: #888;">特定日：</div>
                     <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
                     
                     <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
                     <input type="text" id="searchBookingInput" placeholder="🔍 搜尋姓名、電話或備註..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 250px;">
+
+                </div>
+
+                <div id="list-nav" style="display: none; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-radius: 8px; margin: 0 12px 10px 12px; border: 1px solid #ddd;">
+                    <button id="nav-prev-btn" class="btn btn-outline" style="padding: 4px 12px; font-size: 13px;" onclick="changeListOffset(-1)">⬅️ 上一...</button>
+                    <span id="list-nav-label" style="font-weight: bold; color: var(--primary-dark); font-size: 14px;"></span>
+                    <button id="nav-next-btn" class="btn btn-outline" style="padding: 4px 12px; font-size: 13px;" onclick="changeListOffset(1)">下一... ➡️</button>
                 </div>
 
                 <div class="box-container" style="overflow-x: auto;">
@@ -410,7 +426,7 @@
                 const res = await callApi("getAllBookings");
                 if (res.status === "success") {
                     allBookings = res.data;
-                    if (isInit) setQuickFilter('today');
+                    if (isInit) setFilterMode('today');
                     else filterBookingTable(); 
                     if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
                 } else alert("讀取失敗：" + res.message);
@@ -487,121 +503,137 @@
                     successCallback(fcEvents);
                 },
 
-                // 🔥 核心修改 2：在同一個大格子裡，讓方塊「上下堆疊」排列 🔥
+                // 📱 手機優化版：日曆僅供檢視，不綁定點擊事件
                 eventContent: function(info) {
                     let bookings = info.event.extendedProps.bookings;
-                    
-                    let htmlDivs = []; // 改成用陣列來收集方塊
+                    let htmlDivs = []; 
                     
                     bookings.forEach(row => {
-                        let bgColor = '#4CAF50'; 
-                        let bdColor = '#388E3C'; 
-                        let txtColor = '#ffffff';
-
-                        // 判斷顏色
+                        let bgColor = '#4CAF50'; let bdColor = '#388E3C'; let txtColor = '#ffffff';
                         if (row.type === '新客體驗' || row.type === '新客預約' || row.type === '一般預約') {
                             bgColor = '#FFCA28'; bdColor = '#FF8F00'; txtColor = '#333333';
                         } else if (row.type === '複檢') {
                             bgColor = '#29B6F6'; bdColor = '#0288D1';
                         }
 
-                        // 🧱 第 1 塊磚頭：建立「主要預約人」的獨立方塊
+                        // 🧱 磚頭：移除 onclick，加入 pointer-events: none 確保不被點擊
                         htmlDivs.push(`
-                            <div class="inner-booking" data-id="${row.id}" 
-                                 title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
+                            <div class="inner-booking" 
+                                 title="[${row.type}] ${row.name}" 
                                  style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                        border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
-                                        overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                        border-radius: 0px; padding: 0; font-size: 11px; line-height: 1; letter-spacing: -0.5px; white-space: nowrap;
+                                        overflow: hidden; display: flex; align-items: center; justify-content: center; pointer-events: none;">
                                 ${row.name}
                             </div>
                         `);
 
-                        // 🧱 第 2 塊磚頭：如果有「同行人」，就再獨立塞入第二塊方塊！
                         if (row.name2 && row.name2.trim() !== '') {
                             htmlDivs.push(`
-                                <div class="inner-booking" data-id="${row.id}" 
-                                     title="[${row.type} - 同行] ${row.name2}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
+                                <div class="inner-booking" 
                                      style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                            border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
-                                            overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                            border-radius: 0px; padding: 0; font-size: 11px; line-height: 1; letter-spacing: -0.5px; white-space: nowrap;
+                                            overflow: hidden; display: flex; align-items: center; justify-content: center; pointer-events: none;">
                                     ${row.name2}
                                 </div>
                             `);
                         }
                     });
 
-                    // 外層容器確保方塊由上往下排，且只佔 50% 高度
                     let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%; justify-content: flex-start;">${htmlDivs.join('')}</div>`;
                     return { html: html };
-                },
-
-                // 🔥 核心修改 3：精準判斷手指點到的是上面還是下面那個客人 🔥
-                eventClick: function(info) {
-                    // 1. 阻止 FullCalendar 預設的點擊行為
-                    info.jsEvent.preventDefault();
-
-                    // 2. 利用滑鼠事件，找出真正被點擊的那一塊「彩色小磚頭」
-                    let clickedBlock = info.jsEvent.target.closest('.inner-booking');
-                    
-                    if (clickedBlock) {
-                        // 3. 抓出我們寫在 div 上的專屬訂單 ID (data-id)
-                        let bookingId = clickedBlock.getAttribute('data-id');
-                        
-                        // 4. 🔥 執行跳轉到前端修改頁面 🔥
-                        let frontendUrl = `index.html?id=${bookingId}`; 
-                        
-                        // 開啟前端修改頁面
-                        window.open(frontendUrl, '_blank');
-                        
-                        // (如果您原本是用呼叫彈出視窗的方式，請改成執行您的編輯函式，例如：)
-                        // editBooking(bookingId); 
-                    }
-                },
+                },                
             });
             fcBookingCalendar.render();
         }
 
-        function setQuickFilter(mode) {
+        // ================= 列表模式：天/週/月 查詢引擎 =================
+        let listOffset = 0; // 記錄上一頁/下一頁的偏移量
+
+        // 點擊按鈕切換模式
+        function setFilterMode(mode) {
             currentFilterMode = mode;
-            ['btn-today', 'btn-week', 'btn-month', 'btn-all'].forEach(id => {
-                document.getElementById(id).classList.remove('btn-primary');
-                document.getElementById(id).classList.add('btn-outline');
+            listOffset = 0; // 切換時歸零
+
+            // 更新按鈕顏色狀態
+            ['btn-day', 'btn-week', 'btn-month', 'btn-all'].forEach(id => {
+                let btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('btn-primary'); btn.classList.add('btn-outline'); }
             });
-            if (mode !== 'custom') {
-                document.getElementById('dateFilter').value = '';
-                if (document.getElementById(`btn-${mode}`)) {
-                    document.getElementById(`btn-${mode}`).classList.remove('btn-outline');
-                    document.getElementById(`btn-${mode}`).classList.add('btn-primary');
-                }
+            
+            if (mode !== 'custom' && document.getElementById(`btn-${mode}`)) {
+                document.getElementById(`btn-${mode}`).classList.remove('btn-outline');
+                document.getElementById(`btn-${mode}`).classList.add('btn-primary');
+                document.getElementById('dateFilter').value = ''; // 清空特定日
             }
             filterBookingTable();
         }
 
-        function getFormattedDate(d) {
-            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        // 相容特定日的舊寫法
+        function setQuickFilter(mode) {
+            if (mode === 'custom') setFilterMode('custom');
         }
 
+        // 上一頁 / 下一頁
+        function changeListOffset(step) {
+            listOffset += step;
+            filterBookingTable();
+        }
+
+        // 核心過濾器
         function filterBookingTable() {
             const keyword = document.getElementById('searchBookingInput').value.toLowerCase();
-            const today = new Date();
-            const todayStr = getFormattedDate(today);
-            const monthStr = todayStr.substring(0, 7); 
-            
-            const dayOfWeek = today.getDay() || 7; 
-            const monday = new Date(today); monday.setDate(today.getDate() - dayOfWeek + 1);
-            const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-            const wStart = getFormattedDate(monday);
-            const wEnd = getFormattedDate(sunday);
             const customDate = document.getElementById('dateFilter').value;
+
+            let startOfFilter, endOfFilter;
+            let now = new Date();
+            
+            let navDiv = document.getElementById('list-nav');
+            let navLabel = document.getElementById('list-nav-label');
+            let prevBtn = document.getElementById('nav-prev-btn');
+            let nextBtn = document.getElementById('nav-next-btn');
+
+            if (currentFilterMode === 'all') {
+                if (navDiv) navDiv.style.display = 'none';
+                startOfFilter = "1970-01-01"; endOfFilter = "2100-12-31";
+            } else if (currentFilterMode === 'custom') {
+                if (navDiv) navDiv.style.display = 'none';
+                startOfFilter = customDate; endOfFilter = customDate;
+            } else {
+                if (navDiv) navDiv.style.display = 'flex';
+
+                if (currentFilterMode === 'day') {
+                    prevBtn.innerText = "⬅️ 上一天"; nextBtn.innerText = "下一天 ➡️";
+                    let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + listOffset);
+                    startOfFilter = getFormattedDate(targetDate);
+                    endOfFilter = getFormattedDate(targetDate);
+                    navLabel.innerText = `${targetDate.getMonth()+1}月${targetDate.getDate()}日`;
+                } else if (currentFilterMode === 'week') {
+                    prevBtn.innerText = "⬅️ 上週"; nextBtn.innerText = "下週 ➡️";
+                    let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
+                    let day = targetDate.getDay() || 7; 
+                    let s = new Date(targetDate); s.setDate(targetDate.getDate() - day + 1);
+                    let e = new Date(s); e.setDate(s.getDate() + 6);
+                    startOfFilter = getFormattedDate(s);
+                    endOfFilter = getFormattedDate(e);
+                    navLabel.innerText = `${s.getMonth()+1}/${s.getDate()} - ${e.getMonth()+1}/${e.getDate()}`;
+                } else if (currentFilterMode === 'month') {
+                    prevBtn.innerText = "⬅️ 上個月"; nextBtn.innerText = "下個月 ➡️";
+                    let targetDate = new Date(now.getFullYear(), now.getMonth() + listOffset, 1);
+                    let s = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                    let e = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+                    startOfFilter = getFormattedDate(s);
+                    endOfFilter = getFormattedDate(e);
+                    navLabel.innerText = `${targetDate.getFullYear()}年${targetDate.getMonth()+1}月`;
+                }
+            }
 
             let filteredData = allBookings.filter(row => {
                 const mKeyword = row.name.toLowerCase().includes(keyword) || row.phone.includes(keyword) || 
                                  (row.name2 && row.name2.toLowerCase().includes(keyword)) || (row.remark && row.remark.toLowerCase().includes(keyword));
-                let mDate = true;
-                if (currentFilterMode === 'today') mDate = (row.date === todayStr);
-                else if (currentFilterMode === 'week') mDate = (row.date >= wStart && row.date <= wEnd);
-                else if (currentFilterMode === 'month') mDate = row.date.startsWith(monthStr);
-                else if (currentFilterMode === 'custom') mDate = (customDate === "" || row.date === customDate);
+                
+                let mDate = (row.date >= startOfFilter && row.date <= endOfFilter);
+                if (currentFilterMode === 'custom' && customDate === "") mDate = true; 
+
                 return mKeyword && mDate;
             });
 
@@ -610,6 +642,10 @@
 
             renderBookingTable(filteredData);
         }
+
+        function getFormattedDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }        
 
         function renderBookingTable(data) {
             const tbody = document.getElementById('bookingTableBody');
@@ -786,7 +822,12 @@
             });
             fcOperatingCalendar.render();
         }
-
+        function goToFrontendEdit(bookingId, event) {
+            event.stopPropagation(); 
+            event.preventDefault();
+            let frontendUrl = `index.html?id=${bookingId}`; 
+            window.open(frontendUrl, '_blank'); 
+        }
     </script>
 </body>
 </html>
