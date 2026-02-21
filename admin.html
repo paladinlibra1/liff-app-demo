@@ -104,6 +104,10 @@
             .pc-only, .controls > div[style*="border-left"] { 
                 display: none !important; 
             }
+
+            #bookingCalendar .fc-event { 
+                pointer-events: none !important; 
+            }
             .controls > .label-text:nth-of-type(2) {
                     flex: 1 0 100%; /* 強制換行到下一排開頭 */
                     margin-top: 5px;
@@ -562,43 +566,15 @@
 
                 // 📱 手機優化版：日曆僅供檢視，不綁定點擊事件
                 eventContent: function(info) {
-                    let bookings = info.event.extendedProps.bookings;
-                    let htmlDivs = []; 
-                    
-                    bookings.forEach(row => {
-                        let bgColor = '#4CAF50'; let bdColor = '#388E3C'; let txtColor = '#ffffff';
-                        if (row.type === '新客體驗' || row.type === '新客預約' || row.type === '一般預約') {
-                            bgColor = '#FFCA28'; bdColor = '#FF8F00'; txtColor = '#333333';
-                        } else if (row.type === '複檢') {
-                            bgColor = '#29B6F6'; bdColor = '#0288D1';
-                        }
-
-                        // 🧱 磚頭：移除 onclick，加入 pointer-events: none 確保不被點擊
-                        htmlDivs.push(`
-                            <div class="inner-booking" 
-                                 title="[${row.type}] ${row.name}" 
-                                 style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                        border-radius: 0px; padding: 0; font-size: 11px; line-height: 1; letter-spacing: -0.5px; white-space: nowrap;
-                                        overflow: hidden; display: flex; align-items: center; justify-content: center; pointer-events: none;">
-                                ${row.name}
-                            </div>
-                        `);
-
-                        if (row.name2 && row.name2.trim() !== '') {
-                            htmlDivs.push(`
-                                <div class="inner-booking" 
-                                     style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
-                                            border-radius: 0px; padding: 0; font-size: 11px; line-height: 1; letter-spacing: -0.5px; white-space: nowrap;
-                                            overflow: hidden; display: flex; align-items: center; justify-content: center; pointer-events: none;">
-                                    ${row.name2}
-                                </div>
-                            `);
-                        }
-                    });
-
-                    let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%; justify-content: flex-start;">${htmlDivs.join('')}</div>`;
-                    return { html: html };
-                },                
+                    let h = info.event.extendedProps.bookings.map(row => {
+                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
+                        // 🔥 核心修改：加入 onclick 事件與 cursor:pointer
+                        return `<div onclick="editBooking('${row.id}')" style="cursor: pointer; background:${c}; color:white; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                            ${row.name}${row.name2 ? '<br>+' + row.name2 : ''}
+                        </div>`;
+                    }).join('');
+                    return { html: `<div style="width:100%">${h}</div>` };
+                }              
             });
             fcBookingCalendar.render();
         }
