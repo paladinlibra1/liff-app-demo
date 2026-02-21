@@ -295,6 +295,7 @@
             <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">🗓️ 營業日曆設定</button>
+            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📜 歷史紀錄</button>
         </div>
 
         <div id="loading">🚀 資料處理中，請稍候...</div>
@@ -386,7 +387,30 @@
                 <div id="operatingCalendar"></div> 
             </div>
         </div>
-
+        <div id="section-history" class="section">
+            <div class="header">
+                <div><button class="btn btn-primary" onclick="loadHistoryData()">🔄 載入/更新歷史紀錄</button></div>
+            </div>
+            <div class="controls">
+                <input type="text" id="searchHistoryInput" placeholder="🔍 搜尋歷史預約 (姓名/電話/備註)..." onkeyup="filterHistoryTable()" style="flex-grow: 1; max-width: 400px;">
+                <div style="color:#888; font-size:14px; margin-left:10px;">總筆數：<span id="historyCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 筆</div>
+            </div>
+            <div class="box-container" style="overflow-x: auto;">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>預約時間</th>
+                            <th>身分</th>
+                            <th>預約人姓名</th>
+                            <th>同行者姓名</th>
+                            <th>聯絡電話</th>
+                            <th>備註</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -397,6 +421,7 @@
         const ADMIN_PASSWORD = "1234"; 
 
         let allBookings = []; 
+        let allHistoryBookings = [];
         let allMembers = [];
         let allOperatingDays = []; 
 
@@ -429,6 +454,7 @@
             document.getElementById(`section-${tabName}`).classList.add('active');
 
             if (tabName === 'member' && allMembers.length === 0) loadMemberData();
+            if (tabName === 'history' && allHistoryBookings.length === 0) loadHistoryData();
             
             if (tabName === 'operating') {
                 if (!opCalendarLoaded) loadOperatingData();
@@ -877,6 +903,56 @@
             event.preventDefault();
             let frontendUrl = `index.html?id=${bookingId}`; 
             window.open(frontendUrl, '_blank'); 
+        }
+
+        async function loadHistoryData() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                // 呼叫您剛剛在 GAS 新增的 API
+                const res = await callApi("getHistoricalBookings");
+                if (res.status === "success") {
+                    allHistoryBookings = res.data;
+                    document.getElementById('historyCount').innerText = allHistoryBookings.length;
+                    
+                    // 歷史紀錄專屬排序：日期越「新」的在越上面 (由近到遠)
+                    allHistoryBookings.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
+                    
+                    filterHistoryTable(); 
+                } else {
+                    alert("讀取歷史紀錄失敗：" + res.message);
+                }
+            } catch (err) { alert("網路錯誤：" + err.message); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function filterHistoryTable() {
+            const keyword = document.getElementById('searchHistoryInput').value.toLowerCase();
+            let filteredData = allHistoryBookings.filter(row => 
+                (row.name + row.phone + (row.name2||'') + (row.remark||'')).toLowerCase().includes(keyword)
+            );
+            renderHistoryTable(filteredData);
+        }
+
+        function renderHistoryTable(data) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無歷史資料</td></tr>';
+                return;
+            }
+            data.forEach(row => {
+                let tr = document.createElement('tr');
+                // 歷史紀錄的文字顏色稍微調淡，視覺上與未來預約做區隔
+                tr.innerHTML = `
+                    <td><span style="color:#888;">${row.date}</span> <br><strong style="color:#555;">${row.time}</strong></td>
+                    <td><span style="color:#888;">${row.type}</span></td>
+                    <td><strong style="color:#555;">${row.name}</strong></td>
+                    <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
+                    <td><span style="color:#888;">${row.phone}</span></td>
+                    <td><div style="font-size:13px; color:#888; max-width:200px; white-space:pre-wrap;">${row.remark || '-'}</div></td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
     </script>
 </body>
