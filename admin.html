@@ -93,18 +93,36 @@
             .header .btn { width: 100%; margin: 0 !important; }
 
             /* 2. 篩選列：改為 Flex 佈局，讓箭頭能靠右並排，並確保標籤文字不消失 */
-            .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; }
-            .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { display: none !important; }
-            .label-text { font-size: 13px; color: #555; }
-            /* 🔥 修改：讓「特定日」標籤在手機版換行顯示在日期選取器上方 */
-            
-            /* 第三排：搜尋框強制換行並佔滿全寬 */
-            #searchBookingInput { 
-                flex: 1 0 100%;    /* 強制換行並佔滿 100% */
-                max-width: 100% !important; 
-                margin-top: 10px !important;
+            .controls { 
+                display: flex; 
+                flex-wrap: wrap; 
+                gap: 8px; 
+                padding: 12px; 
+                align-items: center; 
             }
-            .controls > .quick-btn { flex: 0 1 auto; padding: 8px 12px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
+            /* 僅隱藏電腦版的分隔線，保留 label-text */
+            .pc-only, .controls > div[style*="border-left"] { 
+                display: none !important; 
+            }
+            .controls > .label-text:nth-of-type(2) {
+                    flex: 1 0 100%; /* 強制換行到下一排開頭 */
+                    margin-top: 5px;
+                    margin-bottom: -5px;
+            }
+
+            .label-text {
+                font-size: 13px;
+                color: #555;
+            }
+
+            /* 按鈕根據內容撐開 */
+            .controls > .quick-btn { 
+                flex: 0 1 auto; 
+                padding: 8px 12px; 
+                font-size: 13px; 
+                white-space: nowrap;
+                border-radius: 20px;
+            }
 
             /* 🔥 強制讓小導覽列靠最右邊 🔥 */
             #list-nav-mini {
@@ -308,6 +326,8 @@
                     </div>
 
                     <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
+                    <div class="label-text" style="font-size: 14px; color: #888;">特定日：</div>
+                    <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
                     <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
                 </div>
 
@@ -751,76 +771,90 @@
             });
         }
 
-        // 編輯介紹人函式
+        // 🔥 新增：彈出視窗讓店家輸入/修改介紹人
         async function editReferrer(phone, currentReferrer) {
-            // 1. 彈出對話框
+            // 彈出對話框讓店家輸入
             let newReferrer = prompt("請輸入或修改介紹人姓名：\n(若要清空請直接留白並按確定)", currentReferrer);
             
-            // 2. 取消檢查
+            // 如果店家按了「取消」，就會回傳 null，直接結束
             if (newReferrer === null) return; 
 
-            // 3. 顯示讀取中
             document.getElementById('loading').style.display = 'block';
             
             try {
-                // 4. 呼叫 API
-                const res = await callApi("updateMemberReferrer", { 
-                    phone: phone, 
-                    referrer: newReferrer.trim() 
-                });
-                
+                const res = await callApi("updateMemberReferrer", { phone: phone, referrer: newReferrer.trim() });
                 if (res.status === "success") {
-                    await loadMemberData(); // 確保資料重新載入
+                    loadMemberData(); // 更新成功後自動重新載入會員清單
                 } else {
                     alert("更新失敗：" + res.message);
                 }
             } catch (err) {
                 alert("網路錯誤：" + err.message);
-            } finally {
-                // 5. 不論成功失敗都關閉讀取畫面
-                document.getElementById('loading').style.display = 'none';
             }
+            document.getElementById('loading').style.display = 'none';
         }
 
-        // ================= 🔥 後續函式請確保緊跟在後，不要有截斷 🔥 =================
-        
+        // ================= 🔥 全新：互動式營業日曆設定 🔥 =================
         async function loadOperatingData() {
             document.getElementById('loading').style.display = 'block';
             try {
                 const res = await callApi("getOperatingDays");
                 if (res.status === "success") {
                     allOperatingDays = res.data;
-                    if (!fcOperatingCalendar) {
+                    if (!opCalendarLoaded) {
                         initOperatingCalendar();
+                        opCalendarLoaded = true;
                     } else {
                         fcOperatingCalendar.refetchEvents();
                     }
-                }
-            } catch (err) { console.error(err); }
+                } else alert("讀取營業日失敗：" + res.message);
+            } catch (err) { alert("網路錯誤：" + err.message); }
             document.getElementById('loading').style.display = 'none';
         }
 
         function initOperatingCalendar() {
             const el = document.getElementById('operatingCalendar');
             fcOperatingCalendar = new FullCalendar.Calendar(el, {
-                initialView: 'dayGridMonth',
+                initialView: 'dayGridMonth', // 使用整月檢視
                 locale: 'zh-tw',
-                height: 'auto',
+
+                height: 'auto',         // 高度跟隨外層容器
+                fixedWeekCount: false,  // 隱藏多餘的空白週數 (有幾週就顯示幾週，讓格子有空間變得更大！)
+                showNonCurrentDates: false,
+                
                 headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-                events: function(info, success) {
-                    success(allOperatingDays.map(d => ({ start: d, title: '🟢營業', allDay: true, color: '#4CAF50' })));
+                events: function(fetchInfo, successCallback) {
+                    // 把設定的營業日標示成綠色背景
+                    let events = allOperatingDays.map(date => ({
+                        start: date,
+                        title: '🟢 營業日',
+                        allDay: true,
+                        backgroundColor: '#4CAF50', // 綠色
+                        borderColor: '#388E3C',
+                        display: 'block' // 填滿格子
+                    }));
+                    successCallback(events);
                 },
                 dateClick: async function(info) {
-                    if(confirm("切換該日營業狀態？")) {
-                        const action = allOperatingDays.includes(info.dateStr) ? "removeOperatingDay" : "addOperatingDay";
-                        await callApi(action, { date: info.dateStr });
-                        await loadOperatingData();
+                    // 🔥 點擊格子的互動邏輯
+                    const clickedDate = info.dateStr; // 例如 "2026-03-15"
+                    const isOperating = allOperatingDays.includes(clickedDate);
+                    
+                    if (isOperating) {
+                        if(!confirm(`確定要將 【${clickedDate}】 設為 店休 (不開放預約) 嗎？`)) return;
+                        document.getElementById('loading').style.display = 'block';
+                        await callApi("removeOperatingDay", { date: clickedDate });
+                    } else {
+                        if(!confirm(`確定要將 【${clickedDate}】 設為 營業日 (開放預約) 嗎？`)) return;
+                        document.getElementById('loading').style.display = 'block';
+                        await callApi("addOperatingDay", { date: clickedDate });
                     }
+                    // 操作完成後重新讀取最新狀態並渲染
+                    await loadOperatingData();
                 }
             });
             fcOperatingCalendar.render();
         }
-        
         function goToFrontendEdit(bookingId, event) {
             event.stopPropagation(); 
             event.preventDefault();
