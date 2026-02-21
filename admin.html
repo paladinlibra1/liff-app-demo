@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Colorfashion 後台管理系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         :root {
             --primary-color: #d68095; 
@@ -11,6 +12,15 @@
             --bg-color: #fdf2f5;      
             --card-bg: #ffffff;       
             --text-color: #5d4037;    
+
+            /* 覆寫 FullCalendar 的預設顏色為粉色系 */
+            --fc-button-bg-color: var(--primary-color);
+            --fc-button-border-color: var(--primary-dark);
+            --fc-button-hover-bg-color: var(--primary-dark);
+            --fc-button-hover-border-color: var(--primary-dark);
+            --fc-button-active-bg-color: var(--primary-dark);
+            --fc-button-active-border-color: var(--primary-dark);
+            --fc-today-bg-color: #fff0f3;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -26,25 +36,30 @@
         .btn-outline:hover { background: #fff0f3; }
         .btn-success { background: #4CAF50; color: white; }
         .btn-success:hover { background: #388E3C; }
+        .btn-toggle { background: #607d8b; color: white; }
+        .btn-toggle:hover { background: #455a64; }
         
-        /* 頂部導覽列 (Tabs) */
+        /* 頂部導覽列 */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #fae1e6; padding-bottom: 10px; }
         .tab-btn { background: transparent; border: none; font-size: 18px; font-weight: bold; color: #aaa; cursor: pointer; padding: 10px 20px; border-radius: 10px 10px 0 0; transition: 0.3s; }
         .tab-btn:hover { color: var(--primary-color); }
         .tab-btn.active { color: var(--primary-dark); border-bottom: 4px solid var(--primary-color); }
 
-        /* 隱藏區塊用 */
         .section { display: none; }
         .section.active { display: block; animation: fadeIn 0.4s ease; }
 
-        /* 後台主畫面共用 */
+        /* 控制列 */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); align-items: center;}
         .controls input { padding: 8px; border: 1px solid #e8aeb7; border-radius: 5px; font-size: 14px; outline: none; }
         .controls input:focus { border-color: var(--primary-dark); }
-        
-        /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); font-size: 15px; }
+        .quick-btn { padding: 8px 15px; font-size: 14px; border-radius: 20px; }
+
+        /* 表格與日曆容器 */
+        .box-container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 0; }
+        .calendar-wrapper { padding: 20px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 15px; }
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid #fdf2f5; }
         th { background-color: var(--primary-color); color: white; font-weight: 600; white-space: nowrap; }
         tr:hover { background-color: #faf5f6; }
@@ -54,8 +69,11 @@
         .btn-edit { background: #64b5f6; color: white; }
         .btn-cancel { background: #e57373; color: white; }
 
-        /* Loading */
         #loading { display: none; text-align: center; padding: 50px; color: var(--primary-color); font-weight: bold; }
+
+        /* 日曆內部微調 */
+        .fc-event { cursor: pointer; padding: 2px 4px; }
+        .fc-event-title { font-weight: bold; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -85,36 +103,47 @@
             <div class="header">
                 <div>
                     <button class="btn btn-success" onclick="createNewBooking()" style="margin-right: 10px;">➕ 幫客人建立預約</button>
-                    <button class="btn btn-primary" onclick="loadBookingData(false)">🔄 重新整理</button>
+                    <button class="btn btn-primary" onclick="loadBookingData()" style="margin-right: 10px;">🔄 重新整理</button>
+                    <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">切換至日曆模式 📅</button>
                 </div>
             </div>
 
-            <div class="controls">
-                <div style="font-weight: bold; color: var(--primary-dark);">📅 日期：</div>
-                <input type="date" id="dateFilter" onchange="filterBookingTable()">
-                <button class="btn btn-outline" style="padding: 8px 12px;" onclick="clearDateFilter()">顯示全部</button>
-                
-                <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
+            <div id="listViewWrapper">
+                <div class="controls">
+                    <div style="font-weight: bold; color: var(--primary-dark);">📅 檢視：</div>
+                    <button class="btn btn-primary quick-btn" id="btn-today" onclick="setQuickFilter('today')">今天</button>
+                    <button class="btn btn-outline quick-btn" id="btn-week" onclick="setQuickFilter('week')">本週</button>
+                    <button class="btn btn-outline quick-btn" id="btn-month" onclick="setQuickFilter('month')">本月</button>
+                    <button class="btn btn-outline quick-btn" id="btn-all" onclick="setQuickFilter('all')">全部</button>
+                    
+                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
+                    <div style="font-size: 14px; color: #888;">特定日：</div>
+                    <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
+                    
+                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;"></div>
+                    <input type="text" id="searchBookingInput" placeholder="🔍 搜尋姓名、電話或備註..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 250px;">
+                </div>
 
-                <input type="text" id="searchBookingInput" placeholder="🔍 搜尋姓名、電話或備註..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 300px;">
+                <div class="box-container" style="overflow-x: auto;">
+                    <table id="bookingTable">
+                        <thead>
+                            <tr>
+                                <th>預約時間</th>
+                                <th>身分</th>
+                                <th>預約人姓名</th>
+                                <th>同行者姓名</th>
+                                <th>聯絡電話</th>
+                                <th>備註</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingTableBody"></tbody>
+                    </table>
+                </div>
             </div>
 
-            <div style="overflow-x: auto;">
-                <table id="bookingTable">
-                    <thead>
-                        <tr>
-                            <th>預約時間</th>
-                            <th>身分</th>
-                            <th>預約人姓名</th>
-                            <th>同行者姓名</th>
-                            <th>聯絡電話</th>
-                            <th>備註</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bookingTableBody">
-                        </tbody>
-                </table>
+            <div id="calendarViewWrapper" class="box-container calendar-wrapper" style="display:none;">
+                <div id="calendar"></div>
             </div>
         </div>
 
@@ -130,7 +159,7 @@
                 <div style="color:#888; font-size:14px; margin-left:10px;">總人數：<span id="memberCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 人</div>
             </div>
 
-            <div style="overflow-x: auto;">
+            <div class="box-container" style="overflow-x: auto;">
                 <table id="memberTable">
                     <thead>
                         <tr>
@@ -142,8 +171,7 @@
                             <th>累計次數</th>
                         </tr>
                     </thead>
-                    <tbody id="memberTableBody">
-                        </tbody>
+                    <tbody id="memberTableBody"></tbody>
                 </table>
             </div>
         </div>
@@ -151,45 +179,46 @@
     </div>
 
     <script>
-        // 🔴 1. 填入您的 GAS 網址
+        // 🔴 1. 填入您的 GAS 網址 (請換回您的網址)
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
         
-        // 🔴 2. 填入您的 前端預約網址
+        // 🔴 2. 填入您的 前端預約網址 (請換回您的網址)
         const FRONTEND_URL = "https://liff.line.me/2009018559-AeGOURPY";
-
-        // 🔴 3. 後台登入密碼 (已改為 1234)
+        
+        // 🔴 3. 密碼
         const ADMIN_PASSWORD = "1234"; 
 
-        // 全域變數儲存資料
         let allBookings = []; 
         let allMembers = [];
+        let currentFilterMode = 'today'; 
+        let viewMode = 'list'; // 'list' 或 'calendar'
+        let fcCalendar = null; 
 
-        // === 登入與切換分頁邏輯 ===
         function checkLogin() {
             const pwd = document.getElementById('adminPwd').value;
             if (pwd === ADMIN_PASSWORD) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                loadBookingData(true); // 登入預設載入預約表
+                loadBookingData(true); 
             } else {
                 alert("密碼錯誤！");
             }
         }
 
         function switchTab(tabName) {
-            // 按鈕樣式切換
             document.getElementById('tab-booking').classList.remove('active');
             document.getElementById('tab-member').classList.remove('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
 
-            // 內容區塊切換
             document.getElementById('section-booking').classList.remove('active');
             document.getElementById('section-member').classList.remove('active');
             document.getElementById(`section-${tabName}`).classList.add('active');
 
-            // 載入對應資料 (如果還沒載入過)
             if (tabName === 'member' && allMembers.length === 0) {
                 loadMemberData();
+            }
+            if (tabName === 'booking' && viewMode === 'calendar' && fcCalendar) {
+                setTimeout(() => fcCalendar.render(), 50); 
             }
         }
 
@@ -202,33 +231,25 @@
             return await res.json();
         }
 
-        // ================= 預約管理功能 =================
-
-        // 🔥 開啟「店家代客預約」畫面
         function createNewBooking() {
-            // 直接帶上 ?role=admin 網址參數
             const url = `${FRONTEND_URL}?role=admin`;
             window.open(url, '_blank');
         }
 
         async function loadBookingData(isInit = false) {
-            document.getElementById('bookingTableBody').innerHTML = '';
             document.getElementById('loading').style.display = 'block';
-            
             try {
                 const res = await callApi("getAllBookings");
                 if (res.status === "success") {
                     allBookings = res.data;
-
                     if (isInit) {
-                        const today = new Date();
-                        const yyyy = today.getFullYear();
-                        const mm = String(today.getMonth() + 1).padStart(2, '0');
-                        const dd = String(today.getDate()).padStart(2, '0');
-                        document.getElementById('dateFilter').value = `${yyyy}-${mm}-${dd}`;
+                        setQuickFilter('today');
+                    } else {
+                        filterBookingTable(); 
                     }
-
-                    filterBookingTable(); 
+                    if (fcCalendar) {
+                        fcCalendar.refetchEvents();
+                    }
                 } else {
                     alert("讀取失敗：" + res.message);
                 }
@@ -238,14 +259,115 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        function clearDateFilter() {
-            document.getElementById('dateFilter').value = "";
+        function toggleViewMode() {
+            if (viewMode === 'list') {
+                viewMode = 'calendar';
+                document.getElementById('listViewWrapper').style.display = 'none';
+                document.getElementById('calendarViewWrapper').style.display = 'block';
+                document.getElementById('viewToggleBtn').innerText = '切換至列表模式 📝';
+                
+                if (!fcCalendar) {
+                    initCalendar();
+                } else {
+                    setTimeout(() => fcCalendar.render(), 50);
+                }
+            } else {
+                viewMode = 'list';
+                document.getElementById('listViewWrapper').style.display = 'block';
+                document.getElementById('calendarViewWrapper').style.display = 'none';
+                document.getElementById('viewToggleBtn').innerText = '切換至日曆模式 📅';
+            }
+        }
+
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            fcCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek', 
+                locale: 'zh-tw',             
+                slotMinTime: '10:00:00',     
+                slotMaxTime: '21:00:00',     
+                allDaySlot: false,           
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    week: '週',
+                    day: '日'
+                },
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    let events = allBookings.map(row => {
+                        let titleText = row.name;
+                        if (row.name2) titleText += ` (+${row.name2})`;
+                        return {
+                            id: row.id,
+                            title: titleText,
+                            start: `${row.date}T${row.time}:00`,
+                            backgroundColor: 'var(--primary-color)',
+                            borderColor: 'var(--primary-dark)',
+                            extendedProps: {
+                                phone: row.phone,
+                                remark: row.remark || '無',
+                                type: row.type
+                            }
+                        };
+                    });
+                    successCallback(events);
+                },
+                eventClick: function(info) {
+                    editBooking(info.event.id);
+                },
+                eventDidMount: function(info) {
+                    let tip = `[${info.event.extendedProps.type}]\n姓名: ${info.event.title}\n電話: ${info.event.extendedProps.phone}\n備註: ${info.event.extendedProps.remark}`;
+                    info.el.title = tip;
+                }
+            });
+            fcCalendar.render();
+        }
+
+        function setQuickFilter(mode) {
+            currentFilterMode = mode;
+            const btns = ['btn-today', 'btn-week', 'btn-month', 'btn-all'];
+            btns.forEach(id => {
+                document.getElementById(id).classList.remove('btn-primary');
+                document.getElementById(id).classList.add('btn-outline');
+            });
+            if (mode !== 'custom') {
+                document.getElementById('dateFilter').value = '';
+                const targetBtnId = `btn-${mode}`;
+                if (document.getElementById(targetBtnId)) {
+                    document.getElementById(targetBtnId).classList.remove('btn-outline');
+                    document.getElementById(targetBtnId).classList.add('btn-primary');
+                }
+            }
             filterBookingTable();
+        }
+
+        function getFormattedDate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
         }
 
         function filterBookingTable() {
             const keyword = document.getElementById('searchBookingInput').value.toLowerCase();
-            const dateFilter = document.getElementById('dateFilter').value; 
+            const today = new Date();
+            const todayStr = getFormattedDate(today);
+            const thisMonthStr = todayStr.substring(0, 7); 
+            
+            const dayOfWeek = today.getDay() || 7; 
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - dayOfWeek + 1);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            const weekStart = getFormattedDate(monday);
+            const weekEnd = getFormattedDate(sunday);
+
+            const customDate = document.getElementById('dateFilter').value;
 
             let filteredData = allBookings.filter(row => {
                 const matchKeyword = row.name.toLowerCase().includes(keyword) || 
@@ -253,16 +375,19 @@
                                      (row.name2 && row.name2.toLowerCase().includes(keyword)) ||
                                      (row.remark && row.remark.toLowerCase().includes(keyword));
                 
-                const matchDate = (dateFilter === "") || (row.date === dateFilter);
+                let matchDate = true;
+                if (currentFilterMode === 'today') { matchDate = (row.date === todayStr); } 
+                else if (currentFilterMode === 'week') { matchDate = (row.date >= weekStart && row.date <= weekEnd); } 
+                else if (currentFilterMode === 'month') { matchDate = row.date.startsWith(thisMonthStr); } 
+                else if (currentFilterMode === 'custom') { matchDate = (customDate === "" || row.date === customDate); }
 
                 return matchKeyword && matchDate;
             });
 
-            // 日期排序邏輯
-            if (dateFilter !== "") {
-                filteredData.sort((a, b) => new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time));
-            } else {
+            if (currentFilterMode === 'all') {
                 filteredData.sort((a, b) => new Date(b.date + " " + b.time) - new Date(a.date + " " + a.time));
+            } else {
+                filteredData.sort((a, b) => new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time));
             }
 
             renderBookingTable(filteredData);
@@ -279,11 +404,12 @@
 
             data.forEach(row => {
                 let tr = document.createElement('tr');
+                let name2Html = row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`;
                 tr.innerHTML = `
                     <td><strong>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
                     <td>${row.type}</td>
                     <td><strong style="color:#333;">${row.name}</strong></td>
-                    <td><span style="color:#888;">${row.name2 || '-'}</span></td>
+                    <td>${name2Html}</td>
                     <td>${row.phone}</td>
                     <td><div style="font-size:13px; color:#666; max-width:200px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
@@ -302,19 +428,18 @@
 
         async function cancelBooking(id) {
             if (!confirm("確定要取消此筆預約嗎？\n(日曆與試算表資料將被刪除)")) return;
-            
             document.getElementById('loading').style.display = 'block';
             const res = await callApi("cancelBooking", { id: id });
             if (res.status === "success") {
                 allBookings = allBookings.filter(r => r.id !== id);
                 filterBookingTable();
+                if (fcCalendar) fcCalendar.refetchEvents();
             } else {
                 alert("取消失敗：" + res.message);
             }
             document.getElementById('loading').style.display = 'none';
         }
 
-        // ================= 會員清單功能 =================
         async function loadMemberData() {
             document.getElementById('memberTableBody').innerHTML = '';
             document.getElementById('loading').style.display = 'block';
@@ -336,25 +461,21 @@
 
         function filterMemberTable() {
             const keyword = document.getElementById('searchMemberInput').value.toLowerCase();
-            
             let filteredData = allMembers.filter(row => {
                 return row.name.toLowerCase().includes(keyword) || 
                        row.phone.includes(keyword) || 
                        row.lineName.toLowerCase().includes(keyword);
             });
-
             renderMemberTable(filteredData);
         }
 
         function renderMemberTable(data) {
             const tbody = document.getElementById('memberTableBody');
             tbody.innerHTML = '';
-
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
-
             data.forEach(row => {
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
