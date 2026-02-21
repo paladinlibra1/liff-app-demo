@@ -97,7 +97,15 @@
             .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { display: none !important; }
             .label-text { font-size: 13px; color: #555; }
             /* 🔥 修改：讓「特定日」標籤在手機版換行顯示在日期選取器上方 */
-            .controls > .label-text { flex: 1 0 100%; margin-top: 5px; margin-bottom: -5px; }
+            /* 讓文字標籤這格佔滿 100% 寬度（達到換行效果） */
+            .controls > .label-text { 
+                flex: 1 0 100%; 
+                margin-top: 10px; 
+                margin-bottom: 0; 
+                display: flex; 
+                align-items: center; 
+                gap: 5px; 
+            }
             .controls > .quick-btn { flex: 0 1 auto; padding: 8px 12px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
 
             /* 🔥 強制讓小導覽列靠最右邊 🔥 */
