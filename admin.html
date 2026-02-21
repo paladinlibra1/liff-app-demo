@@ -448,24 +448,26 @@
                         let bdColor = '#388E3C'; 
                         let txtColor = '#ffffff';
 
-                        if (row.type === '新客體驗' || row.type === '新客預約') {
+                        if (row.type === '新客體驗' || row.type === '一般預約') {
                             bgColor = '#FFCA28'; bdColor = '#FF8F00'; txtColor = '#333333';
                         } else if (row.type === '複檢') {
                             bgColor = '#29B6F6'; bdColor = '#0288D1';
                         }
 
-                        // 用 data-id 偷偷記錄這塊磚頭是哪筆訂單
+                        // 🔥 關鍵修改 1：把原本的 flex: 1 拿掉！
+                        // 改成 height: calc(50% - 1px); 這樣它永遠只會佔據這個格子的「一半高度」
                         return `<div class="inner-booking" data-id="${row.id}" 
                                      title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
-                                     style="flex: 1; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
+                                     style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
                                             border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                             overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                                     ${titleText}
                                 </div>`;
                     });
 
-                    // 外層用 flex-direction: column 強迫它們「上下排」
-                    let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%;">${htmlDivs.join('')}</div>`;
+                    // 🔥 關鍵修改 2：加上 justify-content: flex-start;
+                    // 確保只有 1 個人時，方塊會乖乖貼在「最上面」，下方自動留空！
+                    let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%; justify-content: flex-start;">${htmlDivs.join('')}</div>`;
                     return { html: html };
                 },
 
