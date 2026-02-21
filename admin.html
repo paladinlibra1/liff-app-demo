@@ -182,7 +182,7 @@
 
     <div id="login-screen">
         <div class="login-box">
-            <h2 style="color: var(--primary-dark);">🔒 Colorfashion 後台</h2>
+            <h2 style="color: var(--primary-dark);">🔒 Colorfashion麻豆店後台管理系統</h2>
             <p>請輸入管理員密碼</p>
             <input type="password" id="adminPwd" placeholder="輸入密碼" onkeypress="if(event.key === 'Enter') checkLogin()">
             <br>
@@ -363,7 +363,7 @@
                 viewMode = 'calendar';
                 document.getElementById('listViewWrapper').style.display = 'none';
                 document.getElementById('calendarViewWrapper').style.display = 'block';
-                document.getElementById('viewToggleBtn').innerText = 列表模式 📝';
+                document.getElementById('viewToggleBtn').innerText = '列表模式 📝';
                 if (!fcBookingCalendar) initBookingCalendar();
                 else setTimeout(() => fcBookingCalendar.render(), 50);
             } else {
