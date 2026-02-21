@@ -274,14 +274,33 @@
                 slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,           
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                 events: function(fetchInfo, successCallback) {
-                    let events = allBookings.map(row => ({
-                        id: row.id,
-                        title: row.name + (row.name2 ? ` (+${row.name2})` : ""),
-                        start: `${row.date}T${row.time}:00`,
-                        backgroundColor: 'var(--primary-color)',
-                        borderColor: 'var(--primary-dark)',
-                        extendedProps: { phone: row.phone, remark: row.remark || '無', type: row.type }
-                    }));
+                    let events = allBookings.map(row => {
+                        let titleText = row.name + (row.name2 ? ` (+${row.name2})` : "");
+                        
+                        // 🔥 根據身分自動判斷日曆方塊顏色
+                        let bgColor = '#4CAF50'; // 預設綠色 (一般預約 / 沒寫)
+                        let bdColor = '#388E3C'; // 預設深綠邊框
+                        let txtColor = '#ffffff';// 預設白字
+
+                        if (row.type === '新客體驗' || row.type === '新客預約') {
+                            bgColor = '#FFCA28'; // 黃色
+                            bdColor = '#FF8F00'; // 深黃邊框
+                            txtColor = '#333333';// 黃底配深色字比較清楚
+                        } else if (row.type === '複檢') {
+                            bgColor = '#29B6F6'; // 藍色
+                            bdColor = '#0288D1'; // 深藍邊框
+                        }
+
+                        return {
+                            id: row.id,
+                            title: titleText,
+                            start: `${row.date}T${row.time}:00`,
+                            backgroundColor: bgColor,
+                            borderColor: bdColor,
+                            textColor: txtColor,
+                            extendedProps: { phone: row.phone, remark: row.remark || '無', type: row.type }
+                        };
+                    });
                     successCallback(events);
                 },
                 eventClick: function(info) { editBooking(info.event.id); },
