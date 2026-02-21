@@ -92,39 +92,13 @@
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
             .header .btn { width: 100%; margin: 0 !important; }
 
-            /* 2. 篩選列：Flex 佈局，讓箭頭靠右，特定日標籤可見 */
-            .controls { 
-                display: flex; 
-                flex-wrap: wrap; 
-                gap: 8px; 
-                padding: 12px; 
-                align-items: center; 
-            }
-            /* 僅隱藏不必要的分隔線與第一個「檢視」字樣，保留「特定日」標籤 */
-            .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { 
-                display: none !important; 
-            }
+            /* 2. 篩選列：Flex 佈局，讓箭頭靠右，特定日提示不消失 */
+            .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; }
+            
+            /* 隱藏第一個標籤「檢視：」以省空間，但保留「特定日：」 */
+            .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { display: none !important; }
 
-            .label-text { 
-                font-size: 13px; 
-                color: #555; 
-                display: inline-block;
-            }
-
-            /* 手機版：強制「特定日」標籤換行，標示在日期選取框上方 */
-            @media (max-width: 768px) {
-                .controls > .label-text {
-                    flex: 1 0 100%; 
-                    margin-top: 5px;
-                    margin-bottom: -5px;
-                }
-                #list-nav-mini {
-                    display: flex !important;
-                    margin-left: auto; /* 將箭頭推到最右邊 */
-                    gap: 5px;
-                    align-items: center;
-                }
-            }
+            .label-text { font-size: 13px; color: #555; }
 
             /* 按鈕根據內容撐開 */
             .controls > .quick-btn { 
