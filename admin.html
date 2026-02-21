@@ -97,21 +97,7 @@
             .controls > div:first-child, .pc-only, .controls > div[style*="border-left"] { display: none !important; }
             .label-text { font-size: 13px; color: #555; }
             /* 🔥 修改：讓「特定日」標籤在手機版換行顯示在日期選取器上方 */
-            /* 讓文字標籤這格佔滿 100% 寬度（達到換行效果） */
-            .controls > .label-text { 
-                flex: 0 0 auto;    /* 不伸縮，依文字長度 */
-                margin-top: 10px; 
-                margin-bottom: 0;
-            }
-
-            /* 第二排：日期框緊跟在特定日後面，並強迫後面的元素換行 */
-            #dateFilter { 
-                flex: 0 1 150px;   /* 限制長度，避免擠掉空間 */
-                width: auto !important; 
-                margin-top: 10px !important;
-                margin-right: auto; /* 將右邊空間推開，確保搜尋框掉到下一行 */
-            }
-
+            
             /* 第三排：搜尋框強制換行並佔滿全寬 */
             #searchBookingInput { 
                 flex: 1 0 100%;    /* 強制換行並佔滿 100% */
@@ -322,8 +308,6 @@
                     </div>
 
                     <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
-                    <div class="label-text" style="font-size: 14px; color: #888;">特定日：</div>
-                    <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
                     <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
                 </div>
 
@@ -624,7 +608,7 @@
             let navLabel = document.getElementById('list-nav-label');
 
             // 🌟 自動判斷導覽列顯示狀態
-            if (currentFilterMode === 'all' || currentFilterMode === 'custom') {
+            if (currentFilterMode === 'all') {
                 if (navDiv) navDiv.style.display = 'none';
                 startOfFilter = (currentFilterMode === 'all') ? "1970-01-01" : customDate;
                 endOfFilter = (currentFilterMode === 'all') ? "2100-12-31" : customDate;
