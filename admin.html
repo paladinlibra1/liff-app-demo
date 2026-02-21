@@ -72,6 +72,34 @@
         .fc-daygrid-day:hover { background-color: #fafafa; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ================= 手機版 (RWD) 畫面優化 ================= */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 10px; }
+            .tabs { padding-bottom: 5px; margin-bottom: 15px; }
+            .tab-btn { font-size: 15px; padding: 8px 10px; }
+            
+            /* 1. 頂部按鈕改為全寬往下排 */
+            .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+            .header .btn { width: 100%; margin: 0 !important; }
+
+            /* 2. 篩選列：按鈕變成 2x2 排列，輸入框填滿螢幕 */
+            .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+            .controls > div:first-child { grid-column: 1 / -1; margin-bottom: -5px; }
+            .controls > .quick-btn { width: 100%; margin: 0; border-radius: 8px; }
+            .controls > div[style*="border-left"] { display: none !important; } /* 隱藏分隔線 */
+            .controls > div:nth-of-type(3) { grid-column: 1 / -1; margin-top: 5px; }
+            .controls > input { grid-column: 1 / -1; max-width: 100% !important; }
+            
+            /* 3. 表格防擠壓 (強制不換行，改為左右滑動) */
+            th, td { white-space: nowrap !important; padding: 10px; font-size: 14px; }
+            .box-container { overflow-x: auto; }
+            
+            /* 4. 日曆上方標題自動折行 */
+            .fc .fc-toolbar { flex-direction: column; gap: 10px; }
+            .fc .fc-toolbar-title { font-size: 1.3em !important; }
+        }
     </style>
 </head>
 <body>
