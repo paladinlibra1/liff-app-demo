@@ -601,22 +601,27 @@
         function filterBookingTable() {
             const keyword = document.getElementById('searchBookingInput').value.toLowerCase();
             const now = new Date();
+
+            // 🔥 1. 統一使用這一組變數，並給予預設值防止失效
+            let startOfFilter = "1970-01-01"; 
+            let endOfFilter = "3000-12-31";
             
-            let startOfFilter, endOfFilter;
             let navDiv = document.getElementById('list-nav-mini');
             let navLabel = document.getElementById('list-nav-label');
 
             // 🌟 自動判斷導覽列顯示狀態
             if (currentFilterMode === 'all') {
                 if (navDiv) navDiv.style.display = 'none';
-                startOfFilter = (currentFilterMode === 'all') ? "1970-01-01" : customDate;
-                endOfFilter = (currentFilterMode === 'all') ? "2100-12-31" : customDate;
+                // 🔥 2. 移除這裡原本的 customDate，直接給範圍
+                startOfFilter = "1970-01-01";
+                endOfFilter = "3000-12-31";
             } else {
-                if (navDiv) navDiv.style.display = 'flex'; // 顯示 ＜ 標籤 ＞
+                if (navDiv) navDiv.style.display = 'flex'; 
 
                 if (currentFilterMode === 'day') {
                     let target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + listOffset);
-                    startOfFilter = getFormattedDate(target); endOfFilter = startOfFilter;
+                    startOfFilter = getFormattedDate(target); 
+                    endOfFilter = startOfFilter;
                     navLabel.innerText = `${target.getMonth()+1}/${target.getDate()}`;
                 } else if (currentFilterMode === 'week') {
                     let targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (listOffset * 7));
@@ -626,17 +631,13 @@
                     
                     startOfFilter = getFormattedDate(s); 
                     endOfFilter = getFormattedDate(e);
-
-                    // 🔥 統一格式：不論月份是否相同，皆顯示 月/日 🔥
-                    let startLabel = `${s.getMonth() + 1}/${s.getDate()}`;
-                    let endLabel = `${e.getMonth() + 1}/${e.getDate()}`;
-                    
-                    navLabel.innerText = `${startLabel}-${endLabel}`;
+                    navLabel.innerText = `${s.getMonth() + 1}/${s.getDate()}-${e.getMonth() + 1}/${e.getDate()}`;
                 } else if (currentFilterMode === 'month') {
                     let target = new Date(now.getFullYear(), now.getMonth() + listOffset, 1);
                     let s = new Date(target.getFullYear(), target.getMonth(), 1);
                     let e = new Date(target.getFullYear(), target.getMonth() + 1, 0);
-                    startOfFilter = getFormattedDate(s); endOfFilter = getFormattedDate(e);
+                    startOfFilter = getFormattedDate(s); 
+                    endOfFilter = getFormattedDate(e);
                     navLabel.innerText = `${target.getMonth()+1}月`;
                 }
             }
@@ -644,13 +645,17 @@
             // 執行過濾與渲染
             let filteredData = allBookings.filter(row => {
                 const mKeyword = (row.name + row.phone + (row.name2||'') + (row.remark||'')).toLowerCase().includes(keyword);
+                // 🔥 3. 確保這裡只判斷存在的變數，移除 customDate 判斷
                 let mDate = (row.date >= startOfFilter && row.date <= endOfFilter);
-                if (currentFilterMode === 'custom' && customDate === "") mDate = true; 
                 return mKeyword && mDate;
             });
 
-            if (currentFilterMode === 'all') filteredData.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
-            else filteredData.sort((a, b) => new Date(a.date+" "+a.time) - new Date(b.date+" "+b.time));
+            // 排序邏輯
+            if (currentFilterMode === 'all') {
+                filteredData.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
+            } else {
+                filteredData.sort((a, b) => new Date(a.date+" "+a.time) - new Date(b.date+" "+b.time));
+            }
 
             renderBookingTable(filteredData);
         }
