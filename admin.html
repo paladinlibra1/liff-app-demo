@@ -637,17 +637,9 @@
                     startOfFilter = getFormattedDate(s); 
                     endOfFilter = getFormattedDate(e);
 
-                    // 🔥 修正後的智慧標籤邏輯 🔥
+                    // 🔥 統一格式：不論月份是否相同，皆顯示 月/日 🔥
                     let startLabel = `${s.getMonth() + 1}/${s.getDate()}`;
-                    let endLabel = "";
-                    
-                    if (s.getMonth() === e.getMonth()) {
-                        // 如果在同一個月，只顯示「日」 (例如：2/16-22)
-                        endLabel = e.getDate();
-                    } else {
-                        // 如果跨月了，就必須顯示「月/日」 (例如：2/23-3/1)
-                        endLabel = `${e.getMonth() + 1}/${e.getDate()}`;
-                    }
+                    let endLabel = `${e.getMonth() + 1}/${e.getDate()}`;
                     
                     navLabel.innerText = `${startLabel}-${endLabel}`;
                 } else if (currentFilterMode === 'month') {
