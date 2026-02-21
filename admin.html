@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Colorfashion 麻豆店後台管理系統</title>
+    <title>Colorfashion 麻豆店 後台管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         :root {
@@ -212,18 +212,7 @@
 </head>
 <body>
 
-    <div id="login-screen">
-        <div class="login-box">
-            <h2 style="color: var(--primary-dark);">🔒 Colorfashion麻豆店後台管理系統</h2>
-            <p>請輸入管理員密碼</p>
-            <input type="password" id="adminPwd" placeholder="輸入密碼" onkeypress="if(event.key === 'Enter') checkLogin()">
-            <br>
-            <button class="btn btn-primary" onclick="checkLogin()">登入系統</button>
-        </div>
-    </div>
-
-    <div id="dashboard" class="container" style="display:none;">
-        
+    <div id="dashboard" class="container">    
         <div class="tabs">
             <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
@@ -334,6 +323,10 @@
         let fcBookingCalendar = null; 
         let fcOperatingCalendar = null;
         let opCalendarLoaded = false;
+
+        window.onload = function() {
+            loadBookingData(true); 
+        };
 
         function checkLogin() {
             const pwd = document.getElementById('adminPwd').value;
@@ -463,33 +456,46 @@
                 eventContent: function(info) {
                     let bookings = info.event.extendedProps.bookings;
                     
-                    // 把每一筆訂單畫成一個小方塊
-                    let htmlDivs = bookings.map(row => {
-                        let titleText = row.name + (row.name2 ? ` (+${row.name2})` : "");
-                        
+                    let htmlDivs = []; // 改成用陣列來收集方塊
+                    
+                    bookings.forEach(row => {
                         let bgColor = '#4CAF50'; 
                         let bdColor = '#388E3C'; 
                         let txtColor = '#ffffff';
 
-                        if (row.type === '新客體驗' || row.type === '一般預約') {
+                        // 判斷顏色
+                        if (row.type === '新客體驗' || row.type === '新客預約' || row.type === '一般預約') {
                             bgColor = '#FFCA28'; bdColor = '#FF8F00'; txtColor = '#333333';
                         } else if (row.type === '複檢') {
                             bgColor = '#29B6F6'; bdColor = '#0288D1';
                         }
 
-                        // 🔥 關鍵修改 1：把原本的 flex: 1 拿掉！
-                        // 改成 height: calc(50% - 1px); 這樣它永遠只會佔據這個格子的「一半高度」
-                        return `<div class="inner-booking" data-id="${row.id}" 
-                                     title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
+                        // 🧱 第 1 塊磚頭：建立「主要預約人」的獨立方塊
+                        htmlDivs.push(`
+                            <div class="inner-booking" data-id="${row.id}" 
+                                 title="[${row.type}] ${row.name}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
+                                 style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
+                                        border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
+                                        overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                ${row.name}
+                            </div>
+                        `);
+
+                        // 🧱 第 2 塊磚頭：如果有「同行人」，就再獨立塞入第二塊方塊！
+                        if (row.name2 && row.name2.trim() !== '') {
+                            htmlDivs.push(`
+                                <div class="inner-booking" data-id="${row.id}" 
+                                     title="[${row.type} - 同行] ${row.name2}\n電話: ${row.phone}\n備註: ${row.remark || '無'}" 
                                      style="height: calc(50% - 1px); flex-shrink: 0; background-color: ${bgColor}; border: 1px solid ${bdColor}; color: ${txtColor}; 
                                             border-radius: 4px; padding: 1px; font-size: 11px; line-height: 1.1; 
                                             overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                                    ${titleText}
-                                </div>`;
+                                    ${row.name2}
+                                </div>
+                            `);
+                        }
                     });
 
-                    // 🔥 關鍵修改 2：加上 justify-content: flex-start;
-                    // 確保只有 1 個人時，方塊會乖乖貼在「最上面」，下方自動留空！
+                    // 外層容器確保方塊由上往下排，且只佔 50% 高度
                     let html = `<div style="display: flex; flex-direction: column; gap: 2px; height: 100%; width: 100%; justify-content: flex-start;">${htmlDivs.join('')}</div>`;
                     return { html: html };
                 },
