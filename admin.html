@@ -70,6 +70,11 @@
         .fc-event-title { font-weight: bold; }
         .fc-daygrid-day { cursor: pointer; transition: background-color 0.2s; }
         .fc-daygrid-day:hover { background-color: #fafafa; }
+        .fc-timegrid-event {
+            box-shadow: none !important;      /* 殺掉套件預設的白色陰影 */
+            border: none !important;          /* 殺掉套件預設的外框 */
+            background: transparent !important; /* 確保外層絕對透明 */
+        }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -134,6 +139,23 @@
             .fc .fc-daygrid-day-number { 
                 font-size: 12px !important; 
                 padding: 2px !important; 
+            }
+
+            /* ================= 讓營業日月曆剛好填滿一個手機螢幕 ================= */
+            /* 扣掉頂部頁籤(約150px)，剩下的手機螢幕高度全部給月曆 */
+            #section-operating .calendar-wrapper {
+                height: calc(100vh - 150px); 
+                padding: 5px;
+                overflow: hidden; /* 防止出現多餘的捲軸 */
+            }
+            
+            #operatingCalendar {
+                height: 100%; /* 日曆本體完全撐滿上面的空間 */
+            }
+
+            /* 讓綠色方塊稍微置中，看起來更精緻 */
+            .fc-daygrid-event-harness {
+                margin: 2px 0;
             }
         
             /* 4. 🔥 預約方塊 & 營業日方塊的文字 🔥 */
@@ -671,6 +693,13 @@
             fcOperatingCalendar = new FullCalendar.Calendar(el, {
                 initialView: 'dayGridMonth', // 使用整月檢視
                 locale: 'zh-tw',
+                
+                // 🔥 關鍵修改：讓日曆完美填滿一整個螢幕 🔥
+                height: '100%',         // 高度跟隨外層容器
+                expandRows: true,       // 讓每一週的格子「平均拉高」填滿所有空間
+                fixedWeekCount: false,  // 隱藏多餘的空白週數 (有幾週就顯示幾週，讓格子有空間變得更大！)
+                showNonCurrentDates: false,
+                
                 headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
                 events: function(fetchInfo, successCallback) {
                     // 把設定的營業日標示成綠色背景
