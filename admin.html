@@ -278,7 +278,7 @@
                 slotLabelInterval: '00:30',     // 左側時間軸每 30 分鐘顯示一次數字 (10:00, 10:30...)
 
                 defaultTimedEventDuration: '00:30:00', // 🔥 新增這行：強制所有預約方塊的長度都是剛好 30 分鐘 🔥
-                
+                displayEventTime: false,
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                 events: function(fetchInfo, successCallback) {
                     let events = allBookings.map(row => {
