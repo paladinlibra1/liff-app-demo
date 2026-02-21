@@ -162,7 +162,7 @@
                             <th>初次來訪日</th>
                             <th>最後來訪日</th>
                             <th>累計次數</th>
-                        </tr>
+                            <th>介紹人</th> </tr>
                     </thead>
                     <tbody id="memberTableBody"></tbody>
                 </table>
@@ -424,11 +424,16 @@
             const tbody = document.getElementById('memberTableBody');
             tbody.innerHTML = '';
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
             data.forEach(row => {
                 let tr = document.createElement('tr');
+                
+                // 處理介紹人顯示與防呆 (處理名字裡可能有單引號的問題)
+                let safeReferrer = (row.referrer || '').replace(/'/g, "\\'");
+                let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
+
                 tr.innerHTML = `
                     <td><strong>${row.name}</strong></td>
                     <td>${row.phone}</td>
@@ -436,9 +441,38 @@
                     <td style="font-size:14px; color:#888;">${row.firstVisit}</td>
                     <td style="font-size:14px; color:#333;">${row.lastVisit}</td>
                     <td><strong style="color:var(--primary-dark); font-size:16px;">${row.count}</strong></td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${referrerDisplay}
+                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px; cursor: pointer;" onclick="editReferrer('${row.phone}', '${safeReferrer}')">✏️</button>
+                        </div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        // 🔥 新增：彈出視窗讓店家輸入/修改介紹人
+        async function editReferrer(phone, currentReferrer) {
+            // 彈出對話框讓店家輸入
+            let newReferrer = prompt("請輸入或修改介紹人姓名：\n(若要清空請直接留白並按確定)", currentReferrer);
+            
+            // 如果店家按了「取消」，就會回傳 null，直接結束
+            if (newReferrer === null) return; 
+
+            document.getElementById('loading').style.display = 'block';
+            
+            try {
+                const res = await callApi("updateMemberReferrer", { phone: phone, referrer: newReferrer.trim() });
+                if (res.status === "success") {
+                    loadMemberData(); // 更新成功後自動重新載入會員清單
+                } else {
+                    alert("更新失敗：" + res.message);
+                }
+            } catch (err) {
+                alert("網路錯誤：" + err.message);
+            }
+            document.getElementById('loading').style.display = 'none';
         }
 
         // ================= 🔥 全新：互動式營業日曆設定 🔥 =================
