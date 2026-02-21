@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Colorfashion 後台管理系統</title>
+    <title>Colorfashion 麻豆店後台管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         :root {
@@ -103,8 +103,8 @@
             /* ================= 日曆文字縮小 & 自動換行優化 ================= */
             /* 1. 頂部星期標題 (一、二、三...) */
             .fc .fc-col-header-cell-cushion { 
-                font-size: 12px !important; 
-                padding: 4px !important; 
+                padding: 8px 4px !important; /* 上下 8px，左右 4px */
+                width: 100%; /* 讓它填滿寬度 */
             }
         
             /* 2. 左側時間軸 (10:00, 10:30...) */
@@ -144,6 +144,37 @@
                 font-size: 12px !important;
                 padding: 4px 8px !important;
             }
+
+            .top-action-bar {
+                display: flex;
+                flex-direction: row !important; /* 強制橫向排列 */
+                gap: 8px;                       /* 按鈕之間的間距 */
+                margin-bottom: 15px;
+                width: 100%;
+            }
+        
+            .top-action-bar .btn {
+                margin: 0 !important;           /* 消除多餘外距 */
+                padding: 10px 5px;              /* 縮小內距適應手機 */
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;            /* 防止文字被擠到換行 */
+            }
+        
+            /* 讓「代客預約」和「列表模式」這兩個按鈕自動平分剩下的寬度 */
+            .top-action-bar .btn:nth-child(1),
+            .top-action-bar .btn:nth-child(2) {
+                flex: 1; 
+            }
+        
+            /* 讓「重新整理」圖示變成一個完美的正方形小方塊 */
+            .top-action-bar .btn-icon {
+                flex: 0 0 42px;                 /* 固定寬度 42px */
+                font-size: 18px;                /* 圖示放大一點 */
+                padding: 0;
+            }
         }
     </style>
 </head>
@@ -171,10 +202,12 @@
 
         <div id="section-booking" class="section active">
             <div class="header">
-                <div>
-                    <button class="btn btn-success" onclick="createNewBooking()" style="margin-right: 10px;">➕ 幫客人建立預約</button>
-                    <button class="btn btn-primary" onclick="loadBookingData()" style="margin-right: 10px;">🔄 重新整理</button>
-                    <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">切換至日曆模式 📅</button>
+                <div class="top-action-bar">
+                    <button class="btn btn-success" onclick="createNewBooking()">➕ 代客預約</button>
+                    
+                    <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">日曆模式 📅</button>
+                    
+                    <button class="btn btn-primary btn-icon" onclick="loadBookingData()" title="重新整理">🔄</button>
                 </div>
             </div>
 
@@ -330,14 +363,14 @@
                 viewMode = 'calendar';
                 document.getElementById('listViewWrapper').style.display = 'none';
                 document.getElementById('calendarViewWrapper').style.display = 'block';
-                document.getElementById('viewToggleBtn').innerText = '切換至列表模式 📝';
+                document.getElementById('viewToggleBtn').innerText = 列表模式 📝';
                 if (!fcBookingCalendar) initBookingCalendar();
                 else setTimeout(() => fcBookingCalendar.render(), 50);
             } else {
                 viewMode = 'list';
                 document.getElementById('listViewWrapper').style.display = 'block';
                 document.getElementById('calendarViewWrapper').style.display = 'none';
-                document.getElementById('viewToggleBtn').innerText = '切換至日曆模式 📅';
+                document.getElementById('viewToggleBtn').innerText = '日曆模式 📅';
             }
         }
 
@@ -359,10 +392,10 @@
                     let dateStr = (arg.date.getMonth() + 1) + '/' + arg.date.getDate(); 
                     
                     let wrapper = document.createElement('div');
-                    wrapper.innerHTML = `
-                        <div style="text-align: center; line-height: 1.2;">
-                            <div style="font-size: 13px; font-weight: bold; color: var(--text-color);">${weekday}</div>
-                            <div style="font-size: 11px; color: #888; font-weight: normal;">${dateStr}</div>
+                   wrapper.innerHTML = `
+                        <div style="text-align: center; line-height: 1.4; padding: 2px 0;">
+                            <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                            <div style="font-size: 13px; color: #888; font-weight: normal;">${dateStr}</div>
                         </div>
                     `;
                     return { domNodes: [wrapper] };
