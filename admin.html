@@ -835,21 +835,39 @@
                     successCallback(events);
                 },
                 dateClick: async function(info) {
-                    // 🔥 點擊格子的互動邏輯
-                    const clickedDate = info.dateStr; // 例如 "2026-03-15"
+                    const clickedDate = info.dateStr;
                     const isOperating = allOperatingDays.includes(clickedDate);
                     
-                    if (isOperating) {
-                        if(!confirm(`確定要將 【${clickedDate}】 設為 店休 (不開放預約) 嗎？`)) return;
-                        document.getElementById('loading').style.display = 'block';
-                        await callApi("removeOperatingDay", { date: clickedDate });
-                    } else {
-                        if(!confirm(`確定要將 【${clickedDate}】 設為 營業日 (開放預約) 嗎？`)) return;
-                        document.getElementById('loading').style.display = 'block';
-                        await callApi("addOperatingDay", { date: clickedDate });
+                    const actionTxt = isOperating ? "店休 (不開放預約)" : "營業日 (開放預約)";
+                    if(!confirm(`確定要將 【${clickedDate}】 設為 ${actionTxt} 嗎？`)) return;
+
+                    // 顯示讀取中
+                    document.getElementById('loading').style.display = 'block';
+
+                    try {
+                        const action = isOperating ? "removeOperatingDay" : "addOperatingDay";
+                        // 1. 呼叫 API 單純執行「寫入/刪除」
+                        const res = await callApi(action, { date: clickedDate });
+
+                        if (res.status === "success") {
+                            // 🔥 2. 關鍵提速：不要再 await loadOperatingData() 重新下載全部資料了！
+                            // 直接在本地陣列中把該日期加入或剔除
+                            if (isOperating) {
+                                allOperatingDays = allOperatingDays.filter(d => d !== clickedDate);
+                            } else {
+                                allOperatingDays.push(clickedDate);
+                            }
+                            // 3. 讓日曆根據最新的本地陣列重新渲染即可
+                            fcOperatingCalendar.refetchEvents();
+                        } else {
+                            alert("設定失敗：" + res.message);
+                        }
+                    } catch (err) {
+                        alert("網路發生錯誤：" + err.message);
                     }
-                    // 操作完成後重新讀取最新狀態並渲染
-                    await loadOperatingData();
+                    
+                    // 關閉讀取畫面
+                    document.getElementById('loading').style.display = 'none';
                 }
             });
             fcOperatingCalendar.render();
