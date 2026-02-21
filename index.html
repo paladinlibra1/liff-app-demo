@@ -407,9 +407,16 @@
                 const dateRes = await datesPromise; 
                 
                 // 渲染日期選單
+                const dateRes = await datesPromise; 
+                
+                // 🚀 終極殺手鐧：不管後端傳什麼順序，前端直接強制轉成日期格式再排一次！
+                let sortedDates = dateRes.dates.sort((a, b) => {
+                    return new Date(a.replace(/-/g, '/')) - new Date(b.replace(/-/g, '/'));
+                });
+
                 const select = document.getElementById('date');
                 select.innerHTML = '<option value="">請選擇日期</option>';
-                dateRes.dates.forEach(d => {
+                sortedDates.forEach(d => {
                     let option = document.createElement("option");
                     option.value = d;
                     option.text = d;
