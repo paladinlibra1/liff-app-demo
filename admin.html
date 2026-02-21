@@ -12,8 +12,6 @@
             --bg-color: #fdf2f5;      
             --card-bg: #ffffff;       
             --text-color: #5d4037;    
-
-            /* 覆寫 FullCalendar 的預設顏色為粉色系 */
             --fc-button-bg-color: var(--primary-color);
             --fc-button-border-color: var(--primary-dark);
             --fc-button-hover-bg-color: var(--primary-dark);
@@ -25,7 +23,6 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* 登入畫面 */
         #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
         .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(214, 128, 149, 0.15); text-align: center; }
         .login-box input { padding: 10px; font-size: 16px; border: 1px solid #e8aeb7; border-radius: 8px; margin-bottom: 15px; width: 80%; text-align: center; }
@@ -39,8 +36,7 @@
         .btn-toggle { background: #607d8b; color: white; }
         .btn-toggle:hover { background: #455a64; }
         
-        /* 頂部導覽列 */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #fae1e6; padding-bottom: 10px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #fae1e6; padding-bottom: 10px; overflow-x: auto; white-space: nowrap; }
         .tab-btn { background: transparent; border: none; font-size: 18px; font-weight: bold; color: #aaa; cursor: pointer; padding: 10px 20px; border-radius: 10px 10px 0 0; transition: 0.3s; }
         .tab-btn:hover { color: var(--primary-color); }
         .tab-btn.active { color: var(--primary-dark); border-bottom: 4px solid var(--primary-color); }
@@ -48,14 +44,12 @@
         .section { display: none; }
         .section.active { display: block; animation: fadeIn 0.4s ease; }
 
-        /* 控制列 */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); align-items: center;}
         .controls input { padding: 8px; border: 1px solid #e8aeb7; border-radius: 5px; font-size: 14px; outline: none; }
         .controls input:focus { border-color: var(--primary-dark); }
         .quick-btn { padding: 8px 15px; font-size: 14px; border-radius: 20px; }
 
-        /* 表格與日曆容器 */
         .box-container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 0; }
         .calendar-wrapper { padding: 20px; }
 
@@ -71,9 +65,11 @@
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--primary-color); font-weight: bold; }
 
-        /* 日曆內部微調 */
-        .fc-event { cursor: pointer; padding: 2px 4px; }
+        /* FullCalendar 日曆樣式微調 */
+        .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
         .fc-event-title { font-weight: bold; }
+        .fc-daygrid-day { cursor: pointer; transition: background-color 0.2s; }
+        .fc-daygrid-day:hover { background-color: #fafafa; }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -95,6 +91,7 @@
         <div class="tabs">
             <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
+            <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">🗓️ 營業日曆設定</button>
         </div>
 
         <div id="loading">🚀 資料處理中，請稍候...</div>
@@ -143,22 +140,18 @@
             </div>
 
             <div id="calendarViewWrapper" class="box-container calendar-wrapper" style="display:none;">
-                <div id="calendar"></div>
+                <div id="bookingCalendar"></div>
             </div>
         </div>
 
         <div id="section-member" class="section">
             <div class="header">
-                <div>
-                    <button class="btn btn-primary" onclick="loadMemberData()">🔄 重新整理清單</button>
-                </div>
+                <div><button class="btn btn-primary" onclick="loadMemberData()">🔄 重新整理清單</button></div>
             </div>
-
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
                 <div style="color:#888; font-size:14px; margin-left:10px;">總人數：<span id="memberCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 人</div>
             </div>
-
             <div class="box-container" style="overflow-x: auto;">
                 <table id="memberTable">
                     <thead>
@@ -176,23 +169,32 @@
             </div>
         </div>
 
+        <div id="section-operating" class="section">
+            <div class="header" style="background: #e8f5e9; padding: 15px; border-radius: 10px; color: #2e7d32;">
+                <strong>💡 使用說明：</strong> 點擊日曆上的任何一天，即可切換該日期為「營業日 (綠色)」或「店休日 (空白)」。
+            </div>
+            <div class="box-container calendar-wrapper">
+                <div id="operatingCalendar"></div> 
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // 🔴 1. 填入您的 GAS 網址 (請換回您的網址)
+        // 🔴 請換成您的 GAS 網址
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
-        
-        // 🔴 2. 填入您的 前端預約網址 (請換回您的網址)
         const FRONTEND_URL = "https://liff.line.me/2009018559-AeGOURPY";
-        
-        // 🔴 3. 密碼
         const ADMIN_PASSWORD = "1234"; 
 
         let allBookings = []; 
         let allMembers = [];
+        let allOperatingDays = []; 
+
         let currentFilterMode = 'today'; 
-        let viewMode = 'list'; // 'list' 或 'calendar'
-        let fcCalendar = null; 
+        let viewMode = 'list'; 
+        let fcBookingCalendar = null; 
+        let fcOperatingCalendar = null;
+        let opCalendarLoaded = false;
 
         function checkLogin() {
             const pwd = document.getElementById('adminPwd').value;
@@ -206,35 +208,34 @@
         }
 
         function switchTab(tabName) {
-            document.getElementById('tab-booking').classList.remove('active');
-            document.getElementById('tab-member').classList.remove('active');
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${tabName}`).classList.add('active');
 
-            document.getElementById('section-booking').classList.remove('active');
-            document.getElementById('section-member').classList.remove('active');
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(`section-${tabName}`).classList.add('active');
 
-            if (tabName === 'member' && allMembers.length === 0) {
-                loadMemberData();
+            if (tabName === 'member' && allMembers.length === 0) loadMemberData();
+            
+            if (tabName === 'operating') {
+                if (!opCalendarLoaded) loadOperatingData();
+                else if (fcOperatingCalendar) setTimeout(() => fcOperatingCalendar.render(), 50);
             }
-            if (tabName === 'booking' && viewMode === 'calendar' && fcCalendar) {
-                setTimeout(() => fcCalendar.render(), 50); 
+            
+            if (tabName === 'booking' && viewMode === 'calendar' && fcBookingCalendar) {
+                setTimeout(() => fcBookingCalendar.render(), 50); 
             }
         }
 
         async function callApi(action, payload = {}) {
             const res = await fetch(GAS_API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
+                method: "POST", headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: action, payload: payload })
             });
             return await res.json();
         }
 
-        function createNewBooking() {
-            const url = `${FRONTEND_URL}?role=admin`;
-            window.open(url, '_blank');
-        }
+        // ================= 預約管理功能 =================
+        function createNewBooking() { window.open(`${FRONTEND_URL}?role=admin`, '_blank'); }
 
         async function loadBookingData(isInit = false) {
             document.getElementById('loading').style.display = 'block';
@@ -242,20 +243,11 @@
                 const res = await callApi("getAllBookings");
                 if (res.status === "success") {
                     allBookings = res.data;
-                    if (isInit) {
-                        setQuickFilter('today');
-                    } else {
-                        filterBookingTable(); 
-                    }
-                    if (fcCalendar) {
-                        fcCalendar.refetchEvents();
-                    }
-                } else {
-                    alert("讀取失敗：" + res.message);
-                }
-            } catch (err) {
-                alert("網路錯誤：" + err.message);
-            }
+                    if (isInit) setQuickFilter('today');
+                    else filterBookingTable(); 
+                    if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
+                } else alert("讀取失敗：" + res.message);
+            } catch (err) { alert("網路錯誤：" + err.message); }
             document.getElementById('loading').style.display = 'none';
         }
 
@@ -265,12 +257,8 @@
                 document.getElementById('listViewWrapper').style.display = 'none';
                 document.getElementById('calendarViewWrapper').style.display = 'block';
                 document.getElementById('viewToggleBtn').innerText = '切換至列表模式 📝';
-                
-                if (!fcCalendar) {
-                    initCalendar();
-                } else {
-                    setTimeout(() => fcCalendar.render(), 50);
-                }
+                if (!fcBookingCalendar) initBookingCalendar();
+                else setTimeout(() => fcBookingCalendar.render(), 50);
             } else {
                 viewMode = 'list';
                 document.getElementById('listViewWrapper').style.display = 'block';
@@ -279,116 +267,77 @@
             }
         }
 
-        function initCalendar() {
-            const calendarEl = document.getElementById('calendar');
-            fcCalendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'timeGridWeek', 
-                locale: 'zh-tw',             
-                slotMinTime: '10:00:00',     
-                slotMaxTime: '21:00:00',     
-                allDaySlot: false,           
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                buttonText: {
-                    today: '今天',
-                    month: '月',
-                    week: '週',
-                    day: '日'
-                },
-                events: function(fetchInfo, successCallback, failureCallback) {
-                    let events = allBookings.map(row => {
-                        let titleText = row.name;
-                        if (row.name2) titleText += ` (+${row.name2})`;
-                        return {
-                            id: row.id,
-                            title: titleText,
-                            start: `${row.date}T${row.time}:00`,
-                            backgroundColor: 'var(--primary-color)',
-                            borderColor: 'var(--primary-dark)',
-                            extendedProps: {
-                                phone: row.phone,
-                                remark: row.remark || '無',
-                                type: row.type
-                            }
-                        };
-                    });
+        function initBookingCalendar() {
+            const el = document.getElementById('bookingCalendar');
+            fcBookingCalendar = new FullCalendar.Calendar(el, {
+                initialView: 'timeGridWeek', locale: 'zh-tw',             
+                slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,           
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                events: function(fetchInfo, successCallback) {
+                    let events = allBookings.map(row => ({
+                        id: row.id,
+                        title: row.name + (row.name2 ? ` (+${row.name2})` : ""),
+                        start: `${row.date}T${row.time}:00`,
+                        backgroundColor: 'var(--primary-color)',
+                        borderColor: 'var(--primary-dark)',
+                        extendedProps: { phone: row.phone, remark: row.remark || '無', type: row.type }
+                    }));
                     successCallback(events);
                 },
-                eventClick: function(info) {
-                    editBooking(info.event.id);
-                },
+                eventClick: function(info) { editBooking(info.event.id); },
                 eventDidMount: function(info) {
-                    let tip = `[${info.event.extendedProps.type}]\n姓名: ${info.event.title}\n電話: ${info.event.extendedProps.phone}\n備註: ${info.event.extendedProps.remark}`;
-                    info.el.title = tip;
+                    info.el.title = `[${info.event.extendedProps.type}]\n姓名: ${info.event.title}\n電話: ${info.event.extendedProps.phone}\n備註: ${info.event.extendedProps.remark}`;
                 }
             });
-            fcCalendar.render();
+            fcBookingCalendar.render();
         }
 
         function setQuickFilter(mode) {
             currentFilterMode = mode;
-            const btns = ['btn-today', 'btn-week', 'btn-month', 'btn-all'];
-            btns.forEach(id => {
+            ['btn-today', 'btn-week', 'btn-month', 'btn-all'].forEach(id => {
                 document.getElementById(id).classList.remove('btn-primary');
                 document.getElementById(id).classList.add('btn-outline');
             });
             if (mode !== 'custom') {
                 document.getElementById('dateFilter').value = '';
-                const targetBtnId = `btn-${mode}`;
-                if (document.getElementById(targetBtnId)) {
-                    document.getElementById(targetBtnId).classList.remove('btn-outline');
-                    document.getElementById(targetBtnId).classList.add('btn-primary');
+                if (document.getElementById(`btn-${mode}`)) {
+                    document.getElementById(`btn-${mode}`).classList.remove('btn-outline');
+                    document.getElementById(`btn-${mode}`).classList.add('btn-primary');
                 }
             }
             filterBookingTable();
         }
 
         function getFormattedDate(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         }
 
         function filterBookingTable() {
             const keyword = document.getElementById('searchBookingInput').value.toLowerCase();
             const today = new Date();
             const todayStr = getFormattedDate(today);
-            const thisMonthStr = todayStr.substring(0, 7); 
+            const monthStr = todayStr.substring(0, 7); 
             
             const dayOfWeek = today.getDay() || 7; 
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - dayOfWeek + 1);
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
-            const weekStart = getFormattedDate(monday);
-            const weekEnd = getFormattedDate(sunday);
-
+            const monday = new Date(today); monday.setDate(today.getDate() - dayOfWeek + 1);
+            const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+            const wStart = getFormattedDate(monday);
+            const wEnd = getFormattedDate(sunday);
             const customDate = document.getElementById('dateFilter').value;
 
             let filteredData = allBookings.filter(row => {
-                const matchKeyword = row.name.toLowerCase().includes(keyword) || 
-                                     row.phone.includes(keyword) || 
-                                     (row.name2 && row.name2.toLowerCase().includes(keyword)) ||
-                                     (row.remark && row.remark.toLowerCase().includes(keyword));
-                
-                let matchDate = true;
-                if (currentFilterMode === 'today') { matchDate = (row.date === todayStr); } 
-                else if (currentFilterMode === 'week') { matchDate = (row.date >= weekStart && row.date <= weekEnd); } 
-                else if (currentFilterMode === 'month') { matchDate = row.date.startsWith(thisMonthStr); } 
-                else if (currentFilterMode === 'custom') { matchDate = (customDate === "" || row.date === customDate); }
-
-                return matchKeyword && matchDate;
+                const mKeyword = row.name.toLowerCase().includes(keyword) || row.phone.includes(keyword) || 
+                                 (row.name2 && row.name2.toLowerCase().includes(keyword)) || (row.remark && row.remark.toLowerCase().includes(keyword));
+                let mDate = true;
+                if (currentFilterMode === 'today') mDate = (row.date === todayStr);
+                else if (currentFilterMode === 'week') mDate = (row.date >= wStart && row.date <= wEnd);
+                else if (currentFilterMode === 'month') mDate = row.date.startsWith(monthStr);
+                else if (currentFilterMode === 'custom') mDate = (customDate === "" || row.date === customDate);
+                return mKeyword && mDate;
             });
 
-            if (currentFilterMode === 'all') {
-                filteredData.sort((a, b) => new Date(b.date + " " + b.time) - new Date(a.date + " " + a.time));
-            } else {
-                filteredData.sort((a, b) => new Date(a.date + " " + a.time) - new Date(b.date + " " + b.time));
-            }
+            if (currentFilterMode === 'all') filteredData.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
+            else filteredData.sort((a, b) => new Date(a.date+" "+a.time) - new Date(b.date+" "+b.time));
 
             renderBookingTable(filteredData);
         }
@@ -396,20 +345,17 @@
         function renderBookingTable(data) {
             const tbody = document.getElementById('bookingTableBody');
             tbody.innerHTML = '';
-
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">目前沒有符合的預約資料</td></tr>';
                 return;
             }
-
             data.forEach(row => {
                 let tr = document.createElement('tr');
-                let name2Html = row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`;
                 tr.innerHTML = `
                     <td><strong>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
                     <td>${row.type}</td>
                     <td><strong style="color:#333;">${row.name}</strong></td>
-                    <td>${name2Html}</td>
+                    <td>${row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
                     <td>${row.phone}</td>
                     <td><div style="font-size:13px; color:#666; max-width:200px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
@@ -421,10 +367,7 @@
             });
         }
 
-        function editBooking(id) {
-            const url = `${FRONTEND_URL}?role=admin&id=${id}`;
-            window.open(url, '_blank');
-        }
+        function editBooking(id) { window.open(`${FRONTEND_URL}?role=admin&id=${id}`, '_blank'); }
 
         async function cancelBooking(id) {
             if (!confirm("確定要取消此筆預約嗎？\n(日曆與試算表資料將被刪除)")) return;
@@ -433,39 +376,28 @@
             if (res.status === "success") {
                 allBookings = allBookings.filter(r => r.id !== id);
                 filterBookingTable();
-                if (fcCalendar) fcCalendar.refetchEvents();
-            } else {
-                alert("取消失敗：" + res.message);
-            }
+                if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
+            } else alert("取消失敗：" + res.message);
             document.getElementById('loading').style.display = 'none';
         }
 
+        // ================= 會員清單功能 =================
         async function loadMemberData() {
-            document.getElementById('memberTableBody').innerHTML = '';
             document.getElementById('loading').style.display = 'block';
-            
             try {
                 const res = await callApi("getAllMembers");
                 if (res.status === "success") {
                     allMembers = res.data;
                     document.getElementById('memberCount').innerText = allMembers.length;
                     filterMemberTable(); 
-                } else {
-                    alert("讀取會員失敗：" + res.message);
-                }
-            } catch (err) {
-                alert("網路錯誤：" + err.message);
-            }
+                } else alert("讀取會員失敗：" + res.message);
+            } catch (err) { alert("網路錯誤：" + err.message); }
             document.getElementById('loading').style.display = 'none';
         }
 
         function filterMemberTable() {
             const keyword = document.getElementById('searchMemberInput').value.toLowerCase();
-            let filteredData = allMembers.filter(row => {
-                return row.name.toLowerCase().includes(keyword) || 
-                       row.phone.includes(keyword) || 
-                       row.lineName.toLowerCase().includes(keyword);
-            });
+            let filteredData = allMembers.filter(row => row.name.toLowerCase().includes(keyword) || row.phone.includes(keyword) || row.lineName.toLowerCase().includes(keyword));
             renderMemberTable(filteredData);
         }
 
@@ -489,6 +421,64 @@
                 tbody.appendChild(tr);
             });
         }
+
+        // ================= 🔥 全新：互動式營業日曆設定 🔥 =================
+        async function loadOperatingData() {
+            document.getElementById('loading').style.display = 'block';
+            try {
+                const res = await callApi("getOperatingDays");
+                if (res.status === "success") {
+                    allOperatingDays = res.data;
+                    if (!opCalendarLoaded) {
+                        initOperatingCalendar();
+                        opCalendarLoaded = true;
+                    } else {
+                        fcOperatingCalendar.refetchEvents();
+                    }
+                } else alert("讀取營業日失敗：" + res.message);
+            } catch (err) { alert("網路錯誤：" + err.message); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function initOperatingCalendar() {
+            const el = document.getElementById('operatingCalendar');
+            fcOperatingCalendar = new FullCalendar.Calendar(el, {
+                initialView: 'dayGridMonth', // 使用整月檢視
+                locale: 'zh-tw',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                events: function(fetchInfo, successCallback) {
+                    // 把設定的營業日標示成綠色背景
+                    let events = allOperatingDays.map(date => ({
+                        start: date,
+                        title: '🟢 營業日',
+                        allDay: true,
+                        backgroundColor: '#4CAF50', // 綠色
+                        borderColor: '#388E3C',
+                        display: 'block' // 填滿格子
+                    }));
+                    successCallback(events);
+                },
+                dateClick: async function(info) {
+                    // 🔥 點擊格子的互動邏輯
+                    const clickedDate = info.dateStr; // 例如 "2026-03-15"
+                    const isOperating = allOperatingDays.includes(clickedDate);
+                    
+                    if (isOperating) {
+                        if(!confirm(`確定要將 【${clickedDate}】 設為 店休 (不開放預約) 嗎？`)) return;
+                        document.getElementById('loading').style.display = 'block';
+                        await callApi("removeOperatingDay", { date: clickedDate });
+                    } else {
+                        if(!confirm(`確定要將 【${clickedDate}】 設為 營業日 (開放預約) 嗎？`)) return;
+                        document.getElementById('loading').style.display = 'block';
+                        await callApi("addOperatingDay", { date: clickedDate });
+                    }
+                    // 操作完成後重新讀取最新狀態並渲染
+                    await loadOperatingData();
+                }
+            });
+            fcOperatingCalendar.render();
+        }
+
     </script>
 </body>
 </html>
