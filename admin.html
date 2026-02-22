@@ -74,15 +74,23 @@
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
 
-        /* ================= 漢堡選單樣式 (App級高級感) =================
+        /* ================= 漢堡選單樣式 (原生 App 頂部置中風格) ================= */
         .tab-select-container {
             position: relative;
             display: flex;
             align-items: center;
+            justify-content: center; /* 🔥 關鍵：讓容器內的文字絕對置中 */
             margin-bottom: 25px;
+            min-height: 46px; /* 確保高度撐開，與按鈕同高 */
+            width: 100%;
         }
-        /* 畫出漂亮的漢堡按鈕 */
+        
+        /* 畫出漂亮的漢堡按鈕，並「鎖定」在畫面最左側 */
         .hamburger-btn {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%); /* 確保按鈕垂直置中 */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -93,30 +101,38 @@
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             color: var(--text-color);
-            pointer-events: none; /* 讓滑鼠點擊直接穿透，點到下方的隱形選單 */
+            pointer-events: none; /* 讓滑鼠點擊直接穿透 */
+            z-index: 5;
         }
 
-        /* 將原本的 select 變成隱形，並剛好覆蓋在漢堡按鈕上 */
+        /* 將 select 變成隱形，並精準覆蓋在左側的漢堡按鈕上 */
         .tab-select {
             position: absolute;
             left: 0;
-            top: 0;
-            width: 46px;  /* 寬度只蓋住漢堡按鈕 */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 46px;  
             height: 46px;
-            opacity: 0;   /* 隱身術關鍵：透明度 0 */
+            opacity: 0;   /* 隱身術 */
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
+            z-index: 10;
         }
 
-        /* 右側當前頁面的標題 */
+        /* 置中顯示的當前頁面標題 */
         .current-tab-title {
-            margin-left: 15px;
             font-size: 18px;
             font-weight: 700;
-            color: var(--primary-color);
+            color: var(--text-color); /* 配合高級灰 */
             letter-spacing: 1px;
+            margin: 0; /* 移除之前的左邊距 */
+            pointer-events: none;
         }
+        
+        /* 預設隱藏手機版漢堡選單 (給電腦版用的) */
+        .mobile-tabs { display: none !important; }
+        
         .tab-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05); 
@@ -150,6 +166,10 @@
             .tab-select { max-width: 100%; font-size: 15px; padding: 12px 16px; border-radius: 8px; } 
             .tab-select-container { margin-bottom: 15px; }
             .current-tab-title { font-size: 16px; }
+
+            /* 手機版：隱藏電腦頁籤，顯示漢堡選單 */
+            .pc-tabs { display: none !important; }
+            .mobile-tabs { display: flex !important; }
             
             /* ------ 2. 頂部按鈕與操作列 ------ */
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -205,7 +225,14 @@
 <body>
 
     <div id="dashboard" class="container">    
-        <div class="tab-select-container">
+        <div class="tabs pc-tabs">
+            <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
+            <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
+            <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">🗓️ 營業日曆設定</button>
+            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📜 歷史紀錄</button>
+        </div>
+
+        <div class="tab-select-container mobile-tabs">
             <div class="hamburger-btn">
                 <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -371,16 +398,21 @@
         }
 
         function switchTab(tabName) {
-            // 1. 同步下拉選單的值，並更新旁邊的標題文字
+            // 1. 同步手機版：下拉選單的值與旁邊的標題文字
             const selectEl = document.getElementById('mainTabSelect');
             selectEl.value = tabName;
             document.getElementById('currentTabTitle').innerText = selectEl.options[selectEl.selectedIndex].text;
 
-            // 2. 隱藏所有區塊，顯示選中的區塊
+            // 2. 同步電腦版：按鈕加上亮色效果 (移除其他人，亮起自己)
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            let activeBtn = document.getElementById(`tab-${tabName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // 3. 隱藏所有內容區塊，顯示被選中的區塊
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(`section-${tabName}`).classList.add('active');
 
-            // 3. 觸發對應的資料載入邏輯
+            // 4. 觸發對應的資料載入邏輯
             if (tabName === 'member' && allMembers.length === 0) loadMemberData();
             if (tabName === 'history' && allHistoryBookings.length === 0) loadHistoryData();
             
