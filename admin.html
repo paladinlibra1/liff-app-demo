@@ -74,28 +74,48 @@
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
 
-        /* ================= 下拉選單樣式 (極簡高級) ================= */
-        .tab-select-container { margin-bottom: 25px; }
+        /* ================= 漢堡選單樣式 (App級高級感) =================
+        .tab-select-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        /* 畫出漂亮的漢堡按鈕 */
+        .hamburger-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 46px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            color: var(--text-color);
+            pointer-events: none; /* 讓滑鼠點擊直接穿透，點到下方的隱形選單 */
+        }
+
+        /* 將原本的 select 變成隱形，並剛好覆蓋在漢堡按鈕上 */
         .tab-select {
-            width: 100%;
-            max-width: 320px;
-            padding: 14px 18px;
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-color); 
-            border: 1px solid var(--border-color); 
-            border-radius: 8px;
-            background-color: white;
-            outline: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 46px;  /* 寬度只蓋住漢堡按鈕 */
+            height: 46px;
+            opacity: 0;   /* 隱身術關鍵：透明度 0 */
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
             appearance: none;
-            /* 箭頭改為深灰色 */
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232c2c2c%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat;
-            background-position: right 18px top 50%;
-            background-size: 10px auto;
-            transition: all 0.3s ease;
+            -webkit-appearance: none;
+        }
+
+        /* 右側當前頁面的標題 */
+        .current-tab-title {
+            margin-left: 15px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-color);
+            letter-spacing: 1px;
         }
         .tab-select:focus {
             border-color: var(--primary-color);
@@ -129,6 +149,7 @@
             .container { padding: 0; }
             .tab-select { max-width: 100%; font-size: 15px; padding: 12px 16px; border-radius: 8px; } 
             .tab-select-container { margin-bottom: 15px; }
+            .current-tab-title { font-size: 16px; }
             
             /* ------ 2. 頂部按鈕與操作列 ------ */
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -185,12 +206,20 @@
 
     <div id="dashboard" class="container">    
         <div class="tab-select-container">
+            <div class="hamburger-btn">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </div>
             <select id="mainTabSelect" class="tab-select" onchange="switchTab(this.value)">
                 <option value="booking">📅 預約管理</option>
                 <option value="member">👥 會員清單</option>
                 <option value="operating">🗓️ 營業日曆設定</option>
                 <option value="history">📜 歷史紀錄</option>
             </select>
+            <div id="currentTabTitle" class="current-tab-title">📅 預約管理</div>
         </div>
 
         <div id="loading">🚀 資料處理中，請稍候...</div>
@@ -342,8 +371,10 @@
         }
 
         function switchTab(tabName) {
-            // 1. 確保下拉選單的顯示值與目前的分頁一致
-            document.getElementById('mainTabSelect').value = tabName;
+            // 1. 同步下拉選單的值，並更新旁邊的標題文字
+            const selectEl = document.getElementById('mainTabSelect');
+            selectEl.value = tabName;
+            document.getElementById('currentTabTitle').innerText = selectEl.options[selectEl.selectedIndex].text;
 
             // 2. 隱藏所有區塊，顯示選中的區塊
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
