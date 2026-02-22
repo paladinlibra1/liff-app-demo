@@ -45,9 +45,59 @@
         /* 輔助按鈕改為高級莫蘭迪色系 */
         .btn-success { background: #b08d57; color: white; } /* 💎 香檳金 */
         .btn-success:hover { background: #967544; box-shadow: 0 4px 10px rgba(176, 141, 87, 0.2); }
-        .btn-toggle { background: #f8f8f9; color: var(--text-color); border: 1px solid var(--border-color); } /* 白底黑字 */
-        .btn-toggle:hover { background: #e5e5e5; }
         
+        /* ================= 模式切換按鈕 (動態背景與大圖示) ================= */
+        .btn-toggle { background: transparent; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; } 
+        .btn-toggle:hover { background: #e5e5e5; }
+        .btn-toggle.active-mode { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .icon-large { font-size: 1.4em; vertical-align: middle; margin-left: 4px; }
+
+        /* ================= 🔄 重新整理圖示按鈕 (純透明) ================= */
+        /* 修復：不論在哪個螢幕尺寸，都要強制移除背景與邊框 */
+        .btn-icon {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 24px !important; /* 放大圖示 */
+            padding: 5px 15px !important;
+            color: var(--text-color) !important;
+        }
+        .btn-icon:hover {
+            background: #e5e5e5 !important;
+            border-radius: 8px; /* 增加一點圓角讓hover更好看 */
+        }
+        
+        /* ================= 💻 電腦版：高級質感頁籤 (Apple 膠囊懸浮風格) ================= */
+        .tabs { 
+            display: inline-flex; 
+            gap: 4px; 
+            margin-bottom: 30px; 
+            background-color: #eeeeee; 
+            padding: 6px; 
+            border-radius: 14px; 
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); 
+            overflow-x: auto; 
+            white-space: nowrap; 
+        }
+        .tab-btn { 
+            background: transparent; 
+            border: none; 
+            font-size: 15px; 
+            font-weight: 600; 
+            color: #71717a; 
+            cursor: pointer; 
+            padding: 10px 24px; 
+            border-radius: 10px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            letter-spacing: 0.5px;
+        }
+        .tab-btn:hover { color: var(--primary-dark); }
+        .tab-btn.active { 
+            background-color: white; 
+            color: var(--primary-dark); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04); 
+        }
+
         .section { display: none; }
         .section.active { display: block; animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
 
@@ -57,19 +107,31 @@
         .controls input:focus { background: white; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
         .quick-btn { padding: 8px 16px; font-size: 13px; border-radius: 20px; }
 
-        .box-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.03); padding: 0; border: 1px solid rgba(0,0,0,0.03); }
+        .box-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.03); padding: 0; border: 1px solid rgba(0,0,0,0.03); transition: background-color 0.3s; }
         .calendar-wrapper { padding: 20px; }
+        
+        /* ================= 新增：日曆模式專屬背景 ================= */
+        #calendarViewWrapper.active-background {
+            background-color: #f8f9fa; /* 高級淺灰色 */
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+        }
+        #calendarViewWrapper.active-background #bookingCalendar {
+            background-color: white; /* 確保日曆本體是白色的，才跳得出來 */
+            border-radius: 8px;
+            padding: 10px;
+        }
 
         table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
         th, td { padding: 16px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
-        th { background-color: #fafafa; color: #666666; font-weight: 600; white-space: nowrap; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; } /* 表頭改為淺灰白底+深灰字，更現代 */
+        th { background-color: #fafafa; color: #666666; font-weight: 600; white-space: nowrap; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; } 
         tr:hover { background-color: #fdfdfd; } 
         
         .action-btns { display: flex; gap: 6px; }
         .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 4px; font-weight: normal; }
-        .btn-edit { background: #52525b; color: white; } /* 鐵灰 */
+        .btn-edit { background: #52525b; color: white; } 
         .btn-edit:hover { background: #3f3f46; }
-        .btn-cancel { background: #b96b6b; color: white; } /* 莫蘭迪紅 */
+        .btn-cancel { background: #b96b6b; color: white; } 
         .btn-cancel:hover { background: #9c5555; }
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
@@ -79,18 +141,17 @@
             position: relative;
             display: flex;
             align-items: center;
-            justify-content: center; /* 🔥 關鍵：讓容器內的文字絕對置中 */
+            justify-content: center;
             margin-bottom: 25px;
-            min-height: 46px; /* 確保高度撐開，與按鈕同高 */
+            min-height: 46px; 
             width: 100%;
         }
         
-        /* 畫出漂亮的漢堡按鈕，並「鎖定」在畫面最左側 */
         .hamburger-btn {
             position: absolute;
             left: 0;
             top: 50%;
-            transform: translateY(-50%); /* 確保按鈕垂直置中 */
+            transform: translateY(-50%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,11 +162,10 @@
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             color: var(--text-color);
-            pointer-events: none; /* 讓滑鼠點擊直接穿透 */
+            pointer-events: none; 
             z-index: 5;
         }
 
-        /* 將 select 變成隱形，並精準覆蓋在左側的漢堡按鈕上 */
         .tab-select {
             position: absolute;
             left: 0;
@@ -113,33 +173,23 @@
             transform: translateY(-50%);
             width: 46px;  
             height: 46px;
-            opacity: 0;   /* 隱身術 */
+            opacity: 0;   
             cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
             z-index: 10;
         }
 
-        /* 置中顯示的當前頁面標題 */
         .current-tab-title {
             font-size: 18px;
             font-weight: 700;
-            color: var(--text-color); /* 配合高級灰 */
+            color: var(--text-color); 
             letter-spacing: 1px;
-            margin: 0; /* 移除之前的左邊距 */
+            margin: 0; 
             pointer-events: none;
         }
         
-        /* 預設隱藏手機版漢堡選單 (給電腦版用的) */
         .mobile-tabs { display: none !important; }
-        
-        .tab-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05); 
-        }
-        .tab-select:hover {
-            border-color: #cccccc;
-        }
 
         /* FullCalendar 日曆樣式微調 */
         .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
@@ -163,7 +213,6 @@
             /* ------ 1. 基礎版面與下拉選單 ------ */
             body { padding: 12px; }
             .container { padding: 0; }
-            .tab-select { max-width: 100%; font-size: 15px; padding: 12px 16px; border-radius: 8px; } 
             .tab-select-container { margin-bottom: 15px; }
             .current-tab-title { font-size: 16px; }
 
@@ -177,17 +226,7 @@
             .top-action-bar { display: flex; flex-direction: row !important; gap: 8px; margin-bottom: 15px; width: 100%; }
             .top-action-bar .btn { margin: 0 !important; padding: 12px 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
             .top-action-bar .btn:nth-child(1), .top-action-bar .btn:nth-child(2) { flex: 1; }
-            .top-action-bar .btn-icon {
-                flex: 0 0 42px; 
-                font-size: 24px; 
-                padding: 0;
-                background: transparent !important; /* 🔥 強制去背 */
-                border: none !important;            /* 🔥 強制去邊框 */
-                box-shadow: none !important;        /* 🔥 移除陰影 */
-            }
-            .top-action-bar .btn-icon:hover {
-                background: #e5e5e5 !important;     /* 滑鼠移過去時給一點淡淡的灰色提示 */
-            }
+            .top-action-bar .btn-icon { flex: 0 0 50px !important; padding: 0 !important; } /* 加大觸控範圍 */
 
             /* ------ 3. 篩選列與搜尋框 (Controls) ------ */
             .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; border-radius: 8px; box-shadow: none; border: 1px solid var(--border-color); }
