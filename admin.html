@@ -544,12 +544,25 @@
                     let dateStr = (arg.date.getMonth() + 1) + '/' + arg.date.getDate(); 
                     
                     let wrapper = document.createElement('div');
-                    wrapper.innerHTML = `
-                        <div style="text-align: center; line-height: 1.4; padding: 2px 0;">
-                            <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
-                            <div style="font-size: 13px; color: var(--text-color); font-weight: normal;">${dateStr}</div>
-                        </div>
-                    `;
+                    // 判斷目前如果是「月曆模式 (dayGridMonth)」
+                    if (arg.view.type === 'dayGridMonth') {
+                        // 只顯示週幾，並稍微增加 padding 讓它置中好看
+                        wrapper.innerHTML = `
+                            <div style="text-align: center; line-height: 1.4; padding: 8px 0;">
+                                <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                            </div>
+                        `;
+                    } else {
+                        // 週曆 (timeGridWeek) 或 日曆 (timeGridDay) 模式
+                        // 顯示週幾 + 日期
+                        wrapper.innerHTML = `
+                            <div style="text-align: center; line-height: 1.4; padding: 2px 0;">
+                                <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                                <div style="font-size: 13px; color: var(--text-color); font-weight: normal;">${dateStr}</div>
+                            </div>
+                        `;
+                    }
+
                     return { domNodes: [wrapper] };
                 },
 
