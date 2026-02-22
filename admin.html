@@ -121,7 +121,7 @@
             border-radius: 8px;
             padding: 10px;
         }
-
+        
         table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
         th, td { padding: 16px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
         th { background-color: #fafafa; color: #666666; font-weight: 600; white-space: nowrap; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; } 
@@ -205,6 +205,13 @@
         }
         .fc .fc-timegrid-slot { height: 55px !important; }
 
+        /* 被選中的日期格子會變淡灰色外框 */
+        .selected-day-temp {
+            background-color: rgba(0, 0, 0, 0.05) !important;
+            border: 2px solid #2c2c2c !important;
+            box-sizing: border-box;
+        }
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         
         /* ================================================================= */
@@ -388,8 +395,13 @@
 
         <div id="section-operating" class="section">
             <div class="header" style="background: #e8f5e9; padding: 15px; border-radius: 10px; color: #2e7d32;">
-                <strong>💡 使用說明：</strong> 點擊日曆上的任何一天，即可切換該日期為「營業日 (綠色)」或「店休日 (空白)」。
+                <strong>💡 使用說明：</strong> 點擊日曆上的任何一天，即可切換該日期為「營業日 (綠色)」或「店休日 (空白)」，跳著點擊日期可進行複選，選好後點擊右側按鈕。
             </div>
+            <div id="batch-op-actions" style="display: none; gap: 10px;">
+                    <button class="btn btn-success" onclick="batchProcessOperating(true)">全部設為營業</button>
+                    <button class="btn btn-cancel" onclick="batchProcessOperating(false)">全部設為店休</button>
+                    <button class="btn btn-outline" onclick="clearTempSelection()">取消選擇</button>
+                </div>
             <div class="box-container calendar-wrapper">
                 <div id="operatingCalendar"></div> 
             </div>
@@ -857,66 +869,98 @@
             document.getElementById('loading').style.display = 'none';
         }
 
+        let tempSelectedDates = []; // 儲存暫時選取的日期
         function initOperatingCalendar() {
             const el = document.getElementById('operatingCalendar');
             fcOperatingCalendar = new FullCalendar.Calendar(el, {
-                initialView: 'dayGridMonth', // 使用整月檢視
+                initialView: 'dayGridMonth',
                 locale: 'zh-tw',
-
-                height: 'auto',         // 高度跟隨外層容器
-                fixedWeekCount: false,  // 隱藏多餘的空白週數 (有幾週就顯示幾週，讓格子有空間變得更大！)
+                height: 'auto',
+                fixedWeekCount: false,
                 showNonCurrentDates: false,
-                
                 headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+        
                 events: function(fetchInfo, successCallback) {
-                    // 把設定的營業日標示成綠色背景
                     let events = allOperatingDays.map(date => ({
                         start: date,
                         title: '🟢 營業日',
                         allDay: true,
-                        backgroundColor: '#4CAF50', // 綠色
+                        backgroundColor: '#4CAF50',
                         borderColor: '#388E3C',
-                        display: 'block' // 填滿格子
+                        display: 'block'
                     }));
                     successCallback(events);
                 },
-                dateClick: async function(info) {
-                    const clickedDate = info.dateStr;
-                    const isOperating = allOperatingDays.includes(clickedDate);
-                    
-                    const actionTxt = isOperating ? "店休 (不開放預約)" : "營業日 (開放預約)";
-                    if(!confirm(`確定要將 【${clickedDate}】 設為 ${actionTxt} 嗎？`)) return;
 
-                    // 顯示讀取中
-                    document.getElementById('loading').style.display = 'block';
+                // 🔥 修改後的點擊邏輯：跳著點選
+                dateClick: function(info) {
+                    const dateStr = info.dateStr;
+                    const index = tempSelectedDates.indexOf(dateStr);
 
-                    try {
-                        const action = isOperating ? "removeOperatingDay" : "addOperatingDay";
-                        // 1. 呼叫 API 單純執行「寫入/刪除」
-                        const res = await callApi(action, { date: clickedDate });
-
-                        if (res.status === "success") {
-                            // 🔥 2. 關鍵提速：不要再 await loadOperatingData() 重新下載全部資料了！
-                            // 直接在本地陣列中把該日期加入或剔除
-                            if (isOperating) {
-                                allOperatingDays = allOperatingDays.filter(d => d !== clickedDate);
-                            } else {
-                                allOperatingDays.push(clickedDate);
-                            }
-                            // 3. 讓日曆根據最新的本地陣列重新渲染即可
-                            fcOperatingCalendar.refetchEvents();
-                        } else {
-                            alert("設定失敗：" + res.message);
-                        }
-                    } catch (err) {
-                        alert("網路發生錯誤：" + err.message);
+                    if (index > -1) {
+                        // 如果已經選了，再點一次就取消
+                        tempSelectedDates.splice(index, 1);
+                        info.dayEl.classList.remove('selected-day-temp');
+                    } else {
+                        // 加入選取清單
+                        tempSelectedDates.push(dateStr);
+                        info.dayEl.classList.add('selected-day-temp');
                     }
-                    
-                    // 關閉讀取畫面
-                    document.getElementById('loading').style.display = 'none';
+
+                    // 根據有沒有選東西，決定按鈕要不要出現
+                    document.getElementById('batch-controls').style.display = (tempSelectedDates.length > 0) ? 'flex' : 'none';
                 }
             });
             fcOperatingCalendar.render();
+        }
+
+        // 🔥 批次執行 API 寫入
+        async function processBatch(isToAdd) {
+            const actionTxt = isToAdd ? "營業日" : "店休";
+            if (!confirm(`確定要將選取的 ${tempSelectedDates.length} 天全部改為 ${actionTxt} 嗎？`)) return;
+
+            document.getElementById('loading').style.display = 'block';
+    
+            const action = isToAdd ? "addOperatingDay" : "removeOperatingDay";
+            let successCount = 0;
+
+            // 逐一處理選取的日期
+            for (let dateStr of tempSelectedDates) {
+                // 防呆：如果狀態本來就一樣，就跳過不呼叫 API
+                const currentlyIsOp = allOperatingDays.includes(dateStr);
+                if (isToAdd === currentlyIsOp) continue;
+
+                try {
+                    const res = await callApi(action, { date: dateStr });
+                    if (res.status === "success") {
+                        if (isToAdd) {
+                            allOperatingDays.push(dateStr);
+                        } else {
+                            allOperatingDays = allOperatingDays.filter(d => d !== dateStr);
+                        }
+                        successCount++;
+                    }
+                } catch (err) {
+                    console.error(`${dateStr} 處理失敗`, err);
+                }
+            }
+
+            // 重置選取狀態
+            clearSelection();
+            
+            // 重新整理日曆顯示
+            fcOperatingCalendar.refetchEvents();
+            document.getElementById('loading').style.display = 'none';
+            alert(`處理完成！成功更新 ${successCount} 筆資料。`);
+        }
+        
+        // 🔥 清除選取狀態的函式
+        function clearSelection() {
+            tempSelectedDates = [];
+            document.querySelectorAll('.selected-day-temp').forEach(el => {
+                el.classList.remove('selected-day-temp');
+            });
+            document.getElementById('batch-controls').style.display = 'none';
         }
         
         function goToFrontendEdit(bookingId, event) {
