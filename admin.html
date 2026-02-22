@@ -719,12 +719,6 @@
             }
             data.forEach(row => {
                 let tr = document.createElement('tr');
-
-                // 🔥🔥🔥【關鍵防呆】：如果電話存在，且開頭不是 0，就自動幫它補上 0
-                let fixedPhone = String(row.phone).trim();
-                if (fixedPhone.length > 0 && !fixedPhone.startsWith('0')) {
-                    fixedPhone = '0' + fixedPhone;
-                }
                 
                 tr.innerHTML = `
                     <td><strong>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
@@ -956,12 +950,6 @@
             }
             data.forEach(row => {
                 let tr = document.createElement('tr');
-
-                // 🔥🔥🔥【關鍵防呆】：如果電話存在，且開頭不是 0，就自動幫它補上 0
-                let fixedPhone = String(row.phone).trim();
-                if (fixedPhone.length > 0 && !fixedPhone.startsWith('0')) {
-                    fixedPhone = '0' + fixedPhone;
-                }
                 
                 // 歷史紀錄的文字顏色稍微調淡，視覺上與未來預約做區隔
                 tr.innerHTML = `
