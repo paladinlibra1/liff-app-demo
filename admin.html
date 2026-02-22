@@ -7,170 +7,165 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         /* ================================================================= */
-        /* ======================== 💼 全域與電腦版設定 ======================== */
+        /* ======================== 💎 全域設定 (精品專櫃高級風) ================= */
         /* ================================================================= */
         :root {
-            /* 🔥 改為專業科技藍色調 */
-            --primary-color: #3b82f6; /* 主色：專業藍 */
-            --primary-dark: #1d4ed8;  /* 深色：深藍 */
-            --bg-color: #f3f4f6;      /* 背景：極淺灰 */
+            /* 🔥 改為極簡黑灰與香檳金的高級配色 */
+            --primary-color: #2c2c2c; /* 主色：深碳灰 */
+            --primary-dark: #000000;  /* 深色：純黑 */
+            --bg-color: #f8f8f9;      /* 背景：珍珠淺灰 (乾淨高級) */
             --card-bg: #ffffff;       /* 卡片：純白 */
-            --text-color: #1f2937;    /* 文字：深灰 */
-            --border-color: #e5e7eb;  /* 邊框：淺灰 */
+            --text-color: #2b2b2b;    /* 文字：深灰 (增加閱讀舒適度) */
+            --border-color: #e5e5e5;  /* 邊框：細緻淺灰 */
             
+            /* FullCalendar 日曆元件連動 */
             --fc-button-bg-color: var(--primary-color);
             --fc-button-border-color: var(--primary-dark);
             --fc-button-hover-bg-color: var(--primary-dark);
             --fc-button-hover-border-color: var(--primary-dark);
             --fc-button-active-bg-color: var(--primary-dark);
             --fc-button-active-border-color: var(--primary-dark);
-            --fc-today-bg-color: #eff6ff; /* 今日背景改為淡藍色 */
+            --fc-today-bg-color: #f2f2f2; /* 今日背景改為淡灰 */
         }
 
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang TC', '微軟正黑體', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; letter-spacing: 0.5px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
         #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; }
-        .login-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); text-align: center; }
-        .login-box input { padding: 10px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 15px; width: 80%; text-align: center; }
+        .login-box { background: white; padding: 45px; border-radius: 12px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.04); text-align: center; border: 1px solid rgba(0,0,0,0.02); } 
+        .login-box input { padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 20px; width: 85%; text-align: center; outline: none; transition: 0.3s; }
+        .login-box input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
         
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; letter-spacing: 1px; }
         .btn-primary { background: var(--primary-color); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-outline { background: white; border: 1px solid var(--primary-color); color: var(--primary-color); }
-        .btn-outline:hover { background: #eff6ff; }
-        .btn-success { background: #10b981; color: white; } /* 翡翠綠 */
-        .btn-success:hover { background: #059669; }
-        .btn-toggle { background: #4b5563; color: white; } /* 鐵灰色 */
-        .btn-toggle:hover { background: #374151; }
+        .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        .btn-outline { background: white; border: 1px solid var(--border-color); color: var(--text-color); }
+        .btn-outline:hover { background: var(--primary-color); color: white; border-color: var(--primary-color); } 
         
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; overflow-x: auto; white-space: nowrap; }
-        .tab-btn { background: transparent; border: none; font-size: 18px; font-weight: bold; color: #9ca3af; cursor: pointer; padding: 10px 20px; border-radius: 10px 10px 0 0; transition: 0.3s; }
-        .tab-btn:hover { color: var(--primary-color); }
-        .tab-btn.active { color: var(--primary-dark); border-bottom: 4px solid var(--primary-color); }
-
+        /* 輔助按鈕改為高級莫蘭迪色系 */
+        .btn-success { background: #b08d57; color: white; } /* 💎 香檳金 */
+        .btn-success:hover { background: #967544; box-shadow: 0 4px 10px rgba(176, 141, 87, 0.2); }
+        .btn-toggle { background: #f8f8f9; color: var(--text-color); border: 1px solid var(--border-color); } /* 白底黑字 */
+        .btn-toggle:hover { background: #e5e5e5; }
+        
         .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.4s ease; }
+        .section.active { display: block; animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
 
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); align-items: center;}
-        .controls input { padding: 8px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 14px; outline: none; }
-        .controls input:focus { border-color: var(--primary-dark); box-shadow: 0 0 5px rgba(59, 130, 246, 0.3); }
-        .quick-btn { padding: 8px 15px; font-size: 14px; border-radius: 20px; }
+        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); align-items: center; border: 1px solid rgba(0,0,0,0.03); }
+        .controls input { padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; outline: none; transition: 0.2s; background: #fafafa; }
+        .controls input:focus { background: white; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
+        .quick-btn { padding: 8px 16px; font-size: 13px; border-radius: 20px; }
 
-        .box-container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.03); padding: 0; }
+        .box-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.03); padding: 0; border: 1px solid rgba(0,0,0,0.03); }
         .calendar-wrapper { padding: 20px; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 15px; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
-        th { background-color: var(--primary-color); color: white; font-weight: 600; white-space: nowrap; }
-        tr:hover { background-color: #f9fafb; }
+        table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+        th, td { padding: 16px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background-color: #fafafa; color: #666666; font-weight: 600; white-space: nowrap; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; } /* 表頭改為淺灰白底+深灰字，更現代 */
+        tr:hover { background-color: #fdfdfd; } 
         
-        .action-btns { display: flex; gap: 5px; }
-        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 5px; }
-        .btn-edit { background: #3b82f6; color: white; }
-        .btn-edit:hover { background: #2563eb; }
-        .btn-cancel { background: #ef4444; color: white; }
-        .btn-cancel:hover { background: #dc2626; }
+        .action-btns { display: flex; gap: 6px; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 4px; font-weight: normal; }
+        .btn-edit { background: #52525b; color: white; } /* 鐵灰 */
+        .btn-edit:hover { background: #3f3f46; }
+        .btn-cancel { background: #b96b6b; color: white; } /* 莫蘭迪紅 */
+        .btn-cancel:hover { background: #9c5555; }
 
-        #loading { display: none; text-align: center; padding: 50px; color: var(--primary-color); font-weight: bold; }
+        #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
+
+        /* ================= 下拉選單樣式 (極簡高級) ================= */
+        .tab-select-container { margin-bottom: 25px; }
+        .tab-select {
+            width: 100%;
+            max-width: 320px;
+            padding: 14px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            background-color: white;
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+            appearance: none;
+            /* 箭頭改為深灰色 */
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%232c2c2c%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 18px top 50%;
+            background-size: 10px auto;
+            transition: all 0.3s ease;
+        }
+        .tab-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05); 
+        }
+        .tab-select:hover {
+            border-color: #cccccc;
+        }
 
         /* FullCalendar 日曆樣式微調 */
         .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
         .fc-event-title { font-weight: bold; }
         .fc-daygrid-day { cursor: pointer; transition: background-color 0.2s; }
-        .fc-daygrid-day:hover { background-color: #f3f4f6; }
+        .fc-daygrid-day:hover { background-color: #f9f9f9; } 
         .fc-timegrid-event {
-            box-shadow: none !important;      /* 殺掉套件預設的白色陰影 */
-            border: none !important;          /* 殺掉套件預設的外框 */
-            background: transparent !important; /* 確保外層絕對透明 */
+            box-shadow: none !important;      
+            border: none !important;          
+            background: transparent !important; 
         }
-        .fc .fc-timegrid-slot {
-            height: 55px !important; /* 調整這個數字可以控制時間軸的疏密程度 */
-        }
+        .fc .fc-timegrid-slot { height: 55px !important; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* ================= 下拉選單樣式 ================= */
-        .tab-select-container {
-            margin-bottom: 20px;
-        }
-        .tab-select {
-            width: 100%;
-            max-width: 300px; /* 電腦版最大寬度 */
-            padding: 12px 15px;
-            font-size: 16px;
-            font-weight: bold;
-            color: var(--text-color);
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            background-color: white;
-            outline: none;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-            appearance: none; /* 隱藏預設箭頭，用自訂樣式 */
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234b5563%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat;
-            background-position: right 15px top 50%;
-            background-size: 12px auto;
-            transition: all 0.2s ease;
-        }
-        .tab-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-        .tab-select:hover {
-            border-color: #d1d5db;
-        }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
         /* ================================================================= */
-        /* ======================== 📱 手機版 (RWD) 專屬區塊 ======================== */
+        /* ======================== 📱 手機版 (RWD) 專屬區塊 ===================== */
         /* ================================================================= */
         @media (max-width: 768px) {
             
-            /* ------ 1. 基礎版面與頁籤 ------ */
-            body { padding: 10px; }
-            .container { padding: 10px; }
-            .tabs { padding-bottom: 5px; margin-bottom: 15px; }
-            .tab-btn { font-size: 15px; padding: 8px 10px; }
-            .tab-select { max-width: 100%; font-size: 15px; }
+            /* ------ 1. 基礎版面與下拉選單 ------ */
+            body { padding: 12px; }
+            .container { padding: 0; }
+            .tab-select { max-width: 100%; font-size: 15px; padding: 12px 16px; border-radius: 8px; } 
+            .tab-select-container { margin-bottom: 15px; }
             
             /* ------ 2. 頂部按鈕與操作列 ------ */
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
             .header .btn { width: 100%; margin: 0 !important; }
             .top-action-bar { display: flex; flex-direction: row !important; gap: 8px; margin-bottom: 15px; width: 100%; }
-            .top-action-bar .btn { margin: 0 !important; padding: 10px 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+            .top-action-bar .btn { margin: 0 !important; padding: 12px 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
             .top-action-bar .btn:nth-child(1), .top-action-bar .btn:nth-child(2) { flex: 1; }
-            .top-action-bar .btn-icon { flex: 0 0 42px; font-size: 18px; padding: 0; }
+            .top-action-bar .btn-icon { flex: 0 0 45px; font-size: 18px; padding: 0; }
 
             /* ------ 3. 篩選列與搜尋框 (Controls) ------ */
-            .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; }
+            .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; border-radius: 8px; box-shadow: none; border: 1px solid var(--border-color); }
             .pc-only, .controls > div[style*="border-left"] { display: none !important; }
             .label-text, #dateFilter { display: none !important; }
-            .controls > .label-text:nth-of-type(2) { flex: 1 0 100%; margin-top: 5px; margin-bottom: -5px; }
-            .controls > .quick-btn { flex: 0 1 auto; padding: 8px 12px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
-            .controls > input { flex: 1 0 100%; max-width: 100% !important; margin-top: 5px; }
+            .controls > .label-text:nth-of-type(2) { flex: 1 0 100%; margin-top: 5px; margin-bottom: -5px; font-size: 12px; color: #888; }
+            .controls > .quick-btn { flex: 0 1 auto; padding: 8px 14px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
+            .controls > input { flex: 1 0 100%; max-width: 100% !important; margin-top: 5px; background: white; }
             #list-nav-mini { display: flex !important; margin-left: auto; gap: 5px; align-items: center; }
 
             /* ------ 4. 列表模式與表格 ------ */
-            th, td { white-space: nowrap !important; padding: 10px; font-size: 14px; }
-            .box-container { overflow-x: auto; }
+            th, td { white-space: nowrap !important; padding: 12px 10px; font-size: 13.5px; }
+            .box-container { overflow-x: auto; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.04); }
             .action-btns { display: flex; flex-direction: row; gap: 8px; }
-            .btn-sm { padding: 10px 15px !important; font-size: 14px !important; }
+            .btn-sm { padding: 8px 15px !important; font-size: 13px !important; }
 
             /* ------ 5. 日曆模式：通用設定 ------ */
             .calendar-wrapper { padding: 5px !important; }
             #section-operating .calendar-wrapper { padding: 5px; }
-            #bookingCalendar .fc-event { pointer-events: none !important; } /* 防誤觸 */
+            #bookingCalendar .fc-event { pointer-events: none !important; } 
             
-            .fc .fc-toolbar { flex-direction: column; gap: 10px; }
-            .fc .fc-toolbar-title { font-size: 16px !important; color: var(--primary-dark); }
-            .fc .fc-button { font-size: 12px !important; padding: 4px 8px !important; }
+            .fc .fc-toolbar { flex-direction: column; gap: 10px; margin-bottom: 10px !important; }
+            .fc .fc-toolbar-title { font-size: 16px !important; color: var(--primary-color); font-weight: 700; }
+            .fc .fc-button { font-size: 12px !important; padding: 5px 10px !important; font-weight: 600; text-transform: uppercase; }
             
             /* 日曆文字微調 */
-            .fc .fc-col-header-cell-cushion { padding: 8px 4px !important; width: 100%; }
-            .fc .fc-timegrid-slot-label-cushion { font-size: 11px !important; color: #6b7280; }
-            .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 2px !important; }
+            .fc .fc-col-header-cell-cushion { padding: 10px 4px !important; width: 100%; }
+            .fc .fc-timegrid-slot-label-cushion { font-size: 11px !important; color: #888; font-weight: normal; } 
+            .fc .fc-daygrid-day-number { font-size: 12px !important; padding: 4px !important; font-weight: 600; }
             .fc .fc-event-title { font-size: 11px !important; line-height: 1.3 !important; white-space: normal !important; text-align: center; }
 
             /* ------ 6. 日曆模式：預約週曆 (TimeGrid) ------ */
@@ -182,7 +177,7 @@
             /* ------ 7. 日曆模式：營業日月曆 (DayGrid) ------ */
             .fc .fc-daygrid-day-frame { min-height: 65px !important; }
             .fc-daygrid-event-harness { margin: 2px 0; }
-            .fc-daygrid-event { margin-top: 2px !important; padding: 2px 0 !important; }
+            .fc-daygrid-event { margin-top: 2px !important; padding: 2px 0 !important; border-radius: 2px; }
         }
     </style>
 </head>
