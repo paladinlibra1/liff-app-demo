@@ -564,14 +564,6 @@
                     successCallback(fcEvents);
                 },
 
-                // 📱 手機優化版：日曆僅供檢視，不綁定點擊事件
-                啊！我明白了，因為剛剛給您的簡化版程式碼中，我把預約人 (row.name) 跟同行者 (row.name2) 用 <br> 換行合併塞在同一個方塊裡了。
-
-如果您希望同行者（第二人）像之前一樣**「獨立變成第二個方塊」**，我們只要把 map 換回 forEach，並且在判斷有同行者時，額外推（push）出一個獨立的 div 就可以了。
-
-請用這段代碼替換您的 eventContent：
-
-JavaScript
                 // 📱 PC可點擊編輯 / 手機純檢視 (含同行者獨立方塊)
                 eventContent: function(info) {
                     let bookings = info.event.extendedProps.bookings;
