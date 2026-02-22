@@ -288,9 +288,21 @@
                 const role = urlParams.get('role'); // ?role=admin
                 const editId = urlParams.get('id'); // ?id=...
                 const action = urlParams.get('action'); // ?action=register or confirm
+                const prefillName = urlParams.get('name');
+                const prefillPhone = urlParams.get('phone');
 
                 if(role) document.getElementById('role').value = role;
 
+                // 🔥🔥🔥【新增 2】如果有抓到參數，就自動填入欄位
+                if (prefillName) {
+                    let nameInput = document.getElementById('name');
+                    if (nameInput) nameInput.value = prefillName;
+                }
+                if (prefillPhone) {
+                    let phoneInput = document.getElementById('phone');
+                    if (phoneInput) phoneInput.value = prefillPhone;
+                }
+                
                 // 2. LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
                 
@@ -394,9 +406,13 @@
                             
                             return; // ⛔ 停止執行，不顯示日期
                         } else {
-                            // ✅ 已綁定 -> 自動帶入資料
-                            document.getElementById('name').value = checkRes.data.name;
-                            document.getElementById('phone').value = checkRes.data.phone;
+                            // ✅ 已綁定 -> 自動帶入資料 (但如果網址已經有帶資料了，就以網址的為主)
+                            if (!prefillName) {
+                                document.getElementById('name').value = checkRes.data.name;
+                            }
+                            if (!prefillPhone) {
+                                document.getElementById('phone').value = checkRes.data.phone;
+                            }
                         }
                     }
                 }
