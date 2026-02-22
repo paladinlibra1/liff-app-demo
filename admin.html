@@ -394,18 +394,21 @@
         </div>
 
         <div id="section-operating" class="section">
-            <div class="header" style="background: #e8f5e9; padding: 15px; border-radius: 10px; color: #2e7d32;">
-                <strong>💡 使用說明：</strong> 點擊日曆上的任何一天，即可切換該日期為「營業日 (綠色)」或「店休日 (空白)」，跳著點擊日期可進行複選，選好後點擊右側按鈕。
-            </div>
-            <div id="batch-op-actions" style="display: none; gap: 10px;">
-                    <button class="btn btn-success" onclick="batchProcessOperating(true)">全部設為營業</button>
-                    <button class="btn btn-cancel" onclick="batchProcessOperating(false)">全部設為店休</button>
-                    <button class="btn btn-outline" onclick="clearTempSelection()">取消選擇</button>
+            <div class="header" style="background: #e8f5e9; padding: 15px; border-radius: 10px; color: #2e7d32; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="flex: 1; min-width: 250px;">
+                    <strong>💡 批次設定模式：</strong> 跳著點擊日期進行複選，選好後點擊右側按鈕統一處理。
                 </div>
+                <div id="batch-controls" style="display: none; gap: 8px;">
+                    <button class="btn btn-success" style="padding: 8px 15px;" onclick="processBatch(true)">全部設為營業</button>
+                    <button class="btn btn-cancel" style="padding: 8px 15px;" onclick="processBatch(false)">全部設為店休</button>
+                    <button class="btn btn-outline" style="padding: 8px 15px;" onclick="clearSelection()">取消選擇</button>
+                </div>
+            </div>
             <div class="box-container calendar-wrapper">
                 <div id="operatingCalendar"></div> 
             </div>
         </div>
+        
         <div id="section-history" class="section">
             <div class="header">
                 <div><button class="btn btn-primary" onclick="loadHistoryData()">🔄 載入/更新歷史紀錄</button></div>
