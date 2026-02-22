@@ -133,6 +133,8 @@
         .btn-edit:hover { background: #3f3f46; }
         .btn-cancel { background: #b96b6b; color: white; } 
         .btn-cancel:hover { background: #9c5555; }
+        .btn-rebook { background: #10b981; color: white; } /* 翡翠綠 */
+        .btn-rebook:hover { background: #059669; }
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
 
@@ -410,7 +412,7 @@
                             <th>同行者姓名</th>
                             <th>聯絡電話</th>
                             <th>備註</th>
-                        </tr>
+                            <th>操作</th> </tr>
                     </thead>
                     <tbody id="historyTableBody"></tbody>
                 </table>
@@ -725,6 +727,7 @@
                     <td>${row.phone}</td>
                     <td><div style="font-size:13px; color:#666; max-width:200px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
+                        <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                         <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
                         <button class="btn btn-sm btn-cancel" onclick="cancelBooking('${row.id}')">取消</button>
                     </td>
@@ -941,7 +944,7 @@
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無歷史資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無歷史資料</td></tr>';
                 return;
             }
             data.forEach(row => {
@@ -954,9 +957,18 @@
                     <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
                     <td><span style="color:#888;">${row.phone}</span></td>
                     <td><div style="font-size:13px; color:#888; max-width:200px; white-space:pre-wrap;">${row.remark || '-'}</div></td>
+                    <td class="action-btns">
+                        <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
+        }
+        // ================= 快速再約一筆 =================
+        function rebook(phone, name) {
+            // 將客人的電話與姓名透過網址參數 (URL Parameters) 傳給前端表單
+            let url = `${FRONTEND_URL}?role=admin&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
+            window.open(url, '_blank');
         }
     </script>
 </body>
