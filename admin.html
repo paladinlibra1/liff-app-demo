@@ -234,7 +234,14 @@
             .label-text, #dateFilter { display: none !important; }
             .controls > .label-text:nth-of-type(2) { flex: 1 0 100%; margin-top: 5px; margin-bottom: -5px; font-size: 12px; color: #888; }
             .controls > .quick-btn { flex: 0 1 auto; padding: 8px 14px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
-            .controls > input { flex: 1 0 100%; max-width: 100% !important; margin-top: 5px; background: white; }
+            .controls > input { 
+                flex: 1 1 100%; 
+                width: 100%; 
+                max-width: 100% !important; 
+                margin-top: 5px; 
+                background: white; 
+                box-sizing: border-box; /* 🔥 解決超出畫面的絕對關鍵 */
+            }
             #list-nav-mini { display: flex !important; margin-left: auto; gap: 5px; align-items: center; }
 
             /* ------ 4. 列表模式與表格 ------ */
