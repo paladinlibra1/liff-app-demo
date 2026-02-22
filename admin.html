@@ -726,7 +726,7 @@
                     <td><strong style="color:#333;">${row.name}</strong></td>
                     <td>${row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
                     <td>${row.phone}</td>
-                    <td><div style="font-size:13px; color:#666; max-width:200px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
+                    <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                         <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
@@ -958,7 +958,7 @@
                     <td><strong style="color:#555;">${row.name}</strong></td>
                     <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
                     <td><span style="color:#888;">${row.phone}</span></td>
-                    <td><div style="font-size:13px; color:#888; max-width:200px; white-space:pre-wrap;">${row.remark || '-'}</div></td>
+                    <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                     </td>
@@ -966,10 +966,62 @@
                 tbody.appendChild(tr);
             });
         }
-        // ================= 快速再約一筆 =================
-        function rebook(phone, name) {
-            // 將客人的電話與姓名透過網址參數 (URL Parameters) 傳給前端表單
-            let url = `${FRONTEND_URL}?role=admin&phone=${encodeURIComponent(phone)}&name=${encodeURIComponent(name)}`;
+        // ================= 智慧快速再約一筆 (防同名同姓版) =================
+        async function rebook(phone, name) {
+            let finalPhone = phone;
+
+            // 1. 判斷電話是否為空
+            if (!finalPhone || finalPhone.trim() === '' || finalPhone.trim() === '-' || finalPhone.trim() === 'undefined') {
+                try {
+                    // 顯示 Loading
+                    const loadingEl = document.getElementById('loading');
+                    if(loadingEl) loadingEl.style.display = 'block';
+
+                    // 去會員資料庫撈撈看
+                    const res = await callApi("searchMemberSecure", { keyword: name, requesterId: "ADMIN" });
+                    
+                    if (res.status === "success" && res.results && res.results.length > 0) {
+                        // 篩選出名字「完全一模一樣」的會員陣列
+                        const exactMatches = res.results.filter(m => m.n === name);
+                        
+                        if (exactMatches.length === 1) {
+                            // 🎉 只有一位，直接無腦帶入
+                            finalPhone = exactMatches[0].p;
+                            
+                        } else if (exactMatches.length > 1) {
+                            // ⚠️ 發現同名同姓！彈出選項讓店家決定
+                            let optionsText = exactMatches.map((m, index) => `輸入 ${index + 1} ➔ ${m.p}`).join('\n');
+                            let choice = prompt(`⚠️ 發現 ${exactMatches.length} 位同名同姓的「${name}」！\n請根據電話判斷是哪一位，並輸入對應的數字：\n\n${optionsText}`);
+                            
+                            let choiceIndex = parseInt(choice) - 1;
+                            // 檢查店家輸入的數字對不對
+                            if (!isNaN(choiceIndex) && exactMatches[choiceIndex]) {
+                                finalPhone = exactMatches[choiceIndex].p;
+                            } else {
+                                alert("未選擇或輸入無效數字。將直接開啟預約表單，請您手動確認該客人的電話。");
+                                finalPhone = ''; // 放空，讓店家去前端自己填
+                            }
+                        } else {
+                            // 名字沒有完全一模一樣的 (可能是名字打錯字，找到近似的)，為了安全先不自動帶入
+                            finalPhone = '';
+                        }
+                    }
+                } catch (e) {
+                    console.error("智慧尋找會員電話失敗", e);
+                } finally {
+                    // 關閉 Loading
+                    const loadingEl = document.getElementById('loading');
+                    if(loadingEl) loadingEl.style.display = 'none';
+                }
+            }
+
+            // 2. 終極防呆：確保抓到的電話有正確補 0
+            if (finalPhone && String(finalPhone).length > 0 && !String(finalPhone).startsWith('0')) {
+                finalPhone = '0' + finalPhone;
+            }
+
+            // 3. 組合網址並開啟預約分頁
+            let url = `${FRONTEND_URL}?role=admin&phone=${encodeURIComponent(finalPhone || '')}&name=${encodeURIComponent(name || '')}`;
             window.open(url, '_blank');
         }
     </script>
