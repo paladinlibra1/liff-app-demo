@@ -85,7 +85,34 @@
         }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
+
+        /* ================= 下拉選單樣式 ================= */
+        .tab-select-container {
+            margin-bottom: 20px;
+        }
+        .tab-select {
+            width: 100%;
+            max-width: 300px; /* 電腦版最大寬度 */
+            padding: 12px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary-dark);
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            background-color: white;
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(214, 128, 149, 0.1);
+            appearance: none; /* 隱藏預設箭頭，用自訂樣式 */
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23c06c82%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 12px auto;
+        }
+        .tab-select:focus {
+            border-color: var(--primary-dark);
+            box-shadow: 0 0 8px rgba(192, 108, 130, 0.3);
+        }
         /* ================================================================= */
         /* ======================== 📱 手機版 (RWD) 專屬區塊 ======================== */
         /* ================================================================= */
@@ -96,6 +123,7 @@
             .container { padding: 10px; }
             .tabs { padding-bottom: 5px; margin-bottom: 15px; }
             .tab-btn { font-size: 15px; padding: 8px 10px; }
+            .tab-select { max-width: 100%; font-size: 15px; }
             
             /* ------ 2. 頂部按鈕與操作列 ------ */
             .header > div { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -151,11 +179,13 @@
 <body>
 
     <div id="dashboard" class="container">    
-        <div class="tabs">
-            <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
-            <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
-            <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">🗓️ 營業日曆設定</button>
-            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📜 歷史紀錄</button>
+        <div class="tab-select-container">
+            <select id="mainTabSelect" class="tab-select" onchange="switchTab(this.value)">
+                <option value="booking">📅 預約管理</option>
+                <option value="member">👥 會員清單</option>
+                <option value="operating">🗓️ 營業日曆設定</option>
+                <option value="history">📜 歷史紀錄</option>
+            </select>
         </div>
 
         <div id="loading">🚀 資料處理中，請稍候...</div>
@@ -307,12 +337,14 @@
         }
 
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+            // 1. 確保下拉選單的顯示值與目前的分頁一致
+            document.getElementById('mainTabSelect').value = tabName;
 
+            // 2. 隱藏所有區塊，顯示選中的區塊
             document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(`section-${tabName}`).classList.add('active');
 
+            // 3. 觸發對應的資料載入邏輯
             if (tabName === 'member' && allMembers.length === 0) loadMemberData();
             if (tabName === 'history' && allHistoryBookings.length === 0) loadHistoryData();
             
