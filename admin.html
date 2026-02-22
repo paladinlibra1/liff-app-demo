@@ -177,7 +177,17 @@
             .top-action-bar { display: flex; flex-direction: row !important; gap: 8px; margin-bottom: 15px; width: 100%; }
             .top-action-bar .btn { margin: 0 !important; padding: 12px 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
             .top-action-bar .btn:nth-child(1), .top-action-bar .btn:nth-child(2) { flex: 1; }
-            .top-action-bar .btn-icon { flex: 0 0 45px; font-size: 18px; padding: 0; }
+            .top-action-bar .btn-icon {
+                flex: 0 0 42px; 
+                font-size: 24px; 
+                padding: 0;
+                background: transparent !important; /* 🔥 強制去背 */
+                border: none !important;            /* 🔥 強制去邊框 */
+                box-shadow: none !important;        /* 🔥 移除陰影 */
+            }
+            .top-action-bar .btn-icon:hover {
+                background: #e5e5e5 !important;     /* 滑鼠移過去時給一點淡淡的灰色提示 */
+            }
 
             /* ------ 3. 篩選列與搜尋框 (Controls) ------ */
             .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; align-items: center; border-radius: 8px; box-shadow: none; border: 1px solid var(--border-color); }
@@ -254,11 +264,9 @@
         <div id="section-booking" class="section active">
             <div class="header">
                 <div class="top-action-bar">
-                    <button class="btn btn-success" onclick="createNewBooking()">➕ 代客預約</button>
-                    
-                    <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">日曆模式 📅</button>
-                    
-                    <button class="btn btn-primary btn-icon" onclick="loadBookingData()" title="重新整理">🔄</button>
+                    <button class="btn btn-success" onclick="createNewBooking()">➕ 代客預約</button>                    
+                    <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">日曆模式 📅</button>                    
+                    <button class="btn btn-outline btn-icon" onclick="loadBookingData()" title="重新整理">🔄</button>
                 </div>
             </div>
 
