@@ -777,8 +777,8 @@
                         <span style="color:#666;">${row.time}</span>
                     </td>
                     <td>${row.type}</td>
-                    <td><strong style="color:#333;">${row.name}</strong></td>
-                    <td>${row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
+                    <td><strong style="color:#666;">${row.name}</strong></td>
+                    <td>${row.name2 ? `<strong style="color:#666;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
                     <td>${row.phone}</td>
                     <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
@@ -1043,10 +1043,10 @@
                         <span style="color:#666;">${row.date}</span><br>
                         <span style="color:#666;">${row.time}</span>
                     </td>
-                    <td><span style="color:#888;">${row.type}</span></td>
-                    <td><strong style="color:#555;">${row.name}</strong></td>
-                    <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
-                    <td><span style="color:#888;">${row.phone}</span></td>
+                    <td><span style="color:#666;">${row.type}</span></td>
+                    <td><strong style="color:#666;">${row.name}</strong></td>
+                    <td><span style="color:#666;">${row.name2 ? row.name2 : '-'}</span></td>
+                    <td><span style="color:#666;">${row.phone}</span></td>
                     <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
