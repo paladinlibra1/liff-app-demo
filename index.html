@@ -374,7 +374,11 @@
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f";
                     document.getElementById('adminSearchBlock').style.display = 'block';
-                    document.getElementById('phone').required = false; 
+                    document.getElementById('phone').required = false;
+
+                    // 🔥 店家模式隱藏生日
+                    document.getElementById('birthday-group').style.display = 'none';
+                    document.getElementById('birthday').required = false;
                 } else {
                     // 客人模式
                     if (!liff.isLoggedIn()) {
@@ -411,7 +415,7 @@
                             let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
                             let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
-                            // 🔥 顯示生日欄位並設為必填
+                            // 🔥【重要】初次預約註冊顯示生日
                             document.getElementById('birthday-group').style.display = 'block';
                             document.getElementById('birthday').required = true;
                             
@@ -427,6 +431,10 @@
                             if (!prefillPhone) {
                                 document.getElementById('phone').value = checkRes.data.phone;
                             }
+
+                            // 🔥 舊客預約隱藏生日
+                            document.getElementById('birthday-group').style.display = 'none';
+                            document.getElementById('birthday').required = false;
                         }
                     }
                 }
