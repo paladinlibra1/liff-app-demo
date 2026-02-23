@@ -1190,8 +1190,9 @@
             // 取得目前內容並防呆
             const currentName = nameCell.innerText.trim();
             const currentPhone = phoneCell.innerText.trim();
+            / 🔥 處理生日：如果是 '-' 就清空，確保 input 看得懂
             let currentBday = bdayCell.innerText.trim();
-            if (currentBday === '-') currentBday = '';
+            if (currentBday === '-' || currentBday === 'undefined') currentBday = '';
         
             // 變身 TextBox
             nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
