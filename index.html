@@ -512,8 +512,13 @@
             const res = await callApi("registerMember", formData);
             setLoading(false);
 
-            alert(res.message);
-            liff.closeWindow();
+            // 🔥 修正顯示：抓取 res.message
+            if (res.status === "success") {
+                alert(res.message);
+                liff.closeWindow();
+            } else {
+                alert("錯誤：" + res.message);
+            }
         }
 
         // 🔥🔥🔥【補回】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
@@ -526,18 +531,17 @@
                 lineName: document.getElementById('lineName').value,
                 name: document.getElementById('name').value,
                 phone: document.getElementById('phone').value,
-                birthday: document.getElementById('birthday').value
+                birthday: document.getElementById('birthday').valu
             };
 
             const res = await callApi("registerMember", formData);
             
-            if (res.status === "success") { // 改用 status 判斷更準確
-                alert("🎉 綁定成功！\n\n按確定後將自動跳轉至預約畫面...");
-                // 重整網頁，讓系統重新偵測
+            if (res.status === "success") {
+                alert(res.message + "\n\n按確定後將自動跳轉至預約畫面...");
                 window.location.reload(); 
             } else {
                 setLoading(false);
-                alert("綁定失敗，請重試");
+                alert("錯誤：" + res.message);
             }
         }
         
