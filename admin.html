@@ -25,7 +25,29 @@
             --fc-button-hover-border-color: var(--primary-dark);
             --fc-button-active-bg-color: var(--primary-dark);
             --fc-button-active-border-color: var(--primary-dark);
-            --fc-today-bg-color: #f2f2f2; /* 今日背景改為淡灰 */
+            --fc-today-bg-color: #f2f2f2; /* 今日背景改為淡灰 */            
+        }
+        
+        /* 針對電腦版表格：將第一欄（預約時間）加寬 */
+        #bookingTable th:nth-child(1), 
+        #bookingTable td:nth-child(1),
+        #historyTable th:nth-child(1),
+        #historyTable td:nth-child(1) {
+            min-width: 140px; /* 設定寬度，您可以依需求調整 140px 這個數值 */
+        }
+
+        /* 優化時間顯示層次：日期小字、時間大字 */
+        .time-cell-date {
+            display: block;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        .time-cell-hour {
+            display: block;
+            color: var(--primary-dark);
+            font-size: 18px;
+            font-weight: bold;
         }
 
         body { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang TC', '微軟正黑體', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; letter-spacing: 0.5px; }
