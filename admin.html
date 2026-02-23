@@ -838,9 +838,8 @@
                 // 處理介紹人顯示與防呆 (處理名字裡可能有單引號的問題)
                 let safeName = (row.name || '').replace(/'/g, "\\'");
                 let safeReferrer = (row.referrer || '').replace(/'/g, "\\'");
-                let birthdayDisplay = row.birthday || '<span style="color:#ccc;">-</span>';
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
-                
+                let bdayValue = row.birthday || ''; // 確保如果沒生日就傳空字串
                 tr.innerHTML = `
                     <td><strong>${row.name}</strong></td>
                     <td>${row.phone}</td>
@@ -857,7 +856,7 @@
                     </td>
                     <td>
                         <button class="btn btn-sm" style="background-color: #666; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer;" 
-                            onclick="openEditMemberModal('${row.lineId}', '${safeName}', '${row.phone}', '${row.birthday}')">
+                            onclick="openEditMemberModal('${row.lineId}', '${safeName}', '${row.phone}', '${row.bdayValue}')">
                             修改資料
                         </button>
                     </td>
@@ -1124,37 +1123,47 @@
             window.open(url, '_blank');
         }
         
-        function openEditMemberModal(lineId, name, phone, bday) {
-            // 如果該會員根本沒有 Line ID (例如舊的手打資料)，則提醒無法修改
+        async function openEditMemberModal(lineId, name, phone, bday) {
             if (!lineId || lineId === 'undefined' || lineId === '') {
                 alert("⚠️ 此會員尚未綁定 LINE，無法進行資料連動修改。");
                 return;
             }
-
-            // 只讓店家修改這三項
+        
+            // 🔥 解決 undefined 問題：如果 bday 是 null/undefined，轉為空字串
+            const defaultBday = (bday && bday !== 'undefined') ? bday : "";
+        
             const newName = prompt("【修改會員姓名】", name);
             if (newName === null) return; 
-
+        
             const newPhone = prompt("【修改聯絡電話】", phone);
             if (newPhone === null) return;
-
-            const newBday = prompt("【修改生日】請輸入 YYYY-MM-DD", bday);
+        
+            const newBday = prompt("【修改生日】請輸入 YYYY-MM-DD", defaultBday);
             if (newBday === null) return;
-
-            setLoading(true);
-
-            // 呼叫 GAS：傳送 lineId 作為 Key，但只更新其他欄位
-            google.script.run.withSuccessHandler(res => {
-                setLoading(false);
-                alert(res); 
-                refreshMemberList(); 
-            }).updateMemberData({
-                lineId: lineId,   // 這是固定的 Key
-                name: newName,
-                phone: newPhone,
-                birthday: newBday,
-                isBooking: false  // 純資料修改，不加累計次數
-            });
+        
+            document.getElementById('loading').style.display = 'block';
+        
+            try {
+                // 🔥 關鍵修正：GitHub 環境必須使用 fetch 呼叫 API，不能用 google.script.run
+                const res = await callApi("updateMemberData", {
+                    lineId: lineId,
+                    name: newName,
+                    phone: newPhone,
+                    birthday: newBday,
+                    isBooking: false // 修改資料不增加次數
+                });
+        
+                if (res.status === "success" || res.message) {
+                    alert("✅ 修改成功！");
+                    loadMemberData(); // 重新整理表格
+                } else {
+                    alert("修改失敗：" + res.message);
+                }
+            } catch (e) {
+                alert("系統錯誤：" + e.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
     </script>
 </body>
