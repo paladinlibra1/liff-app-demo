@@ -238,6 +238,11 @@
                 <input type="tel" id="phone" required placeholder="09xx-xxx-xxx">
             </div>
 
+            <div class="form-group" id="birthday-group" style="display: none;">
+                <label for="birthday">生日</label>
+                <input type="date" id="birthday" class="form-control">
+            </div>
+
             <div class="form-group" id="group-date">
                 <label>預約日期</label>
                 <select id="date" required onchange="loadBusyTimes()">
@@ -353,6 +358,10 @@
                     let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
                     document.getElementById('bookingForm').onsubmit = submitRegister;
+
+                    // 🔥 顯示生日欄位並設為必填
+                    document.getElementById('birthday-group').style.display = 'block';
+                    document.getElementById('birthday').required = true;
                     
                     setLoading(false);
                     return; // 綁定模式不需要載入日期，直接結束
@@ -402,6 +411,10 @@
                             let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
                             let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
+                            // 🔥 顯示生日欄位並設為必填
+                            document.getElementById('birthday-group').style.display = 'block';
+                            document.getElementById('birthday').required = true;
+                            
                             // 綁定「註冊並重整」函式
                             document.getElementById('bookingForm').onsubmit = submitRegisterAndReload;
                             
@@ -484,7 +497,8 @@
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
                 name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value
+                phone: document.getElementById('phone').value,
+                birthday: document.getElementById('birthday').valu
             };
 
             const res = await callApi("registerMember", formData);
@@ -503,12 +517,13 @@
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
                 name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value
+                phone: document.getElementById('phone').value,
+                birthday: document.getElementById('birthday').value
             };
 
             const res = await callApi("registerMember", formData);
             
-            if (res.message) {
+            if (res.status === "success") { // 改用 status 判斷更準確
                 alert("🎉 綁定成功！\n\n按確定後將自動跳轉至預約畫面...");
                 // 重整網頁，讓系統重新偵測
                 window.location.reload(); 
@@ -521,10 +536,8 @@
         async function submitBooking(e) {
             e.preventDefault();
     
-            // 🔥🔥🔥【除錯用】加入這行，送出前彈窗顯示 role 是什麼 🔥🔥🔥
-            //alert("目前的權限是：" + document.getElementById('role').value); 
             setLoading(true);
-            
+          
             const formData = {
                 role: document.getElementById('role').value,
                 editId: document.getElementById('editId').value,
@@ -536,7 +549,8 @@
                 phone: document.getElementById('phone').value,
                 date: document.getElementById('date').value,
                 time: document.getElementById('time').value,
-                remark: document.getElementById('remark').value
+                remark: document.getElementById('remark').value,
+                birthday: document.getElementById('birthday')?.value || ""
             };
 
             const res = await callApi("submitBooking", formData);
@@ -550,7 +564,14 @@
                     window.location.reload();
                 }
             } else {
-                alert("錯誤：" + res.message);
+                // 🔥 優化點：如果是因為「重複預約」被攔截，我們 alert 完不要重整頁面
+                // 這樣客人才可以留在原地修改日期，不需要重新填寫姓名電話
+                alert("提示：" + res.message);
+        
+                // 如果錯誤訊息包含「重複」，就 return 讓客人留在原本畫面
+                if (res.message.includes("重複")) {
+                    return; 
+                }
             }
         }
 
