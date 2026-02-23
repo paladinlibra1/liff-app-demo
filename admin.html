@@ -843,16 +843,16 @@
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
         
                 tr.innerHTML = `
-                    <td class="col-name"><strong>${row.name}</strong></td>
-                    <td class="col-phone">${row.phone}</td>
-                    <td class="col-birthday" style="color:#666;">${birthdayDisplay}</td>
-                    <td style="color:#555;">${row.lineName || '-'}</td>
-                    <td style="font-size:14px; color:#888;">${row.firstVisit}</td>
-                    <td style="font-size:14px; color:#333;">${row.lastVisit}</td>
-                    <td><strong style="color:var(--primary-dark); font-size:16px;">${row.count}</strong></td>
+                    <td class="col-name"><span style="color:#666; font-weight:normal;">${row.name}</span></td>
+                    <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
+                    <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
+                    <td><span style="color:#666;">${row.lineName || '-'}</span></td>
+                    <td><span style="font-size:14px; color:#666;">${row.firstVisit}</span></td>
+                    <td><span style="font-size:14px; color:#666;">${row.lastVisit}</span></td>
+                    <td><span style="color:var(--primary-dark); font-size:14px; font-weight:normal;">${row.count}</span></td>
                     <td>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            ${referrerDisplay}
+                            <span style="color:#666;">${row.referrer || '(無)'}</span>
                             <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px;" onclick="editReferrer('${row.phone}', '${row.referrer || ''}')">✏️</button>
                         </div>
                     </td>
