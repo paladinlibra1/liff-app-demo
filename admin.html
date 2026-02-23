@@ -772,11 +772,7 @@
                 let tr = document.createElement('tr');
                 
                 tr.innerHTML = `
-                    <td class="time-column">
-                        <span class="time-cell-date">${row.date}</span>
-                        <span class="time-cell-hour">${row.time}</span>
-                    </td>
-                    //<td><strong>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
+                    <td>${row.date}</strong> <br><span style="color:var(--primary-dark); font-size:18px; font-weight:bold;">${row.time}</span></td>
                     <td>${row.type}</td>
                     <td><strong style="color:#333;">${row.name}</strong></td>
                     <td>${row.name2 ? `<strong style="color:#333;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
@@ -1040,11 +1036,7 @@
                 
                 // 歷史紀錄的文字顏色稍微調淡，視覺上與未來預約做區隔
                 tr.innerHTML = `
-                    <td class="time-column">
-                        <span class="time-cell-date" style="color:#aaa;">${row.date}</span>
-                        <span class="time-cell-hour" style="color:#555;">${row.time}</span>
-                    </td>
-                    //<td><span style="color:#888;">${row.date}</span> <br><strong style="color:#555;">${row.time}</strong></td>
+                    <td><span style="color:#888;">${row.date}</span> <br><strong style="color:#555;">${row.time}</strong></td>
                     <td><span style="color:#888;">${row.type}</span></td>
                     <td><strong style="color:#555;">${row.name}</strong></td>
                     <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
