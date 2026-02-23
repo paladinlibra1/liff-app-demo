@@ -832,18 +832,18 @@
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
-            data.forEach(row => {
+            data.forEach((row, index) => {
                 let tr = document.createElement('tr');
+                tr.id = `member-row-${index}`; // 給每一列 ID
                 
-                // 處理介紹人顯示與防呆 (處理名字裡可能有單引號的問題)
                 let safeName = (row.name || '').replace(/'/g, "\\'");
-                let safeReferrer = (row.referrer || '').replace(/'/g, "\\'");
+                let birthdayDisplay = row.birthday || '-';
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
-                let bdayValue = row.birthday || ''; // 確保如果沒生日就傳空字串
+        
                 tr.innerHTML = `
-                    <td><strong>${row.name}</strong></td>
-                    <td>${row.phone}</td>
-                    <td style="color:#666;">${birthdayDisplay}</td>
+                    <td class="col-name"><strong>${row.name}</strong></td>
+                    <td class="col-phone">${row.phone}</td>
+                    <td class="col-birthday" style="color:#666;">${birthdayDisplay}</td>
                     <td style="color:#555;">${row.lineName || '-'}</td>
                     <td style="font-size:14px; color:#888;">${row.firstVisit}</td>
                     <td style="font-size:14px; color:#333;">${row.lastVisit}</td>
@@ -851,18 +851,24 @@
                     <td>
                         <div style="display:flex; align-items:center; gap:8px;">
                             ${referrerDisplay}
-                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px; cursor: pointer;" onclick="editReferrer('${row.phone}', '${safeReferrer}')">✏️</button>
+                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px;" onclick="editReferrer('${row.phone}', '${row.referrer || ''}')">✏️</button>
                         </div>
                     </td>
                     <td>
-                        <button class="btn btn-sm" style="background-color: #666; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer;" 
-                            onclick="openEditMemberModal('${row.lineId}', '${safeName}', '${row.phone}', '${row.bdayValue}')">
-                            修改資料
-                        </button>
+                        <div class="action-btns">
+                            <button class="btn btn-sm btn-edit" id="edit-btn-${index}" 
+                                onclick="toggleEditRow(${index}, '${row.lineId}')">修改</button>
+                            
+                            <button class="btn btn-sm btn-success" id="save-btn-${index}" 
+                                style="display:none;" onclick="saveRow(${index}, '${row.lineId}')">儲存</button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+            
+            // 更新總人數顯示
+            document.getElementById('memberCount').innerText = data.length;
         }
 
         // 🔥 新增：彈出視窗讓店家輸入/修改介紹人
@@ -1162,6 +1168,73 @@
             } catch (e) {
                 alert("系統錯誤：" + e.message);
             } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // 儲存原始資料，方便取消或比對
+        let editingData = {};
+        
+        function toggleEditRow(index, lineId) {
+            const row = document.getElementById(`member-row-${index}`);
+            if (!row) return;
+        
+            const editBtn = document.getElementById(`edit-btn-${index}`);
+            const saveBtn = document.getElementById(`save-btn-${index}`);
+        
+            // 定位欄位
+            const nameCell = row.querySelector('.col-name');
+            const phoneCell = row.querySelector('.col-phone');
+            const bdayCell = row.querySelector('.col-birthday');
+        
+            // 取得目前內容並防呆
+            const currentName = nameCell.innerText.trim();
+            const currentPhone = phoneCell.innerText.trim();
+            let currentBday = bdayCell.innerText.trim();
+            if (currentBday === '-') currentBday = '';
+        
+            // 變身 TextBox
+            nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:120px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:140px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+        
+            // 切換按鈕
+            editBtn.style.display = 'none';
+            saveBtn.style.display = 'inline-block';
+        }
+        
+        async function saveRow(index, lineId) {
+            const newName = document.getElementById(`edit-name-${index}`).value;
+            const newPhone = document.getElementById(`edit-phone-${index}`).value;
+            const newBday = document.getElementById(`edit-birthday-${index}`).value;
+        
+            if (!newName || !newPhone) {
+                alert("姓名與電話為必填項！");
+                return;
+            }
+        
+            document.getElementById('loading').style.display = 'block';
+        
+            try {
+                // 🔥 使用您已經定義好的 callApi
+                const res = await callApi("updateMemberData", {
+                    lineId: lineId,
+                    name: newName,
+                    phone: newPhone,
+                    birthday: newBday,
+                    isBooking: false // 重要：代表只是修改資料，不增加累計次數
+                });
+        
+                if (res.status === "success") {
+                    alert("✅ 會員資料更新成功！");
+                    // 重新讀取資料，表格會自動刷回文字狀態
+                    await loadMemberData(); 
+                } else {
+                    alert("更新失敗：" + res.message);
+                    document.getElementById('loading').style.display = 'none';
+                }
+            } catch (e) {
+                alert("發生系統錯誤：" + e.message);
                 document.getElementById('loading').style.display = 'none';
             }
         }
