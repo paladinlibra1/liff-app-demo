@@ -1038,8 +1038,11 @@
                 let tr = document.createElement('tr');
                 
                 // 歷史紀錄的文字顏色稍微調淡，視覺上與未來預約做區隔
-                tr.innerHTML = `
-                    <td><span style="color:#888;">${row.date}</span> <br><strong style="color:#555;">${row.time}</strong></td>
+                tr.innerHTML = `                    
+                    <td>
+                        <span style="color:#666;">${row.date}</span><br>
+                        <span style="color:#666;">${row.time}</span>
+                    </td>
                     <td><span style="color:#888;">${row.type}</span></td>
                     <td><strong style="color:#555;">${row.name}</strong></td>
                     <td><span style="color:#888;">${row.name2 ? row.name2 : '-'}</span></td>
