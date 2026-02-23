@@ -829,19 +829,22 @@
             const tbody = document.getElementById('memberTableBody');
             tbody.innerHTML = '';
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
             data.forEach(row => {
                 let tr = document.createElement('tr');
                 
                 // 處理介紹人顯示與防呆 (處理名字裡可能有單引號的問題)
+                let safeName = (row.name || '').replace(/'/g, "\\'");
                 let safeReferrer = (row.referrer || '').replace(/'/g, "\\'");
+                let birthdayDisplay = row.birthday || '<span style="color:#ccc;">-</span>';
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
-
+                
                 tr.innerHTML = `
                     <td><strong>${row.name}</strong></td>
                     <td>${row.phone}</td>
+                    <td style="color:#666;">${birthdayDisplay}</td>
                     <td style="color:#555;">${row.lineName || '-'}</td>
                     <td style="font-size:14px; color:#888;">${row.firstVisit}</td>
                     <td style="font-size:14px; color:#333;">${row.lastVisit}</td>
@@ -851,6 +854,12 @@
                             ${referrerDisplay}
                             <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px; cursor: pointer;" onclick="editReferrer('${row.phone}', '${safeReferrer}')">✏️</button>
                         </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm" style="background-color: #666; color: white; padding: 4px 8px; border-radius: 8px; cursor: pointer;" 
+                            onclick="openEditMemberModal('${row.lineId}', '${safeName}', '${row.phone}', '${row.birthday}')">
+                            修改資料
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1113,6 +1122,39 @@
             // 3. 組合網址並開啟預約分頁
             let url = `${FRONTEND_URL}?role=admin&phone=${encodeURIComponent(finalPhone || '')}&name=${encodeURIComponent(name || '')}`;
             window.open(url, '_blank');
+        }
+        
+        function openEditMemberModal(lineId, name, phone, bday) {
+            // 如果該會員根本沒有 Line ID (例如舊的手打資料)，則提醒無法修改
+            if (!lineId || lineId === 'undefined' || lineId === '') {
+                alert("⚠️ 此會員尚未綁定 LINE，無法進行資料連動修改。");
+                return;
+            }
+
+            // 只讓店家修改這三項
+            const newName = prompt("【修改會員姓名】", name);
+            if (newName === null) return; 
+
+            const newPhone = prompt("【修改聯絡電話】", phone);
+            if (newPhone === null) return;
+
+            const newBday = prompt("【修改生日】請輸入 YYYY-MM-DD", bday);
+            if (newBday === null) return;
+
+            setLoading(true);
+
+            // 呼叫 GAS：傳送 lineId 作為 Key，但只更新其他欄位
+            google.script.run.withSuccessHandler(res => {
+                setLoading(false);
+                alert(res); 
+                refreshMemberList(); 
+            }).updateMemberData({
+                lineId: lineId,   // 這是固定的 Key
+                name: newName,
+                phone: newPhone,
+                birthday: newBday,
+                isBooking: false  // 純資料修改，不加累計次數
+            });
         }
     </script>
 </body>
