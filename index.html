@@ -544,9 +544,15 @@
                 alert("錯誤：" + res.message);
             }
         }
+
+        // 🔥 1. 在外面宣告一個變數來記錄狀態
+        let isSubmitting = false;
         
         async function submitBooking(e) {
             e.preventDefault();
+
+            if (isSubmitting) return; 
+            isSubmitting = true; // 鎖上開關
     
             setLoading(true);
           
@@ -565,25 +571,28 @@
                 birthday: document.getElementById('birthday')?.value || ""
             };
 
-            const res = await callApi("submitBooking", formData);
-            setLoading(false);
-            
-            if (res.status === "success") {
-                alert(res.message);
-                if(liff.isInClient()){
-                    liff.closeWindow();
+            try {
+                const res = await callApi("submitBooking", formData);
+                
+                if (res.status === "success") {
+                    alert(res.message);
+                    if(liff.isInClient()){
+                        liff.closeWindow();
+                    } else {
+                        window.location.reload();
+                    }
                 } else {
-                    window.location.reload();
+                    alert("提示：" + res.message);
+                    if (res.message.includes("重複")) {
+                        return; // 讓客人留在原本畫面
+                    }
                 }
-            } else {
-                // 🔥 優化點：如果是因為「重複預約」被攔截，我們 alert 完不要重整頁面
-                // 這樣客人才可以留在原地修改日期，不需要重新填寫姓名電話
-                alert("提示：" + res.message);
-        
-                // 如果錯誤訊息包含「重複」，就 return 讓客人留在原本畫面
-                if (res.message.includes("重複")) {
-                    return; 
-                }
+            } catch (err) {
+                alert("發生錯誤，請稍後再試！");
+            } finally {
+                // 🔥 3. 無論成功或失敗，最後一定要把開關解開
+                isSubmitting = false; 
+                setLoading(false);
             }
         }
 
