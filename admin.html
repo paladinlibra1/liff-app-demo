@@ -1430,42 +1430,115 @@
             }
         }
 
+        // ================= 顯示歷史預約詳細資訊 =================
+        function showHistoryDetail(id) {
+            // 從歷史紀錄陣列中找出被點擊的那一筆
+            let row = allHistoryBookings.find(r => r.id === id);
+            if(row) {
+                alert(`【歷史預約詳細資訊】\n\n📅 時間：${row.date} ${row.time}\n👤 姓名：${row.name}\n👥 同行：${row.name2 || '無'}\n📞 電話：${row.phone}\n📝 備註：${row.remark || '無'}`);
+            }
+        }
+
+        // ================= 歷史日曆初始化 (打包合併版) =================
         function initHistoryCalendar() {
             const el = document.getElementById('historyCalendar');
             fcHistoryCalendar = new FullCalendar.Calendar(el, {
-                initialView: 'dayGridMonth', // 歷史紀錄預設看「月曆」比較方便回顧
-                locale: 'zh-tw',
+                initialView: 'dayGridMonth', // 歷史紀錄預設用「月」看比較宏觀
+                locale: 'zh-tw',              
+                slotMinTime: '10:00:00', 
+                slotMaxTime: '21:00:00', 
+                allDaySlot: false,
                 height: 'auto',
+                showNonCurrentDates: false,
+                fixedWeekCount: false,
+                
+                slotDuration: '00:30:00',        
+                slotLabelInterval: '00:30',      
+                defaultTimedEventDuration: '00:30:00', 
+                displayEventTime: false,
+                slotLabelFormat: { hour: '2-digit', minute: '2-digit', omitZeroMinute: false, hour12: false },
+
+                // 🔥 核心修改：右側按鈕只留下 月(dayGridMonth) 與 週(timeGridWeek)
                 headerToolbar: { 
                     left: 'prev,next today', 
                     center: 'title', 
-                    right: 'dayGridMonth,timeGridWeek' // 提供月曆與週曆切換
+                    right: 'dayGridMonth,timeGridWeek' 
+                },
+
+                dayHeaderContent: function(arg) {
+                    const days = ['日', '一', '二', '三', '四', '五', '六'];
+                    let weekday = '週' + days[arg.date.getDay()]; 
+                    let dateStr = (arg.date.getMonth() + 1) + '/' + arg.date.getDate(); 
+                    
+                    let wrapper = document.createElement('div');
+                    if (arg.view.type === 'dayGridMonth') {
+                        wrapper.innerHTML = `
+                            <div style="text-align: center; line-height: 1.4; padding: 8px 0;">
+                                <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                            </div>
+                        `;
+                    } else {
+                        wrapper.innerHTML = `
+                            <div style="text-align: center; line-height: 1.4; padding: 2px 0;">
+                                <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">${weekday}</div>
+                                <div style="font-size: 13px; color: var(--text-color); font-weight: normal;">${dateStr}</div>
+                            </div>
+                        `;
+                    }
+                    return { domNodes: [wrapper] };
                 },
                 
-                // 將陣列資料轉換為日曆事件
+                // 🔥 同時間合併打包 (資料來源改為 allHistoryBookings)
                 events: function(fetchInfo, successCallback) {
-                    let fcEvents = allHistoryBookings.map(row => {
-                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
-                        let txtC = (row.type.includes('新客') ? '#333333' : '#ffffff');
-                        
-                        return {
-                            start: `${row.date}T${row.time}:00`,
-                            title: `${row.name} (${row.type})`,
-                            backgroundColor: c,
-                            borderColor: c,
-                            textColor: txtC,
-                            extendedProps: { row: row } // 把完整資料塞進去備用
-                        };
+                    let grouped = {};
+                    allHistoryBookings.forEach(row => {
+                        let dt = `${row.date}T${row.time}:00`;
+                        if (!grouped[dt]) grouped[dt] = [];
+                        grouped[dt].push(row);
                     });
+
+                    let fcEvents = [];
+                    for (let dt in grouped) {
+                        fcEvents.push({
+                            start: dt,
+                            backgroundColor: 'transparent', 
+                            borderColor: 'transparent',
+                            extendedProps: { bookings: grouped[dt] }
+                        });
+                    }
                     successCallback(fcEvents);
                 },
 
-                // 點擊日曆上的歷史預約時，彈出詳細資訊
-                eventClick: function(info) {
-                    let row = info.event.extendedProps.row;
-                    alert(`【歷史預約詳細資訊】\n\n📅 時間：${row.date} ${row.time}\n👤 姓名：${row.name}\n👥 同行：${row.name2 || '無'}\n📞 電話：${row.phone}\n📝 備註：${row.remark || '無'}`);
+                // 📱 渲染內部方塊
+                eventContent: function(info) {
+                    let bookings = info.event.extendedProps.bookings;
+                    let htmlDivs = []; 
+                    
+                    bookings.forEach(row => {
+                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
+                        let txtC = (row.type.includes('新客') ? '#333333' : '#ffffff');
+                        
+                        // 🔥 這裡把原本的 editBooking 改成 showHistoryDetail 彈出視窗
+                        htmlDivs.push(`
+                            <div onclick="showHistoryDetail('${row.id}')" 
+                                 style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                ${row.name}
+                            </div>
+                        `);
+
+                        // 處理同行者
+                        if (row.name2 && row.name2.trim() !== '') {
+                            htmlDivs.push(`
+                                <div onclick="showHistoryDetail('${row.id}')" 
+                                     style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                    ${row.name2}
+                                </div>
+                            `);
+                        }
+                    });            
+                    return { html: `<div style="width:100%; display: flex; flex-direction: column;">${htmlDivs.join('')}</div>` };
                 }
-            });
+            });            
             fcHistoryCalendar.render();
         }
     </script>
