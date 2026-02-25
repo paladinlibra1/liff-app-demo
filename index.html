@@ -282,24 +282,37 @@
         let currentAvailableTimes = [];
         window.lastCounts = {};
 
-        // 初始化
+        // 初始化 (極速快取版)
         window.onload = async function() {
-            setLoading(true);
+            // 讀取網址參數
+            const urlParams = new URLSearchParams(window.location.search);
+            const role = urlParams.get('role'); 
+            const editId = urlParams.get('id'); 
+            const action = urlParams.get('action'); 
+            const prefillName = urlParams.get('name');
+            const prefillPhone = urlParams.get('phone');
+
+            if(role) document.getElementById('role').value = role;
+
+            // ⚡ 優化 1：瞬間載入「營業日」快取 (如果有存過的話)
+            const cachedDates = localStorage.getItem('cf_dates_cache');
+            if (cachedDates) {
+                renderDateOptions(JSON.parse(cachedDates));
+            } else {
+                setLoading(true, "載入環境中..."); // 只有沒快取(第一次打開)才顯示轉圈圈
+            }
+
+            // ⚡ 優化 2：讓 GAS 背景去抓最新日期，不卡住畫面
+            const datesPromise = callApi("getInitData").then(res => {
+                if(res.status === "success") {
+                    localStorage.setItem('cf_dates_cache', JSON.stringify(res.dates)); // 更新快取
+                    renderDateOptions(res.dates); 
+                }
+                return res;
+            }); 
+
             try {
-                // 🔥🔥🔥【優化 1】並行處理：一進來立刻先偷抓「日期資料」，不要等 LIFF 🔥🔥🔥
-                const datesPromise = callApi("getInitData"); 
-
-                // 1. 讀取網址參數
-                const urlParams = new URLSearchParams(window.location.search);
-                const role = urlParams.get('role'); // ?role=admin
-                const editId = urlParams.get('id'); // ?id=...
-                const action = urlParams.get('action'); // ?action=register or confirm
-                const prefillName = urlParams.get('name');
-                const prefillPhone = urlParams.get('phone');
-
-                if(role) document.getElementById('role').value = role;
-
-                // 🔥🔥🔥【新增 2】如果有抓到參數，就自動填入欄位
+                // 自動填入參數帶入的名字/電話
                 if (prefillName) {
                     let nameInput = document.getElementById('name');
                     if (nameInput) nameInput.value = prefillName;
@@ -309,13 +322,13 @@
                     if (phoneInput) phoneInput.value = prefillPhone;
                 }
                 
-                // 2. LIFF 初始化
+                // LIFF 初始化
                 await liff.init({ liffId: MY_LIFF_ID });
                 
                 let currentUserLineId = "";
                 let currentUserLineName = ""; 
 
-                // 🔥 情境 1：會員綁定模式 (action=register)
+                // --- 【註冊綁定模式】 ---
                 if (action === 'register') {
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href });
@@ -328,7 +341,7 @@
                     document.getElementById('lineId').value = currentUserLineId;
                     document.getElementById('lineName').value = currentUserLineName;
 
-                    // 檢查是否已經綁定過
+                    setLoading(true, "驗證會員身分..."); 
                     try {
                         const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
                         if (checkRes.data) {
@@ -341,46 +354,40 @@
                         console.error("檢查會員失敗", e);
                     }
 
-                    // 顯示註冊表單
+                    // 顯示綁定畫面
                     document.getElementById('pageTitle').innerText = "會員綁定";
                     document.getElementById('submitBtn').innerText = "確認綁定";
                     
-                    // 安全隱藏不相關欄位
                     const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'];
                     idsToHide.forEach(id => {
                         let el = document.getElementById(id);
                         if (el) el.style.display = 'none';
                     });
                     
-                    // 移除必填屬性
                     let elType = document.getElementById('type'); if(elType) elType.required = false;
                     let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
                     let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
                     document.getElementById('bookingForm').onsubmit = submitRegister;
-
-                    // 🔥 顯示生日欄位並設為必填
                     document.getElementById('birthday-group').style.display = 'block';
                     document.getElementById('birthday').required = true;
                     
                     setLoading(false);
-                    return; // 綁定模式不需要載入日期，直接結束
+                    return; 
                 }
 
-                // 🔥 情境 2 & 3：預約模式
-                // 處理登入與身分
+                // --- 【預約模式】 ---
                 if (role === 'admin') {
-                    console.log("店家模式");
+                    // 店家代客預約模式
                     document.getElementById('pageTitle').innerText = "店家代客預約";
                     document.getElementById('pageTitle').style.color = "#d32f2f";
                     document.getElementById('adminSearchBlock').style.display = 'block';
                     document.getElementById('phone').required = false;
-
-                    // 🔥 店家模式隱藏生日
                     document.getElementById('birthday-group').style.display = 'none';
                     document.getElementById('birthday').required = false;
+                    if (typeof setupAdminSearch === "function") setupAdminSearch();
                 } else {
-                    // 客人模式
+                    // 客人自訂模式
                     if (!liff.isLoggedIn()) {
                         liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' });
                         return;
@@ -389,76 +396,64 @@
                     currentUserLineId = profile.userId;
                     currentUserLineName = profile.displayName;
                     
-                    // 填入隱藏欄位
                     document.getElementById('lineId').value = currentUserLineId;
                     document.getElementById('lineName').value = currentUserLineName;
                     
-                    // 🔥 強制綁定檢查 (如果是新預約)
                     if (!editId) {
-                        const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
+                        // ⚡ 優化 3：瞬間載入「會員資料」快取
+                        const cachedMemberStr = localStorage.getItem('cf_member_' + currentUserLineId);
+                        let memberData = cachedMemberStr ? JSON.parse(cachedMemberStr) : null;
                         
-                        if (!checkRes.data) {
-                            // ❌ 未綁定 -> 強制轉註冊 UI
+                        // 如果沒有快取，才去 GAS 後端要資料 (顯示轉圈圈)
+                        if (!memberData) {
+                            setLoading(true, "讀取個人資料中..."); 
+                            const checkRes = await callApi("getMemberByLineId", { lineId: currentUserLineId });
+                            if (checkRes.data) {
+                                memberData = checkRes.data;
+                                localStorage.setItem('cf_member_' + currentUserLineId, JSON.stringify(memberData)); // 存入快取
+                            }
+                        }
+                        
+                        if (!memberData) {
+                            // 新客：強制轉跳註冊畫面
                             setLoading(false);
                             alert(`👋 您好！\n為了確保預約權益，請先完成【會員綁定】才能繼續預約喔！`);
-
+                            
                             document.getElementById('pageTitle').innerText = "會員綁定 (初次預約)";
                             document.getElementById('submitBtn').innerText = "確認綁定並繼續";
                             
-                            // 隱藏欄位
                             ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'].forEach(id => {
                                 let el = document.getElementById(id); if (el) el.style.display = 'none';
                             });
                             
-                            // 移除必填
                             let elType = document.getElementById('type'); if(elType) elType.required = false;
                             let elDate = document.getElementById('date'); if(elDate) elDate.required = false;
                             let elTime = document.getElementById('time'); if(elTime) elTime.required = false;
 
-                            // 🔥【重要】初次預約註冊顯示生日
                             document.getElementById('birthday-group').style.display = 'block';
                             document.getElementById('birthday').required = true;
-                            
-                            // 綁定「註冊並重整」函式
                             document.getElementById('bookingForm').onsubmit = submitRegisterAndReload;
-                            
-                            return; // ⛔ 停止執行，不顯示日期
+                            return; 
                         } else {
-                            // ✅ 已綁定 -> 自動帶入資料 (但如果網址已經有帶資料了，就以網址的為主)
-                            if (!prefillName) {
-                                document.getElementById('name').value = checkRes.data.name;
-                            }
-                            if (!prefillPhone) {
-                                document.getElementById('phone').value = checkRes.data.phone;
-                            }
+                            // 舊客：自動填寫資料 (瞬間完成)
+                            if (!prefillName) document.getElementById('name').value = memberData.name;
+                            if (!prefillPhone) document.getElementById('phone').value = memberData.phone;
 
-                            // 🔥 舊客預約隱藏生日
                             document.getElementById('birthday-group').style.display = 'none';
                             document.getElementById('birthday').required = false;
                         }
                     }
                 }
 
-                // --- 只有通過檢查才會執行到這裡 ---                
-                // 渲染日期選單
-                const dateRes = await datesPromise; 
-                
-                // 🚀 終極殺手鐧：不管後端傳什麼順序，前端直接強制轉成日期格式再排一次！
-                let sortedDates = dateRes.dates.sort((a, b) => {
-                    return new Date(a.replace(/-/g, '/')) - new Date(b.replace(/-/g, '/'));
-                });
+                // 如果是第一次打開沒快取，這裡確保日期抓完才會取消轉圈圈
+                if (!cachedDates) {
+                    setLoading(true, "同步營業日曆...");
+                    await datesPromise; 
+                }
 
-                const select = document.getElementById('date');
-                select.innerHTML = '<option value="">請選擇日期</option>';
-                sortedDates.forEach(d => {
-                    let option = document.createElement("option");
-                    option.value = d;
-                    option.text = d;
-                    select.appendChild(option);
-                });
-
-                // 4. 如果是修改訂單 (載入舊資料)
+                // --- 修改訂單模式 ---
                 if (editId) {
+                    setLoading(true, "載入預約內容..."); // 抓取舊訂單必須轉圈圈
                     document.getElementById('editId').value = editId;
                     document.getElementById('pageTitle').innerText = "修改預約";
                     document.getElementById('submitBtn').innerText = "更新預約內容";
@@ -469,18 +464,12 @@
                         alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
                     }
                 }
-
-                if (role === 'admin') {
-                    setupAdminSearch();
-                }                
                 
             } catch (err) {
                 alert("初始化失敗：" + err.message);
             } finally {
-                // 確保 Loading 消失
-                if (window.location.search.indexOf('action=register') === -1) {
-                    setLoading(false);
-                }
+                // 確保 UI 正確解鎖
+                setLoading(false);
             }
         };
 
@@ -801,6 +790,25 @@
             } else {
                 overlay.style.display = 'none';
                 btn.disabled = false;
+            }
+        }
+
+        // 🚀 獨立出渲染日期的函式，讓快取可以瞬間呼叫
+        function renderDateOptions(dateList) {
+            let sortedDates = dateList.sort((a, b) => new Date(a.replace(/-/g, '/')) - new Date(b.replace(/-/g, '/')));
+            const select = document.getElementById('date');
+            if (!select) return;
+            
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">請選擇日期</option>';
+            sortedDates.forEach(d => {
+                let option = document.createElement("option");
+                option.value = d;
+                option.text = d;
+                select.appendChild(option);
+            });
+            if (currentVal && sortedDates.includes(currentVal)) {
+                select.value = currentVal;
             }
         }
         
