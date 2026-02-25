@@ -809,68 +809,125 @@
 
         // ================= 會員清單功能 =================
         async function loadMemberData() {
-            document.getElementById('loading').style.display = 'block';
+            // 🚀 1. 瞬間載入本機快取
+            const cachedMembers = localStorage.getItem('cf_all_members');
+            if (cachedMembers) {
+                allMembers = JSON.parse(cachedMembers);
+                document.getElementById('memberCount').innerText = allMembers.length;
+                filterMemberTable(); // 瞬間畫出表格
+            } else {
+                // 只有完全沒快取才顯示轉圈圈
+                document.getElementById('loading').style.display = 'block';
+            }
+
+            // 🚀 2. 背景偷偷向 Google 要最新資料
             try {
                 const res = await callApi("getAllMembers");
                 if (res.status === "success") {
-                    allMembers = res.data;
-                    document.getElementById('memberCount').innerText = allMembers.length;
-                    filterMemberTable(); 
-                } else alert("讀取會員失敗：" + res.message);
-            } catch (err) { alert("網路錯誤：" + err.message); }
-            document.getElementById('loading').style.display = 'none';
+                    let fetchedMembers = res.data;
+                    fetchedMembers.reverse(); // 讓最新加入的會員排在最上面
+
+                    const newDataStr = JSON.stringify(fetchedMembers);
+                    
+                    // 比對一下，如果資料真的有新增/變動，才重新刷新畫面與快取
+                    if (newDataStr !== cachedMembers) {
+                        allMembers = fetchedMembers;
+                        localStorage.setItem('cf_all_members', newDataStr); // 存入新快取
+                        
+                        document.getElementById('memberCount').innerText = allMembers.length;
+                        filterMemberTable(); 
+                    }
+                } else {
+                    if (!cachedMembers) alert("讀取會員失敗：" + res.message);
+                }
+            } catch (err) { 
+                console.error("背景更新會員資料失敗", err); 
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
+
+        // ================= 會員清單功能 (每次 20 筆) =================
+        let currentFilteredMembers = [];
+        let memberRenderLimit = 20; // 🔥 設定每次只顯示 20 筆
 
         function filterMemberTable() {
             const keyword = document.getElementById('searchMemberInput').value.toLowerCase();
-            let filteredData = allMembers.filter(row => row.name.toLowerCase().includes(keyword) || row.phone.includes(keyword) || row.lineName.toLowerCase().includes(keyword));
-            renderMemberTable(filteredData);
+            
+            // 搜尋全部資料
+            currentFilteredMembers = allMembers.filter(row => 
+                row.name.toLowerCase().includes(keyword) || 
+                row.phone.includes(keyword) || 
+                (row.lineName && row.lineName.toLowerCase().includes(keyword))
+            );
+            
+            // 每次重新搜尋時，把顯示數量重置回 20
+            memberRenderLimit = 20; 
+            renderMemberTable();
         }
 
-        function renderMemberTable(data) {
+        function renderMemberTable() {
             const tbody = document.getElementById('memberTableBody');
             tbody.innerHTML = '';
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+            
+            if (currentFilteredMembers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
-            data.forEach((row, index) => {
+
+            // 🔥 只切出前 20 筆來畫畫面
+            const dataToRender = currentFilteredMembers.slice(0, memberRenderLimit);
+
+            dataToRender.forEach((row, index) => {
                 let tr = document.createElement('tr');
-                tr.id = `member-row-${index}`; // 給每一列 ID
+                tr.id = `member-row-${index}`; 
                 
-                let safeName = (row.name || '').replace(/'/g, "\\'");
                 let birthdayDisplay = row.birthday || '-';
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
-        
+
                 tr.innerHTML = `
-                    <td class="col-name"><span style="font-size:14px; color:#666;">${row.name}</span></td>
-                    <td class="col-phone"><span style="font-size:14px; color:#666;">${row.phone}</span></td>
-                    <td class="col-birthday"><span style="font-size:14px; color:#666;">${birthdayDisplay}</span></td>
-                    <td><span style="font-size:14px; color:#666;">${row.lineName || '-'}</span></td>
-                    <td><span style="font-size:14px; color:#666;">${row.firstVisit}</span></td>
-                    <td><span style="font-size:14px; color:#666;">${row.lastVisit}</span></td>
-                    <td><span style="font-size:14px; color:#666;">${row.count}</span></td>
+                    <td class="col-name"><span style="color:#666; font-weight:bold;">${row.name}</span></td>
+                    <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
+                    <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
                     <td>
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="color:#666;">${row.referrer || '(無)'}</span>
-                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px;" onclick="editReferrer('${row.phone}', '${row.referrer || ''}')">✏️</button>
+                            ${referrerDisplay}
+                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px; cursor:pointer;" onclick="editReferrer('${row.phone}', '${row.referrer || ''}')">✏️</button>
                         </div>
                     </td>
                     <td>
                         <div class="action-btns">
                             <button class="btn btn-sm btn-edit" id="edit-btn-${index}" 
                                 onclick="toggleEditRow(${index}, '${row.lineId}')">修改</button>
-                            
                             <button class="btn btn-sm btn-success" id="save-btn-${index}" 
                                 style="display:none;" onclick="saveRow(${index}, '${row.lineId}')">儲存</button>
+                            <button class="btn btn-sm btn-outline" id="cancel-btn-${index}" 
+                                style="display:none;" onclick="cancelEditRow(${index})">取消</button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
-            
-            // 更新總人數顯示
-            document.getElementById('memberCount').innerText = data.length;
+
+            // 🔥 如果還有剩餘沒顯示的資料，在最下方產生「展開更多」按鈕
+            if (currentFilteredMembers.length > memberRenderLimit) {
+                let moreRow = document.createElement('tr');
+                let remaining = currentFilteredMembers.length - memberRenderLimit;
+                moreRow.innerHTML = `
+                    <td colspan="5" style="text-align:center; padding: 20px;">
+                        <button class="btn btn-outline" style="width:200px; border-radius:20px; color:#888;" onclick="loadMoreMembers()">
+                            向下展開更多 (尚有 ${remaining} 筆) 🔽
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(moreRow);
+            }
+        }
+
+        // 點擊載入更多時觸發
+        function loadMoreMembers() {
+            memberRenderLimit += 20; // 再多加 20 筆
+            renderMemberTable();
         }
 
         // 🔥 新增：彈出視窗讓店家輸入/修改介紹人
@@ -1016,44 +1073,76 @@
         }
 
         async function loadHistoryData() {
-            document.getElementById('loading').style.display = 'block';
+            // 🚀 1. 瞬間載入本機快取
+            const cachedHistory = localStorage.getItem('cf_all_history');
+            if (cachedHistory) {
+                allHistoryBookings = JSON.parse(cachedHistory);
+                document.getElementById('historyCount').innerText = allHistoryBookings.length;
+                filterHistoryTable(); // 瞬間畫出表格
+            } else {
+                document.getElementById('loading').style.display = 'block';
+            }
+
+            // 🚀 2. 背景偷偷向 Google 要最新資料
             try {
-                // 呼叫您剛剛在 GAS 新增的 API
                 const res = await callApi("getHistoricalBookings");
                 if (res.status === "success") {
-                    allHistoryBookings = res.data;
-                    document.getElementById('historyCount').innerText = allHistoryBookings.length;
+                    let fetchedHistory = res.data;
                     
                     // 歷史紀錄專屬排序：日期越「新」的在越上面 (由近到遠)
-                    allHistoryBookings.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
+                    fetchedHistory.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
                     
-                    filterHistoryTable(); 
+                    const newDataStr = JSON.stringify(fetchedHistory);
+                    
+                    // 如果有新歷史紀錄才更新畫面
+                    if (newDataStr !== cachedHistory) {
+                        allHistoryBookings = fetchedHistory;
+                        localStorage.setItem('cf_all_history', newDataStr); // 存入新快取
+                        
+                        document.getElementById('historyCount').innerText = allHistoryBookings.length;
+                        filterHistoryTable(); 
+                    }
                 } else {
-                    alert("讀取歷史紀錄失敗：" + res.message);
+                    if (!cachedHistory) alert("讀取歷史紀錄失敗：" + res.message);
                 }
-            } catch (err) { alert("網路錯誤：" + err.message); }
-            document.getElementById('loading').style.display = 'none';
+            } catch (err) { 
+                console.error("背景更新歷史紀錄失敗", err); 
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
+
+        // ================= 歷史預約功能 (每次 20 筆) =================
+        let currentFilteredHistory = [];
+        let historyRenderLimit = 20; // 🔥 設定每次只顯示 20 筆
 
         function filterHistoryTable() {
             const keyword = document.getElementById('searchHistoryInput').value.toLowerCase();
-            let filteredData = allHistoryBookings.filter(row => 
+            
+            // 搜尋全部歷史資料
+            currentFilteredHistory = allHistoryBookings.filter(row => 
                 (row.name + row.phone + (row.name2||'') + (row.remark||'')).toLowerCase().includes(keyword)
             );
-            renderHistoryTable(filteredData);
+            
+            // 每次重新搜尋時，把顯示數量重置回 20
+            historyRenderLimit = 20;
+            renderHistoryTable();
         }
 
-        function renderHistoryTable(data) {
+        function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = '';
-            if (data.length === 0) {
+            
+            if (currentFilteredHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無歷史資料</td></tr>';
                 return;
             }
-            data.forEach(row => {
+
+            // 🔥 只切出前 20 筆來畫畫面
+            const dataToRender = currentFilteredHistory.slice(0, historyRenderLimit);
+
+            dataToRender.forEach(row => {
                 let tr = document.createElement('tr');
-                
-                // 歷史紀錄的文字顏色稍微調淡，視覺上與未來預約做區隔
                 tr.innerHTML = `                    
                     <td>
                         <span style="color:#666;">${row.date}</span><br>
@@ -1070,6 +1159,26 @@
                 `;
                 tbody.appendChild(tr);
             });
+
+            // 🔥 如果還有剩餘沒顯示的資料，在最下方產生「展開更多」按鈕
+            if (currentFilteredHistory.length > historyRenderLimit) {
+                let moreRow = document.createElement('tr');
+                let remaining = currentFilteredHistory.length - historyRenderLimit;
+                moreRow.innerHTML = `
+                    <td colspan="7" style="text-align:center; padding: 20px;">
+                        <button class="btn btn-outline" style="width:200px; border-radius:20px; color:#888;" onclick="loadMoreHistory()">
+                            向下展開更多 (尚有 ${remaining} 筆) 🔽
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(moreRow);
+            }
+        }
+
+        // 點擊載入更多時觸發
+        function loadMoreHistory() {
+            historyRenderLimit += 20; // 再多加 20 筆
+            renderHistoryTable();
         }
         
         // ================= 智慧快速再約一筆 (防同名同姓版) =================
