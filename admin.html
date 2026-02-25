@@ -891,7 +891,7 @@
 
                     // 🔥 給老闆的視覺回饋：手動點擊的話，跳出成功提示
                     if (isManual) {
-                        setTimeout(() => alert("✅ 會員資料已同步至最新狀態！"), 100);
+                        //setTimeout(() => alert("✅ 會員資料已同步至最新狀態！"), 100);
                     }
                 } else {
                     alert("讀取會員失敗：" + res.message);
@@ -1183,7 +1183,7 @@
                     }
                     
                     // 手動點擊的反饋提示
-                    if (isManual) setTimeout(() => alert("✅ 歷史紀錄已同步至最新狀態！"), 100);
+                    //if (isManual) setTimeout(() => alert("✅ 歷史紀錄已同步至最新狀態！"), 100);
                 } else {
                     if (!cachedHistory || isManual) alert("讀取歷史紀錄失敗：" + res.message);
                 }
