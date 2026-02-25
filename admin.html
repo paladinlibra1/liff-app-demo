@@ -432,26 +432,37 @@
         
         <div id="section-history" class="section">
             <div class="header">
-                <div><button class="btn btn-primary" onclick="loadHistoryData()">🔄 載入/更新歷史紀錄</button></div>
+                <div class="top-action-bar">
+                    <button class="btn btn-primary" onclick="loadHistoryData()">🔄 載入/更新歷史紀錄</button>
+                    <button class="btn btn-toggle" id="historyViewToggleBtn" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
+                </div>
             </div>
-            <div class="controls">
-                <input type="text" id="searchHistoryInput" placeholder="🔍 搜尋歷史預約 (姓名/電話/備註)..." onkeyup="filterHistoryTable()" style="flex-grow: 1; max-width: 400px;">
-                <div style="color:#888; font-size:14px; margin-left:10px;">總筆數：<span id="historyCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 筆</div>
+            
+            <div id="historyListViewWrapper">
+                <div class="controls">
+                    <input type="text" id="searchHistoryInput" placeholder="🔍 搜尋歷史預約 (姓名/電話/備註)..." onkeyup="filterHistoryTable()" style="flex-grow: 1; max-width: 400px;">
+                    <div style="color:#888; font-size:14px; margin-left:10px;">總筆數：<span id="historyCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 筆</div>
+                </div>
+                <div class="box-container" style="overflow-x: auto;">
+                    <table id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>預約時間</th>
+                                <th>身分</th>
+                                <th>預約人姓名</th>
+                                <th>同行者姓名</th>
+                                <th>聯絡電話</th>
+                                <th>備註</th>
+                                <th>操作</th> 
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="box-container" style="overflow-x: auto;">
-                <table id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>預約時間</th>
-                            <th>身分</th>
-                            <th>預約人姓名</th>
-                            <th>同行者姓名</th>
-                            <th>聯絡電話</th>
-                            <th>備註</th>
-                            <th>操作</th> </tr>
-                    </thead>
-                    <tbody id="historyTableBody"></tbody>
-                </table>
+
+            <div id="historyCalendarViewWrapper" class="box-container calendar-wrapper" style="display:none;">
+                <div id="historyCalendar"></div>
             </div>
         </div>
     </div>
@@ -516,6 +527,9 @@
             
             if (tabName === 'booking' && viewMode === 'calendar' && fcBookingCalendar) {
                 setTimeout(() => fcBookingCalendar.render(), 50); 
+            }
+            if (tabName === 'history' && historyViewMode === 'calendar' && fcHistoryCalendar) {
+                setTimeout(() => fcHistoryCalendar.render(), 50); 
             }
         }
 
@@ -1117,10 +1131,13 @@
                     // 如果有新歷史紀錄才更新畫面
                     if (newDataStr !== cachedHistory) {
                         allHistoryBookings = fetchedHistory;
-                        localStorage.setItem('cf_all_history', newDataStr); // 存入新快取
+                        localStorage.setItem('cf_all_history', newDataStr);
                         
                         document.getElementById('historyCount').innerText = allHistoryBookings.length;
                         filterHistoryTable(); 
+                        
+                        // 🔥 新增：如果日曆已經打開了，順便更新日曆資料
+                        if (fcHistoryCalendar) fcHistoryCalendar.refetchEvents(); 
                     }
                 } else {
                     if (!cachedHistory) alert("讀取歷史紀錄失敗：" + res.message);
@@ -1386,6 +1403,70 @@
                 alert("發生系統錯誤：" + e.message);
                 document.getElementById('loading').style.display = 'none';
             }
+        }
+        // ================= 歷史預約：日曆與列表切換功能 =================
+        let historyViewMode = 'list'; 
+        let fcHistoryCalendar = null; 
+
+        function toggleHistoryViewMode() {
+            if (historyViewMode === 'list') {
+                historyViewMode = 'calendar';
+                document.getElementById('historyListViewWrapper').style.display = 'none';
+                document.getElementById('historyCalendarViewWrapper').style.display = 'block';
+                document.getElementById('historyViewToggleBtn').innerText = '列表模式 📝';
+                
+                // 如果日曆還沒建立過，就初始化
+                if (!fcHistoryCalendar) {
+                    initHistoryCalendar();
+                } else {
+                    // 確保畫面變動後，日曆能正確重新渲染大小
+                    setTimeout(() => fcHistoryCalendar.render(), 50);
+                }
+            } else {
+                historyViewMode = 'list';
+                document.getElementById('historyListViewWrapper').style.display = 'block';
+                document.getElementById('historyCalendarViewWrapper').style.display = 'none';
+                document.getElementById('historyViewToggleBtn').innerText = '日曆模式 📅';
+            }
+        }
+
+        function initHistoryCalendar() {
+            const el = document.getElementById('historyCalendar');
+            fcHistoryCalendar = new FullCalendar.Calendar(el, {
+                initialView: 'dayGridMonth', // 歷史紀錄預設看「月曆」比較方便回顧
+                locale: 'zh-tw',
+                height: 'auto',
+                headerToolbar: { 
+                    left: 'prev,next today', 
+                    center: 'title', 
+                    right: 'dayGridMonth,timeGridWeek' // 提供月曆與週曆切換
+                },
+                
+                // 將陣列資料轉換為日曆事件
+                events: function(fetchInfo, successCallback) {
+                    let fcEvents = allHistoryBookings.map(row => {
+                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
+                        let txtC = (row.type.includes('新客') ? '#333333' : '#ffffff');
+                        
+                        return {
+                            start: `${row.date}T${row.time}:00`,
+                            title: `${row.name} (${row.type})`,
+                            backgroundColor: c,
+                            borderColor: c,
+                            textColor: txtC,
+                            extendedProps: { row: row } // 把完整資料塞進去備用
+                        };
+                    });
+                    successCallback(fcEvents);
+                },
+
+                // 點擊日曆上的歷史預約時，彈出詳細資訊
+                eventClick: function(info) {
+                    let row = info.event.extendedProps.row;
+                    alert(`【歷史預約詳細資訊】\n\n📅 時間：${row.date} ${row.time}\n👤 姓名：${row.name}\n👥 同行：${row.name2 || '無'}\n📞 電話：${row.phone}\n📝 備註：${row.remark || '無'}`);
+                }
+            });
+            fcHistoryCalendar.render();
         }
     </script>
 </body>
