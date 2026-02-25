@@ -343,7 +343,7 @@
                 <div class="top-action-bar">
                     <button class="btn btn-success" onclick="createNewBooking()">➕ 代客預約</button>                    
                     <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">日曆模式 📅</button>                    
-                    <button class="btn btn-outline btn-icon" onclick="loadBookingData()" title="重新整理">🔄</button>
+                    <button class="btn btn-primary" onclick="loadBookingData('manual')">🔄 載入/更新預約</button>
                 </div>
             </div>
 
@@ -433,7 +433,7 @@
         <div id="section-history" class="section">
             <div class="header">
                 <div class="top-action-bar">
-                    <button class="btn btn-primary" onclick="loadHistoryData()">🔄 載入/更新歷史紀錄</button>
+                    <button class="btn btn-primary" onclick="loadHistoryData(true)">🔄 載入/更新歷史紀錄</button>
                     <button class="btn btn-toggle" id="historyViewToggleBtn" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
                 </div>
             </div>
@@ -487,7 +487,7 @@
         let opCalendarLoaded = false;
 
         window.onload = function() {
-            loadBookingData(true); 
+            loadBookingData('init');
         };
 
         function checkLogin() {
@@ -544,18 +544,53 @@
         // ================= 預約管理功能 =================
         function createNewBooking() { window.open(`${FRONTEND_URL}?role=admin`, '_blank'); }
 
-        async function loadBookingData(isInit = false) {
-            document.getElementById('loading').style.display = 'block';
+        async function loadBookingData(mode = 'auto') {
+            let isManual = (mode === 'manual');
+            let isInit = (mode === 'init');
+
+            // 🚀 手動點擊時，強制顯示轉圈圈
+            if (isManual) document.getElementById('loading').style.display = 'block';
+
+            const cachedBookings = localStorage.getItem('cf_all_bookings');
+            if (cachedBookings && !isManual) {
+                allBookings = JSON.parse(cachedBookings);
+                
+                if (isInit) setFilterMode('day'); 
+                else filterBookingTable();
+                
+                if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
+            } else if (!cachedBookings) {
+                document.getElementById('loading').style.display = 'block';
+            }
+
+            // 背景偷偷向 Google 要最新資料
             try {
                 const res = await callApi("getAllBookings");
                 if (res.status === "success") {
-                    allBookings = res.data;
-                    if (isInit) setFilterMode('today');
-                    else filterBookingTable(); 
-                    if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
-                } else alert("讀取失敗：" + res.message);
-            } catch (err) { alert("網路錯誤：" + err.message); }
-            document.getElementById('loading').style.display = 'none';
+                    const newDataStr = JSON.stringify(res.data);
+                    
+                    // 資料有變動 或 手動強制更新 時才重繪畫面
+                    if (newDataStr !== cachedBookings || isManual) {
+                        allBookings = res.data;
+                        localStorage.setItem('cf_all_bookings', newDataStr); 
+                        
+                        if (isInit) setFilterMode('day');
+                        else filterBookingTable(); 
+                        
+                        if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
+                    }
+                    
+                    // 手動點擊的反饋提示
+                    if (isManual) setTimeout(() => alert("✅ 預約清單已同步至最新狀態！"), 100);
+                } else {
+                    if (!cachedBookings || isManual) alert("讀取失敗：" + res.message);
+                }
+            } catch (err) { 
+                console.error("背景更新預約資料失敗", err); 
+                if (isManual) alert("網路不穩，請稍後再試！");
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
         function toggleViewMode() {
@@ -1117,44 +1152,44 @@
             window.open(frontendUrl, '_blank'); 
         }
 
-        async function loadHistoryData() {
-            // 🚀 1. 瞬間載入本機快取
+        async function loadHistoryData(isManual = false) {
+            // 🚀 手動點擊時，強制顯示轉圈圈
+            if (isManual) document.getElementById('loading').style.display = 'block';
+
             const cachedHistory = localStorage.getItem('cf_all_history');
-            if (cachedHistory) {
+            if (cachedHistory && !isManual) {
                 allHistoryBookings = JSON.parse(cachedHistory);
                 document.getElementById('historyCount').innerText = allHistoryBookings.length;
-                filterHistoryTable(); // 瞬間畫出表格
-            } else {
+                filterHistoryTable(); 
+            } else if (!cachedHistory) {
                 document.getElementById('loading').style.display = 'block';
             }
 
-            // 🚀 2. 背景偷偷向 Google 要最新資料
             try {
                 const res = await callApi("getHistoricalBookings");
                 if (res.status === "success") {
                     let fetchedHistory = res.data;
-                    
-                    // 歷史紀錄專屬排序：日期越「新」的在越上面 (由近到遠)
                     fetchedHistory.sort((a, b) => new Date(b.date+" "+b.time) - new Date(a.date+" "+a.time));
                     
                     const newDataStr = JSON.stringify(fetchedHistory);
                     
-                    // 如果有新歷史紀錄才更新畫面
-                    if (newDataStr !== cachedHistory) {
+                    if (newDataStr !== cachedHistory || isManual) {
                         allHistoryBookings = fetchedHistory;
-                        localStorage.setItem('cf_all_history', newDataStr);
+                        localStorage.setItem('cf_all_history', newDataStr); 
                         
                         document.getElementById('historyCount').innerText = allHistoryBookings.length;
                         filterHistoryTable(); 
-                        
-                        // 🔥 新增：如果日曆已經打開了，順便更新日曆資料
                         if (fcHistoryCalendar) fcHistoryCalendar.refetchEvents(); 
                     }
+                    
+                    // 手動點擊的反饋提示
+                    if (isManual) setTimeout(() => alert("✅ 歷史紀錄已同步至最新狀態！"), 100);
                 } else {
-                    if (!cachedHistory) alert("讀取歷史紀錄失敗：" + res.message);
+                    if (!cachedHistory || isManual) alert("讀取歷史紀錄失敗：" + res.message);
                 }
             } catch (err) { 
                 console.error("背景更新歷史紀錄失敗", err); 
+                if (isManual) alert("網路不穩，請稍後再試！");
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -1552,6 +1587,17 @@
             });            
             fcHistoryCalendar.render();
         }
+        // ================= 全自動背景更新排程 =================
+        // 設定每 3 分鐘 (180,000 毫秒) 自動檢查一次最新資料
+        setInterval(() => {
+            console.log("🔄 執行背景定時更新...");
+            
+            // 傳入 'auto' 或 false，代表這是系統自動更新
+            // 系統會在背景默默比對，不會干擾老闆操作，也不會跳出 alert
+            loadBookingData('auto');
+            loadMemberData(false);
+            loadHistoryData(false);
+        }, 3 * 60 * 1000); // 3 * 60 * 1000 = 3分鐘
     </script>
 </body>
 </html>
