@@ -343,7 +343,7 @@
                 <div class="top-action-bar">
                     <button class="btn btn-success" onclick="createNewBooking()">➕ 代客預約</button>                    
                     <button class="btn btn-toggle" id="viewToggleBtn" onclick="toggleViewMode()">日曆模式 📅</button>                    
-                    <button class="btn btn-primary" onclick="loadBookingData('manual')">🔄 載入/更新預約</button>
+                    <button class="btn" style="background: transparent; color: #666; border: 1px solid #ddd; box-shadow: none;" onclick="loadBookingData('manual')">🔄</button>
                 </div>
             </div>
 
@@ -392,7 +392,7 @@
 
         <div id="section-member" class="section">
             <div class="header">                
-                <button class="btn btn-primary" onclick="loadMemberData(true)">🔄 重新整理清單</button>
+                <button class="btn" style="background: transparent; color: #666; border: 1px solid #ddd; box-shadow: none;" onclick="loadMemberData(true)">🔄 重新整理</button>
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
@@ -433,7 +433,7 @@
         <div id="section-history" class="section">
             <div class="header">
                 <div class="top-action-bar">
-                    <button class="btn btn-primary" onclick="loadHistoryData(true)">🔄 載入/更新歷史紀錄</button>
+                    <button class="btn" style="background: transparent; color: #666; border: 1px solid #ddd; box-shadow: none;" onclick="loadHistoryData(true)">🔄</button>
                     <button class="btn btn-toggle" id="historyViewToggleBtn" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
                 </div>
             </div>
@@ -581,7 +581,7 @@
                     }
                     
                     // 手動點擊的反饋提示
-                    if (isManual) setTimeout(() => alert("✅ 預約清單已同步至最新狀態！"), 100);
+                    //if (isManual) setTimeout(() => alert("✅ 預約清單已同步至最新狀態！"), 100);
                 } else {
                     if (!cachedBookings || isManual) alert("讀取失敗：" + res.message);
                 }
