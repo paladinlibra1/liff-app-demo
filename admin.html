@@ -844,9 +844,10 @@
             }
         }
 
-        // ================= 會員清單功能 (每次 20 筆) =================
+        // ================= 會員清單功能 (分頁版：每頁 20 筆) =================
         let currentFilteredMembers = [];
-        let memberRenderLimit = 20; // 🔥 設定每次只顯示 20 筆
+        let currentMemberPage = 1; // 記錄目前在第幾頁
+        const memberItemsPerPage = 20; // 每頁固定顯示 20 筆
 
         function filterMemberTable() {
             const keyword = document.getElementById('searchMemberInput').value.toLowerCase();
@@ -858,8 +859,8 @@
                 (row.lineName && row.lineName.toLowerCase().includes(keyword))
             );
             
-            // 每次重新搜尋時，把顯示數量重置回 20
-            memberRenderLimit = 20; 
+            // 每次重新搜尋時，自動回到第 1 頁
+            currentMemberPage = 1; 
             renderMemberTable();
         }
 
@@ -868,16 +869,24 @@
             tbody.innerHTML = '';
             
             if (currentFilteredMembers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
 
-            // 🔥 只切出前 20 筆來畫畫面
-            const dataToRender = currentFilteredMembers.slice(0, memberRenderLimit);
+            // 計算分頁範圍
+            const totalPages = Math.ceil(currentFilteredMembers.length / memberItemsPerPage);
+            const startIndex = (currentMemberPage - 1) * memberItemsPerPage;
+            const endIndex = startIndex + memberItemsPerPage;
+            
+            // 只切出當前頁面需要的 20 筆資料
+            const dataToRender = currentFilteredMembers.slice(startIndex, endIndex);
 
             dataToRender.forEach((row, index) => {
+                // 🔥 關鍵：算出全域索引 (確保跨頁修改時，ID 不會重複打架)
+                let absIndex = startIndex + index; 
+                
                 let tr = document.createElement('tr');
-                tr.id = `member-row-${index}`; 
+                tr.id = `member-row-${absIndex}`; 
                 
                 let birthdayDisplay = row.birthday || '-';
                 let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
@@ -886,6 +895,7 @@
                     <td class="col-name"><span style="color:#666; font-weight:bold;">${row.name}</span></td>
                     <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
+                    <td><span style="color:#666;">${row.lineName || '-'}</span></td>
                     <td>
                         <div style="display:flex; align-items:center; gap:8px;">
                             ${referrerDisplay}
@@ -894,37 +904,50 @@
                     </td>
                     <td>
                         <div class="action-btns">
-                            <button class="btn btn-sm btn-edit" id="edit-btn-${index}" 
-                                onclick="toggleEditRow(${index}, '${row.lineId}')">修改</button>
-                            <button class="btn btn-sm btn-success" id="save-btn-${index}" 
-                                style="display:none;" onclick="saveRow(${index}, '${row.lineId}')">儲存</button>
-                            <button class="btn btn-sm btn-outline" id="cancel-btn-${index}" 
-                                style="display:none;" onclick="cancelEditRow(${index})">取消</button>
+                            <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" 
+                                onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
+                            <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" 
+                                style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
+                            <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" 
+                                style="display:none;" onclick="cancelEditRow(${absIndex})">取消</button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // 🔥 如果還有剩餘沒顯示的資料，在最下方產生「展開更多」按鈕
-            if (currentFilteredMembers.length > memberRenderLimit) {
-                let moreRow = document.createElement('tr');
-                let remaining = currentFilteredMembers.length - memberRenderLimit;
-                moreRow.innerHTML = `
-                    <td colspan="5" style="text-align:center; padding: 20px;">
-                        <button class="btn btn-outline" style="width:200px; border-radius:20px; color:#888;" onclick="loadMoreMembers()">
-                            向下展開更多 (尚有 ${remaining} 筆) 🔽
-                        </button>
+            // 🔥 建立底部的「上一頁 / 下一頁」控制列 (只有總頁數 > 1 才顯示)
+            if (totalPages > 1) {
+                let pageRow = document.createElement('tr');
+                pageRow.innerHTML = `
+                    <td colspan="6" style="text-align:center; padding: 15px; background: #fcfcfc;">
+                        <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
+                            <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" 
+                                onclick="changeMemberPage(-1)" ${currentMemberPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                                ◀ 上一頁
+                            </button>
+                            
+                            <span style="font-size:14px; color:#555; font-weight:bold;">
+                                第 ${currentMemberPage} 頁 / 共 ${totalPages} 頁
+                            </span>
+                            
+                            <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" 
+                                onclick="changeMemberPage(1)" ${currentMemberPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                                下一頁 ▶
+                            </button>
+                        </div>
                     </td>
                 `;
-                tbody.appendChild(moreRow);
+                tbody.appendChild(pageRow);
             }
         }
 
-        // 點擊載入更多時觸發
-        function loadMoreMembers() {
-            memberRenderLimit += 20; // 再多加 20 筆
+        // 換頁動作函式
+        function changeMemberPage(step) {
+            currentMemberPage += step;
             renderMemberTable();
+            // 換頁後自動捲動回表格頂端
+            document.getElementById('memberTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // 🔥 新增：彈出視窗讓店家輸入/修改介紹人
@@ -1109,20 +1132,20 @@
             }
         }
 
-        // ================= 歷史預約功能 (每次 20 筆) =================
+        // ================= 歷史預約功能 (分頁版：每頁 20 筆) =================
         let currentFilteredHistory = [];
-        let historyRenderLimit = 20; // 🔥 設定每次只顯示 20 筆
+        let currentHistoryPage = 1; // 記錄目前在第幾頁
+        const historyItemsPerPage = 20; // 每頁固定顯示 20 筆
 
         function filterHistoryTable() {
             const keyword = document.getElementById('searchHistoryInput').value.toLowerCase();
             
-            // 搜尋全部歷史資料
             currentFilteredHistory = allHistoryBookings.filter(row => 
                 (row.name + row.phone + (row.name2||'') + (row.remark||'')).toLowerCase().includes(keyword)
             );
             
-            // 每次重新搜尋時，把顯示數量重置回 20
-            historyRenderLimit = 20;
+            // 每次搜尋重置回第一頁
+            currentHistoryPage = 1;
             renderHistoryTable();
         }
 
@@ -1135,8 +1158,12 @@
                 return;
             }
 
-            // 🔥 只切出前 20 筆來畫畫面
-            const dataToRender = currentFilteredHistory.slice(0, historyRenderLimit);
+            // 計算分頁範圍
+            const totalPages = Math.ceil(currentFilteredHistory.length / historyItemsPerPage);
+            const startIndex = (currentHistoryPage - 1) * historyItemsPerPage;
+            const endIndex = startIndex + historyItemsPerPage;
+            
+            const dataToRender = currentFilteredHistory.slice(startIndex, endIndex);
 
             dataToRender.forEach(row => {
                 let tr = document.createElement('tr');
@@ -1157,25 +1184,38 @@
                 tbody.appendChild(tr);
             });
 
-            // 🔥 如果還有剩餘沒顯示的資料，在最下方產生「展開更多」按鈕
-            if (currentFilteredHistory.length > historyRenderLimit) {
-                let moreRow = document.createElement('tr');
-                let remaining = currentFilteredHistory.length - historyRenderLimit;
-                moreRow.innerHTML = `
-                    <td colspan="7" style="text-align:center; padding: 20px;">
-                        <button class="btn btn-outline" style="width:200px; border-radius:20px; color:#888;" onclick="loadMoreHistory()">
-                            向下展開更多 (尚有 ${remaining} 筆) 🔽
-                        </button>
+            // 🔥 建立底部的「上一頁 / 下一頁」控制列
+            if (totalPages > 1) {
+                let pageRow = document.createElement('tr');
+                pageRow.innerHTML = `
+                    <td colspan="7" style="text-align:center; padding: 15px; background: #fcfcfc;">
+                        <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
+                            <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" 
+                                onclick="changeHistoryPage(-1)" ${currentHistoryPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                                ◀ 上一頁
+                            </button>
+                            
+                            <span style="font-size:14px; color:#555; font-weight:bold;">
+                                第 ${currentHistoryPage} 頁 / 共 ${totalPages} 頁
+                            </span>
+                            
+                            <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" 
+                                onclick="changeHistoryPage(1)" ${currentHistoryPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                                下一頁 ▶
+                            </button>
+                        </div>
                     </td>
                 `;
-                tbody.appendChild(moreRow);
+                tbody.appendChild(pageRow);
             }
         }
 
-        // 點擊載入更多時觸發
-        function loadMoreHistory() {
-            historyRenderLimit += 20; // 再多加 20 筆
+        // 換頁動作函式
+        function changeHistoryPage(step) {
+            currentHistoryPage += step;
             renderHistoryTable();
+            // 換頁後自動捲動回表格頂端
+            document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
         // ================= 智慧快速再約一筆 (防同名同姓版) =================
