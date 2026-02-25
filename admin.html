@@ -391,8 +391,8 @@
         </div>
 
         <div id="section-member" class="section">
-            <div class="header">
-                <div><button class="btn btn-primary" onclick="loadMemberData()">🔄 重新整理清單</button></div>
+            <div class="header">                
+                <button class="btn btn-primary" onclick="loadMemberData(true)">🔄 重新整理清單</button>
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
@@ -819,40 +819,51 @@
         }
 
         // ================= 會員清單功能 =================
-        async function loadMemberData() {
-            // 🚀 1. 瞬間載入本機快取
-            const cachedMembers = localStorage.getItem('cf_all_members');
-            if (cachedMembers) {
-                allMembers = JSON.parse(cachedMembers);
-                document.getElementById('memberCount').innerText = allMembers.length;
-                filterMemberTable(); // 瞬間畫出表格
-            } else {
-                // 只有完全沒快取才顯示轉圈圈
+        async function loadMemberData(isManual = false) {
+            // 🚀 如果是手動點擊「重新整理」，強制顯示轉圈圈
+            if (isManual) {
                 document.getElementById('loading').style.display = 'block';
             }
 
-            // 🚀 2. 背景偷偷向 Google 要最新資料
+            // 1. 瞬間載入本機快取
+            const cachedMembers = localStorage.getItem('cf_all_members');
+            if (cachedMembers && !isManual) { 
+                allMembers = JSON.parse(cachedMembers);
+                document.getElementById('memberCount').innerText = allMembers.length;
+                filterMemberTable(); 
+            } else if (!cachedMembers) {
+                // 如果完全沒快取，也要顯示轉圈圈
+                document.getElementById('loading').style.display = 'block';
+            }
+
+            // 2. 向 Google 要最新資料
             try {
                 const res = await callApi("getAllMembers");
                 if (res.status === "success") {
                     let fetchedMembers = res.data;
-                    fetchedMembers.reverse(); // 讓最新加入的會員排在最上面
+                    fetchedMembers.reverse(); 
 
                     const newDataStr = JSON.stringify(fetchedMembers);
                     
-                    // 比對一下，如果資料真的有新增/變動，才重新刷新畫面與快取
-                    if (newDataStr !== cachedMembers) {
+                    // 比對一下，如果資料有變動，或者是「手動要求更新」，就刷新畫面與快取
+                    if (newDataStr !== cachedMembers || isManual) {
                         allMembers = fetchedMembers;
-                        localStorage.setItem('cf_all_members', newDataStr); // 存入新快取
+                        localStorage.setItem('cf_all_members', newDataStr); 
                         
                         document.getElementById('memberCount').innerText = allMembers.length;
                         filterMemberTable(); 
                     }
+
+                    // 🔥 給老闆的視覺回饋：手動點擊的話，跳出成功提示
+                    if (isManual) {
+                        setTimeout(() => alert("✅ 會員資料已同步至最新狀態！"), 100);
+                    }
                 } else {
-                    if (!cachedMembers) alert("讀取會員失敗：" + res.message);
+                    alert("讀取會員失敗：" + res.message);
                 }
             } catch (err) { 
-                console.error("背景更新會員資料失敗", err); 
+                console.error("更新會員資料失敗", err); 
+                if (isManual) alert("網路不穩，請稍後再試！");
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
