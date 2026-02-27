@@ -343,7 +343,7 @@
                 <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">    
                     <button class="btn btn-success" style="flex: 1; border: none; border-radius: 8px;" onclick="createNewBooking()">➕ 代客預約</button>
                     <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: #fde8ec; color: #d68095; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleViewMode()">日曆模式 📅</button>
-                    <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadBookingData('manual')">更新預約 🔄</button>
+                    <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadBookingData('manual')">重新整理 🔄</button>
                 </div>
             </div>
 
@@ -432,9 +432,9 @@
         
         <div id="section-history" class="section">
             <div class="header">
-                <div class="top-action-bar">                   
-                    <button class="btn btn-toggle" id="historyViewToggleBtn" style="border: none;" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
-                     <button class="btn" style="background: transparent; border: none; box-shadow: none; padding: 5px 10px;" onclick="loadHistoryData(true)">重新整理 🔄</button>
+                <div class="top-action-bar">                
+                    <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: #fde8ec; color: #d68095; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
+                    <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadHistoryData('manual')">重新整理 🔄</button>
                 </div>
             </div>
             
