@@ -341,9 +341,9 @@
         <div id="section-booking" class="section active">
             <div class="header">
                 <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">    
-                    <button class="btn btn-success" style="flex: 1; border: none; border-radius: 8px;" onclick="createNewBooking()">➕ 代客預約</button>
-                    <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: #fde8ec; color: #d68095; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleViewMode()">日曆模式 📅</button>
-                    <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadBookingData('manual')">重新整理 🔄</button>
+                    <button class="btn btn-success" style="flex: 1; background: transparent; border: none; border-radius: 8px;" onclick="createNewBooking()">➕ 代客預約</button>
+                    <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: transparent; color: #d68095; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleViewMode()">日曆模式 📅</button>
+                    <button class="btn" style="flex: 1; background: transparent; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadBookingData('manual')">重新整理 🔄</button>
                 </div>
             </div>
 
@@ -392,7 +392,7 @@
 
         <div id="section-member" class="section">
             <div class="header">
-                <button class="btn" style="background: #eef2f5; color: #555; border: none; box-shadow: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">重新整理 🔄</button>
+                <button class="btn" style="background: transparent; color: #555; border: none; box-shadow: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">重新整理 🔄</button>
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
