@@ -44,14 +44,14 @@
 
         /* 幽靈按鈕 (全透明底，滑鼠移過變成淡粉色) */
         .btn-spa-outline {
-            background-color: transparent;
+            background-color: #f5f5f5; /* 🔥 從 transparent 改成淡灰色 */
             color: #666666;
-            border: none; /* 完全拿掉邊框，追求極致柔和 */
+            border: none; 
             transition: all 0.3s ease;
         }
         .btn-spa-outline:hover {
-            background-color: #fdf2f5; /* 極淡的嬰兒粉底色 */
-            color: #f89fa1 !important; /* 字體變成櫻花粉 */
+            background-color: #fdf2f5; /* 滑鼠移過變成淡粉色 */
+            color: #f89fa1 !important; 
         }
         /* ================= 溫柔美業風按鈕 (參考依美琦 SPA) ================= */
         
@@ -637,14 +637,14 @@
                 viewMode = 'calendar';
                 document.getElementById('listViewWrapper').style.display = 'none';
                 document.getElementById('calendarViewWrapper').style.display = 'block';
-                document.getElementById('viewToggleBtn').innerText = '列表模式 📝';
+                document.getElementById('viewToggleBtn').innerText = '列表模式';
                 if (!fcBookingCalendar) initBookingCalendar();
                 else setTimeout(() => fcBookingCalendar.render(), 50);
             } else {
                 viewMode = 'list';
                 document.getElementById('listViewWrapper').style.display = 'block';
                 document.getElementById('calendarViewWrapper').style.display = 'none';
-                document.getElementById('viewToggleBtn').innerText = '日曆模式 📅';
+                document.getElementById('viewToggleBtn').innerText = '日曆模式';
             }
         }
 
