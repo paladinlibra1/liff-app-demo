@@ -27,6 +27,33 @@
             --fc-button-active-border-color: var(--primary-dark);
             --fc-today-bg-color: #f2f2f2; /* 今日背景改為淡灰 */            
         }
+
+        /* ================= 溫柔美業風按鈕 (參考依美琦 SPA) ================= */
+        /* 主要按鈕 (櫻花粉底色，溫柔醒目) */
+        .btn-spa-primary {
+            background-color: #f89fa1; /* 依美琦使用的櫻花粉 */
+            color: #ffffff;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(248, 159, 161, 0.3); /* 加上淡淡的粉色光暈 */
+        }
+        .btn-spa-primary:hover {
+            background-color: #f5aeb3; /* 移過去稍微變淺變柔和 */
+            transform: translateY(-2px); /* 輕微往上浮的點擊感 */
+            box-shadow: 0 6px 15px rgba(248, 159, 161, 0.4);
+        }
+
+        /* 幽靈按鈕 (全透明底，滑鼠移過變成淡粉色) */
+        .btn-spa-outline {
+            background-color: transparent;
+            color: #666666;
+            border: none; /* 完全拿掉邊框，追求極致柔和 */
+            transition: all 0.3s ease;
+        }
+        .btn-spa-outline:hover {
+            background-color: #fdf2f5; /* 極淡的嬰兒粉底色 */
+            color: #f89fa1 !important; /* 字體變成櫻花粉 */
+        }
+        /* ================= 溫柔美業風按鈕 (參考依美琦 SPA) ================= */
         
         /* 針對電腦版表格：將第一欄（預約時間）加寬 */
         #bookingTable th:nth-child(1), 
@@ -339,12 +366,24 @@
         <div id="loading">🚀 資料處理中，請稍候...</div>
 
         <div id="section-booking" class="section active">
-            <div class="header">
+            <!-- <div class="header">
                 <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">    
                     <button class="btn btn-success" style="flex: 1; background: transparent; color: #666; border: none; border-radius: 8px; cursor: pointer;" onclick="createNewBooking()">代客預約 ➕</button>
                     <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: transparent; color: #666; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleViewMode()">日曆模式 📅</button>
                     <button class="btn" style="flex: 1; background: transparent; color: #666; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadBookingData('manual')">重新整理 🔄</button>
                 </div>
+            </div> -->
+
+            <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">  
+                <button class="btn btn-spa-primary" style="flex: 1; font-weight: bold; border: none; border-radius: 20px; cursor: pointer;" onclick="createNewBooking()">
+                    <i class="fas fa-plus"></i> 代客預約
+                </button>
+                <button class="btn btn-spa-outline" id="viewToggleBtn" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="toggleViewMode()">
+                    <i class="far fa-calendar-alt"></i> 日曆模式
+                </button>
+                <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="loadBookingData('manual')">
+                    <i class="fas fa-sync-alt"></i> 重新整理
+                </button>
             </div>
 
             <div id="listViewWrapper">
