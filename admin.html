@@ -933,35 +933,25 @@
                 return;
             }
 
-            // 計算分頁範圍
             const totalPages = Math.ceil(currentFilteredMembers.length / memberItemsPerPage);
             const startIndex = (currentMemberPage - 1) * memberItemsPerPage;
             const endIndex = startIndex + memberItemsPerPage;
-            
-            // 只切出當前頁面需要的 20 筆資料
             const dataToRender = currentFilteredMembers.slice(startIndex, endIndex);
 
             dataToRender.forEach((row, index) => {
-                // 🔥 關鍵：算出全域索引 (確保跨頁修改時，ID 不會重複打架)
                 let absIndex = startIndex + index; 
-                
                 let tr = document.createElement('tr');
                 tr.id = `member-row-${absIndex}`; 
                 
                 let birthdayDisplay = row.birthday || '-';
-                let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">(無)</span>`;
+                let referrerDisplay = row.referrer ? `<span style="color:var(--primary-dark); font-weight:bold;">${row.referrer}</span>` : `<span style="color:#ccc;">-</span>`;
 
                 tr.innerHTML = `
                     <td class="col-name"><span style="color:#666; font-weight:bold;">${row.name}</span></td>
                     <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
                     <td><span style="color:#666;">${row.lineName || '-'}</span></td>
-                    <td>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            ${referrerDisplay}
-                            <button class="btn btn-sm btn-outline" style="padding: 2px 6px; font-size: 12px; cursor:pointer;" onclick="editReferrer('${row.phone}', '${row.referrer || ''}')">✏️</button>
-                        </div>
-                    </td>
+                    <td class="col-referrer">${referrerDisplay}</td>
                     <td>
                         <div class="action-btns">
                             <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" 
@@ -969,14 +959,13 @@
                             <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" 
                                 style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
                             <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" 
-                                style="display:none;" onclick="cancelEditRow(${absIndex})">取消</button>
+                                style="display:none;" onclick="cancelEditRow()">取消</button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // 🔥 建立底部的「上一頁 / 下一頁」控制列 (只有總頁數 > 1 才顯示)
             if (totalPages > 1) {
                 let pageRow = document.createElement('tr');
                 pageRow.innerHTML = `
@@ -986,11 +975,9 @@
                                 onclick="changeMemberPage(-1)" ${currentMemberPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                                 ◀ 上一頁
                             </button>
-                            
                             <span style="font-size:14px; color:#555; font-weight:bold;">
                                 第 ${currentMemberPage} 頁 / 共 ${totalPages} 頁
                             </span>
-                            
                             <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" 
                                 onclick="changeMemberPage(1)" ${currentMemberPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                                 下一頁 ▶
@@ -1392,33 +1379,46 @@
         
             const editBtn = document.getElementById(`edit-btn-${index}`);
             const saveBtn = document.getElementById(`save-btn-${index}`);
+            const cancelBtn = document.getElementById(`cancel-btn-${index}`);
         
             // 定位欄位
             const nameCell = row.querySelector('.col-name');
             const phoneCell = row.querySelector('.col-phone');
             const bdayCell = row.querySelector('.col-birthday');
+            const referrerCell = row.querySelector('.col-referrer');
         
             // 取得目前內容並防呆
             const currentName = nameCell.innerText.trim();
             const currentPhone = phoneCell.innerText.trim();
-
+            
             let currentBday = bdayCell.innerText.trim();
             if (currentBday === '-' || currentBday === 'undefined') currentBday = '';
+
+            let currentReferrer = referrerCell.innerText.trim();
+            if (currentReferrer === '-' || currentReferrer === '(無)') currentReferrer = '';
         
             // 變身 TextBox
-            nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
-            phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:120px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
-            bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:140px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:90px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            referrerCell.innerHTML = `<input type="text" id="edit-referrer-${index}" value="${currentReferrer}" placeholder="無" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
         
-            // 切換按鈕
+            // 切換按鈕 (隱藏修改，顯示儲存與取消)
             editBtn.style.display = 'none';
             saveBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+        }
+
+        function cancelEditRow() {
+            // 最簡單乾淨的作法：直接重新渲染當前頁面的表格，所有未儲存的 input 都會被還原為原本的文字
+            renderMemberTable();
         }
         
         async function saveRow(index, lineId) {
-            const newName = document.getElementById(`edit-name-${index}`).value;
-            const newPhone = document.getElementById(`edit-phone-${index}`).value;
+            const newName = document.getElementById(`edit-name-${index}`).value.trim();
+            const newPhone = document.getElementById(`edit-phone-${index}`).value.trim();
             const newBday = document.getElementById(`edit-birthday-${index}`).value;
+            const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim(); // 取得介紹人
         
             if (!newName || !newPhone) {
                 alert("姓名與電話為必填項！");
@@ -1428,21 +1428,26 @@
             document.getElementById('loading').style.display = 'block';
         
             try {
-                // 🔥 使用您已經定義好的 callApi
-                const res = await callApi("updateMemberData", {
+                // 1. 呼叫更新基本資料的 API
+                const resData = await callApi("updateMemberData", {
                     lineId: lineId,
                     name: newName,
                     phone: newPhone,
                     birthday: newBday,
-                    isBooking: false // 重要：代表只是修改資料，不增加累計次數
+                    isBooking: false 
+                });
+
+                // 2. 呼叫更新介紹人的 API (無縫背景連動)
+                const resRef = await callApi("updateMemberReferrer", {
+                    phone: newPhone,
+                    referrer: newReferrer
                 });
         
-                if (res.status === "success") {
+                if (resData.status === "success" && resRef.status === "success") {
                     alert("✅ 會員資料更新成功！");
-                    // 重新讀取資料，表格會自動刷回文字狀態
-                    await loadMemberData(); 
+                    await loadMemberData(); // 重新載入，表格會自動刷回純文字狀態
                 } else {
-                    alert("更新失敗：" + res.message);
+                    alert("部分更新失敗，請檢查網路連線或重新整理。");
                     document.getElementById('loading').style.display = 'none';
                 }
             } catch (e) {
@@ -1450,6 +1455,7 @@
                 document.getElementById('loading').style.display = 'none';
             }
         }
+        
         // ================= 歷史預約：日曆與列表切換功能 =================
         let historyViewMode = 'list'; 
         let fcHistoryCalendar = null; 
