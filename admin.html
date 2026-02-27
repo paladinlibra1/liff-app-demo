@@ -392,7 +392,7 @@
 
         <div id="section-member" class="section">
             <div class="header">
-                <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadMemberData(true)">重新整理 🔄</button>
+                <button class="btn" style="background: #eef2f5; color: #555; border: none; box-shadow: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">重新整理 🔄</button>
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
@@ -432,9 +432,9 @@
         
         <div id="section-history" class="section">
             <div class="header">
-                <div class="top-action-bar">     
-                    <button class="btn btn-toggle" id="viewToggleBtn" style="flex: 1; background: #fde8ec; color: #d68095; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
-                     <button class="btn" style="flex: 1; background: #eef2f5; color: #555; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer;" onclick="loadHistoryData(true)">重新整理 🔄</button>
+                <div class="top-action-bar"> 
+                     <button class="btn btn-toggle" id="historyViewToggleBtn" style="border: none; background: #fde8ec; color: #d68095" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
+                     <button class="btn" style="background: : #eef2f5; color: #555; border: none; box-shadow: none; padding: 5px 10px;" onclick="loadHistoryData(true)">重新整理 🔄</button>
                 </div>
             </div>
             
