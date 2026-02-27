@@ -5,20 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Colorfashion 預約系統</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        /* --- 全域設定 (粉色系) --- */
+        /* ================================================================= */
+        /* ================= 🌸 全域設定 (依美琦 SPA 溫柔美業風) ================= */
+        /* ================================================================= */
         :root {
-            --primary-color: #d68095; /* 櫻花粉 (主色調) */
-            --primary-dark: #c06c82;  /* 深粉紅 (按鈕按壓) */
-            --accent-color: #e8aeb7;  /* 淺粉 (強調/外框) */
-            --bg-color: #fdf2f5;      /* 極淡粉白背景 */
-            --text-color: #5d4037;    /* 暖棕色文字 (比純黑柔和) */
-            --card-bg: #ffffff;       /* 卡片背景 */
-            --input-bg: #fffbfb;      /* 輸入框背景 */
+            --primary-color: #f89fa1; /* 櫻花粉 (主色調) */
+            --primary-hover: #f5aeb3; /* 蜜桃粉 (Hover色) */
+            --accent-color: #fdf2f5;  /* 極淡粉 (背景/聚焦) */
+            --bg-color: #fbfbfb;      /* 乾淨的淺灰白背景，讓卡片更跳脫 */
+            --text-color: #444444;    /* 質感深灰文字 */
+            --label-color: #666666;   /* 標籤專用灰 */
+            --card-bg: #ffffff;       /* 純白卡片 */
+            --input-bg: #fdfdfd;      /* 輸入框微灰底 */
+            --border-color: #eeeeee;  /* 柔和邊框 */
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang TC', '微軟正黑體', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
@@ -27,31 +32,44 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            letter-spacing: 0.5px;
         }
 
-        /* --- 卡片容器 --- */
+        /* --- 卡片容器 (增加圓角與柔和陰影) --- */
         .container {
             background-color: var(--card-bg);
             width: 100%;
             max-width: 500px;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(214, 128, 149, 0.15); /* 粉色柔和陰影 */
-            border: 1px solid #fae1e6;
-            animation: fadeIn 0.5s ease-out;
+            padding: 40px 30px;
+            border-radius: 25px; /* 更圓潤的卡片 */
+            box-shadow: 0 15px 35px rgba(248, 159, 161, 0.08); /* 淡淡的專屬粉色光暈 */
+            border: 1px solid rgba(248, 159, 161, 0.1);
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         h2 {
             text-align: center;
-            color: var(--primary-dark);
-            font-weight: 600;
-            margin-bottom: 25px;
-            letter-spacing: 1px;
+            color: var(--text-color);
+            font-weight: 700;
+            margin-bottom: 30px;
+            letter-spacing: 1.5px;
+            font-size: 1.5rem;
+        }
+        
+        /* 標題底下的粉色小裝飾線 */
+        h2::after {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 3px;
+            background-color: var(--primary-color);
+            margin: 10px auto 0;
+            border-radius: 5px;
         }
 
         /* --- 表單元件 --- */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 22px;
             position: relative;
         }
 
@@ -59,135 +77,148 @@
             display: block;
             margin-bottom: 8px;
             font-size: 0.95rem;
-            font-weight: 500;
-            color: #8c6b6b; /* 藕粉色文字 */
+            font-weight: 600;
+            color: var(--label-color);
+            padding-left: 5px;
         }
 
+        /* 輸入框全面改為「膠囊狀」 */
         input, select {
             width: 100%;
-            padding: 14px 16px;
-            border: 2px solid transparent;
+            padding: 14px 20px;
+            border: 1px solid var(--border-color);
             background-color: var(--input-bg);
-            border-radius: 15px; /* 圓角更圓潤 */
-            font-size: 16px;
-            color: #555;
+            border-radius: 30px; /* 膠囊圓角 */
+            font-size: 15px;
+            color: var(--text-color);
             transition: all 0.3s ease;
             box-sizing: border-box;
             appearance: none;
-            border: 1px solid #f2e1e6;
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            background-color: #fff;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
         }
 
         textarea {
             width: 100%;
-            padding: 14px 16px;
-            border: 1px solid #f2e1e6;
+            padding: 16px 20px;
+            border: 1px solid var(--border-color);
             background-color: var(--input-bg);
-            border-radius: 15px;
-            font-size: 16px;
-            color: #555;
+            border-radius: 20px; /* 多行輸入框用適度的大圓角即可 */
+            font-size: 15px;
+            color: var(--text-color);
             transition: all 0.3s ease;
             box-sizing: border-box;
             font-family: inherit;
             resize: vertical;
         }
-        textarea:focus {
+
+        input:focus, select:focus, textarea:focus {
             outline: none;
             background-color: #fff;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px var(--accent-color); /* 聚焦時有粉嫩的外圈 */
         }
 
-        /* 下拉選單箭頭 (改為紅棕色) */
+        /* 下拉選單箭頭 (改為櫻花粉色 SVG) */
         select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c06c82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23f89fa1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 14px center;
+            background-position: right 18px center;
             background-size: 16px;
+            padding-right: 40px;
         }
 
-        /* --- 按鈕樣式 --- */
+        /* --- 按鈕樣式 (依美琦靈魂) --- */
         button {
             width: 100%;
             padding: 16px;
             border: none;
-            border-radius: 15px;
+            border-radius: 30px; /* 完美的膠囊按鈕 */
             font-size: 16px;
-            font-weight: 600;
+            font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 10px;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
         button:active {
             transform: scale(0.98);
         }
 
+        /* 主要送出按鈕 */
         #submitBtn {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            background-color: var(--primary-color);
             color: white;
-            box-shadow: 0 6px 20px rgba(214, 128, 149, 0.4);
+            box-shadow: 0 6px 15px rgba(248, 159, 161, 0.35); /* 粉色發光陰影 */
+        }
+
+        #submitBtn:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px); /* 懸浮感 */
+            box-shadow: 0 8px 20px rgba(248, 159, 161, 0.45);
         }
 
         #submitBtn:disabled {
-            background: #e0d0d5;
+            background-color: #e0e0e0;
+            color: #999;
             cursor: not-allowed;
             box-shadow: none;
         }
 
+        /* 取消按鈕 (幽靈按鈕風格) */
         .cancel-btn {
-            background-color: #fff;
-            color: #e57373;
-            border: 1px solid #ffcdd2;
-            margin-top: 15px;
-            display: none;
+            background-color: transparent;
+            color: #999;
+            border: 1px solid transparent;
+            margin-top: 10px;
         }
         
         .cancel-btn:hover {
-            background-color: #fffafb;
+            background-color: var(--accent-color);
+            color: var(--primary-color);
         }
 
-        /* --- Loading --- */
+        /* --- Loading 畫面 --- */
         #loading-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
             z-index: 9999;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(5px);
         }
 
         .spinner {
             width: 45px;
             height: 45px;
-            border: 4px solid #fceef2;
+            border: 4px solid var(--accent-color);
             border-top: 4px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
         }
-        /* 🔥 新增：搜尋框樣式 (給店家用的) */
+        
+        /* 店家快搜樣式微調 */
         #search-results {
             position: absolute; top: 100%; left: 0; right: 0;
-            background: white; border: 1px solid #e8aeb7; border-radius: 0 0 15px 15px;
+            background: white; border: 1px solid var(--border-color); border-radius: 15px;
             max-height: 200px; overflow-y: auto; z-index: 1000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: none;
+            margin-top: 5px;
         }
-        .search-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #fdf2f5; display: flex; justify-content: space-between; }
-        .search-item:hover { background-color: #fdf2f5; color: #c06c82; }
-        .search-container { position: relative; margin-bottom: 25px; display: none; }
+        .search-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #fafafa; display: flex; justify-content: space-between; font-size: 15px;}
+        .search-item:last-child { border-bottom: none; }
+        .search-item:hover { background-color: var(--accent-color); color: var(--primary-hover); font-weight: bold;}
+        .search-container { position: relative; margin-bottom: 25px; display: none; background: #fcfcfc; padding: 15px; border-radius: 20px; border: 1px dashed #eee;}
 
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
     </style>
 </head>
@@ -195,11 +226,11 @@
 
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <div style="color: #666; font-size: 14px;">資料處理中...</div>
+        <div style="color: var(--label-color); font-size: 15px; font-weight: 600; letter-spacing: 1px;">資料處理中...</div>
     </div>
 
     <div class="container">
-        <h2 id="pageTitle">Colorfashion 預約</h2>
+        <h2 id="pageTitle">Colorfashion</h2>
 
         <form id="bookingForm" onsubmit="submitBooking(event)">
             <input type="hidden" id="editId" name="editId">
@@ -208,7 +239,7 @@
             <input type="hidden" id="role" name="role"> 
             
             <div id="adminSearchBlock" class="search-container form-group">
-                <label style="color: #d32f2f;">🔍 會員快搜 (輸入姓名或電話)</label>
+                <label style="color: #d32f2f;"><i class="fas fa-search"></i> 會員快搜 (輸入姓名或電話)</label>
                 <input type="text" id="memberSearch" placeholder="例如：王小明 或 0912..." autocomplete="off">
                 <div id="search-results"></div>
             </div>
@@ -261,14 +292,13 @@
                 <textarea id="remark" rows="3" placeholder="有什麼特別需要我們注意的嗎？"></textarea>
             </div>            
 
-            <button type="submit" id="submitBtn">確認預約</button>
+            <button type="submit" id="submitBtn"><i class="fas fa-check-circle"></i> 確認預約</button>
             <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
         </form>
     </div>
 
     <script>
         // 🔴 請填入你的 GAS 部署網址 (結尾是 /exec)
-        //const GAS_API_URL = "https://script.google.com/macros/s/AKfycbytizr6IDdZux7gaCZjYqiXVi0uQZELig_xaBagzNyDg84Wfi18IEZSYi7fTk3P3pFB/exec";
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";
         
         // 🔴 請填入你的 LIFF ID
@@ -276,7 +306,7 @@
 
         // ✅ 定義兩組營業時間
         const weekDayTimes = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
-        const satTimes = ["10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
+        const satTimes = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"];
 
         // 目前使用的時間表 (會隨日期變動)
         let currentAvailableTimes = [];
@@ -356,7 +386,7 @@
 
                     // 顯示綁定畫面
                     document.getElementById('pageTitle').innerText = "會員綁定";
-                    document.getElementById('submitBtn').innerText = "確認綁定";
+                    document.getElementById('submitBtn').innerHTML = "<i class='fas fa-user-check'></i> 確認綁定";
                     
                     const idsToHide = ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'];
                     idsToHide.forEach(id => {
@@ -419,8 +449,8 @@
                             setLoading(false);
                             alert(`👋 您好！\n為了確保預約權益，請先完成【會員綁定】才能繼續預約喔！`);
                             
-                            document.getElementById('pageTitle').innerText = "會員綁定 (初次預約)";
-                            document.getElementById('submitBtn').innerText = "確認綁定並繼續";
+                            document.getElementById('pageTitle').innerText = "初次預約 (綁定資料)";
+                            document.getElementById('submitBtn').innerHTML = "確認綁定並繼續 <i class='fas fa-arrow-right'></i>";
                             
                             ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'].forEach(id => {
                                 let el = document.getElementById(id); if (el) el.style.display = 'none';
@@ -456,7 +486,7 @@
                     setLoading(true, "載入預約內容..."); // 抓取舊訂單必須轉圈圈
                     document.getElementById('editId').value = editId;
                     document.getElementById('pageTitle').innerText = "修改預約";
-                    document.getElementById('submitBtn').innerText = "更新預約內容";
+                    document.getElementById('submitBtn').innerHTML = "<i class='fas fa-save'></i> 更新預約內容";
                     document.getElementById('cancelBtn').style.display = "block";
                     await loadBookingData(editId);
                     
@@ -501,7 +531,6 @@
             const res = await callApi("registerMember", formData);
             setLoading(false);
 
-            // 🔥 修正顯示：抓取 res.message
             if (res.status === "success") {
                 alert(res.message);
                 liff.closeWindow();
@@ -510,7 +539,7 @@
             }
         }
 
-        // 🔥🔥🔥【補回】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
+        // 2. 註冊並重整 (給預約攔截用)
         async function submitRegisterAndReload(e) {
             e.preventDefault();
             setLoading(true);
@@ -520,7 +549,7 @@
                 lineName: document.getElementById('lineName').value,
                 name: document.getElementById('name').value,
                 phone: document.getElementById('phone').value,
-                birthday: document.getElementById('birthday').valu
+                birthday: document.getElementById('birthday').value
             };
 
             const res = await callApi("registerMember", formData);
@@ -534,7 +563,6 @@
             }
         }
 
-        // 🔥 1. 在外面宣告一個變數來記錄狀態
         let isSubmitting = false;
         
         async function submitBooking(e) {
@@ -579,7 +607,6 @@
             } catch (err) {
                 alert("發生錯誤，請稍後再試！");
             } finally {
-                // 🔥 3. 無論成功或失敗，最後一定要把開關解開
                 isSubmitting = false; 
                 setLoading(false);
             }
@@ -700,19 +727,18 @@
                 // ❌ 找不到訂單 (已被取消或刪除)
                 alert("找不到該筆預約，可能已經被取消。\n系統將自動為您切換至「新增預約」模式。");
                 
-                // 1. 清空隱藏的 editId，這樣送出時就會變成「新增」而不是「修改」
+                // 1. 清空隱藏的 editId
                 document.getElementById('editId').value = "";
                 
-                // 2. 恢復標題與按鈕文字 (判斷一下是不是店家)
+                // 2. 恢復標題與按鈕文字
                 const role = document.getElementById('role').value;
                 document.getElementById('pageTitle').innerText = (role === 'admin') ? "店家代客預約" : "Colorfashion 預約";
-                document.getElementById('submitBtn').innerText = "確認預約";
+                document.getElementById('submitBtn').innerHTML = "<i class='fas fa-check-circle'></i> 確認預約";
                 
                 // 3. 隱藏「取消預約」的按鈕
                 document.getElementById('cancelBtn').style.display = "none";
 
-                // 4. 🔥 把網址上的 ?id=xxx 清掉 (替換當前網址但不重新整理)
-                // 這樣如果客人手癢按了瀏覽器的重新整理，就不會再次觸發修改模式
+                // 4. 清掉網址上的 ?id=xxx
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.delete('id');
                 window.history.replaceState({}, document.title, newUrl.toString());
@@ -730,7 +756,7 @@
                     resultBox.style.display = 'none'; return; 
                 }
 
-                resultBox.innerHTML = '<div style="padding:10px;color:#999;">🔍 搜尋中...</div>';
+                resultBox.innerHTML = '<div style="padding:15px;color:#999;text-align:center;"><i class="fas fa-spinner fa-spin"></i> 搜尋中...</div>';
                 resultBox.style.display = 'block';
 
                 searchTimeout = setTimeout(async function() {
@@ -744,7 +770,7 @@
                         res.results.forEach(m => {
                             let div = document.createElement('div');
                             div.className = 'search-item';
-                            div.innerHTML = `<span>${m.n}</span><span style="color:#aaa">${m.p}</span>`;
+                            div.innerHTML = `<span><i class="far fa-user"></i> ${m.n}</span><span style="color:#aaa">${m.p}</span>`;
                             div.onclick = function() {
                                 document.getElementById('name').value = m.n;
                                 document.getElementById('phone').value = m.p;
@@ -754,7 +780,7 @@
                             resultBox.appendChild(div);
                         });
                     } else {
-                        resultBox.innerHTML = '<div style="padding:10px;color:#d32f2f;">查無資料</div>';
+                        resultBox.innerHTML = '<div style="padding:15px;color:#f89fa1;text-align:center;"><i class="fas fa-exclamation-circle"></i> 查無資料</div>';
                     }
                 }, 500);
             });
@@ -786,10 +812,10 @@
             const btn = document.getElementById('submitBtn');
             if (isLoading) {
                 overlay.style.display = 'flex';
-                btn.disabled = true;
+                if(btn) btn.disabled = true;
             } else {
                 overlay.style.display = 'none';
-                btn.disabled = false;
+                if(btn) btn.disabled = false;
             }
         }
 
