@@ -430,9 +430,12 @@
         </div>
 
         <div id="section-member" class="section">
-            <div class="header">
-                <button class="btn" style="background: transparent; color: #666; border: none; box-shadow: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">重新整理 🔄</button>
-            </div>
+            <!-- <div class="header">
+                <button class="btn" style="background: transparent; color: #666; border: none; box-shadow: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">重新整理</button>
+            </div> -->
+            <button class="btn btn-spa-outline" style="font-weight: bold; border-radius: 20px; padding: 6px 18px; font-size: 14px; cursor: pointer;" onclick="loadMemberData(true)">
+                <i class="fas fa-sync-alt"></i> 重新整理
+            </button>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
                 <div style="color:#888; font-size:14px; margin-left:10px;">總人數：<span id="memberCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 人</div>
@@ -471,9 +474,17 @@
         
         <div id="section-history" class="section">
             <div class="header">
-                <div class="top-action-bar"> 
+                <!-- <div class="top-action-bar"> 
                     <button class="btn btn-toggle" id="historyViewToggleBtn" style="color: #666; border: none;" onclick="toggleHistoryViewMode()">日曆模式 📅</button>
                     <button class="btn" style="background: transparent; color: #666; font-weight: bold; border: none; box-shadow: none; border-radius: 8px; cursor: pointer; padding: 5px 10px;" onclick="loadHistoryData(true)">重新整理 🔄</button>
+                </div> -->
+                <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">     
+                    <button class="btn btn-spa-outline" id="historyViewToggleBtn" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="toggleHistoryViewMode()">
+                        <i class="far fa-calendar-alt"></i> 日曆模式
+                    </button>                    
+                    <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="loadHistoryData(true)">
+                        <i class="fas fa-sync-alt"></i> 重新整理
+                    </button>                
                 </div>
             </div>
             
