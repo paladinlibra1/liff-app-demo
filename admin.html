@@ -667,14 +667,14 @@
         function initBookingCalendar() {
             const el = document.getElementById('bookingCalendar');
             fcBookingCalendar = new FullCalendar.Calendar(el, {
-                initialView: 'timeGridWeek', locale: 'zh-tw',             
+                initialView: 'timeGridWeek', locale: 'zh-tw',              
                 slotMinTime: '10:00:00', slotMaxTime: '21:00:00', allDaySlot: false,
                 height: 'auto',
                 showNonCurrentDates: false,
                 fixedWeekCount: false,
                 
-                slotDuration: '00:30:00',       
-                slotLabelInterval: '00:30',     
+                slotDuration: '00:30:00',        
+                slotLabelInterval: '00:30',      
                 defaultTimedEventDuration: '00:30:00', 
                 displayEventTime: false,
                 slotLabelFormat: { hour: '2-digit', minute: '2-digit', omitZeroMinute: false, hour12: false },
@@ -736,12 +736,23 @@
                     let htmlDivs = []; 
                     
                     bookings.forEach(row => {
-                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
-                        let txtC = (row.type.includes('新客') ? '#333333' : '#ffffff');
+                        // 🔥 根據預約種類設定顏色 (綠、黃、藍)
+                        let typeStr = row.type || '';
+                        let bgColor = '#4CAF50'; // 預設：一般預約 (綠色)
+                        let txtC = '#ffffff';    // 預設：白字
                         
+                        if (typeStr.includes('新客')) {
+                            bgColor = '#FFCA28'; // 新客體驗 (黃色)
+                            txtC = '#333333';    // 黃底配深灰字才清楚
+                        } else if (typeStr.includes('複檢')) {
+                            bgColor = '#64B5F6'; // 複檢 (藍色)
+                            txtC = '#ffffff';    // 藍底配白字
+                        }
+
+                        // 加入微陰影與圓角，讓色塊看起來像精緻的標籤
                         htmlDivs.push(`
                             <div onclick="editBooking('${row.id}')" 
-                                 style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                 style="cursor: pointer; background-color:${bgColor}; color:${txtC}; padding:4px 2px; font-size:11.5px; margin-bottom:3px; text-align:center; border-radius:4px; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
                                 ${row.name}
                             </div>
                         `);
@@ -749,16 +760,15 @@
                         if (row.name2 && row.name2.trim() !== '') {
                             htmlDivs.push(`
                                 <div onclick="editBooking('${row.id}')" 
-                                     style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                     style="cursor: pointer; background-color:${bgColor}; color:${txtC}; padding:4px 2px; font-size:11.5px; margin-bottom:3px; text-align:center; border-radius:4px; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
                                     ${row.name2}
                                 </div>
                             `);
                         }
                     });            
-                    // 🔥 修正點：這裡補上正確的回傳值，並把多餘的 }); 刪除
                     return { html: `<div style="width:100%; display: flex; flex-direction: column;">${htmlDivs.join('')}</div>` };
                 }
-            });           
+            });            
             fcBookingCalendar.render();
         }
 
@@ -1600,13 +1610,23 @@
                     let htmlDivs = []; 
                     
                     bookings.forEach(row => {
-                        let c = (row.type.includes('新客') ? '#FFCA28' : '#4CAF50');
-                        let txtC = (row.type.includes('新客') ? '#333333' : '#ffffff');
+                        // 🔥 根據預約種類設定顏色 (綠、黃、藍)
+                        let typeStr = row.type || '';
+                        let bgColor = '#4CAF50'; // 預設：一般預約 (綠色)
+                        let txtC = '#ffffff';    // 預設：白字
                         
-                        // 🔥 這裡把原本的 editBooking 改成 showHistoryDetail 彈出視窗
+                        if (typeStr.includes('新客')) {
+                            bgColor = '#FFCA28'; // 新客體驗 (黃色)
+                            txtC = '#333333';    // 黃底配深灰字才清楚
+                        } else if (typeStr.includes('複檢')) {
+                            bgColor = '#64B5F6'; // 複檢 (藍色)
+                            txtC = '#ffffff';    // 藍底配白字
+                        }
+                        
+                        // 🔥 歷史紀錄點擊是開啟詳細視窗 (showHistoryDetail)
                         htmlDivs.push(`
                             <div onclick="showHistoryDetail('${row.id}')" 
-                                 style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                 style="cursor: pointer; background-color:${bgColor}; color:${txtC}; padding:4px 2px; font-size:11.5px; margin-bottom:3px; text-align:center; border-radius:4px; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
                                 ${row.name}
                             </div>
                         `);
@@ -1615,7 +1635,7 @@
                         if (row.name2 && row.name2.trim() !== '') {
                             htmlDivs.push(`
                                 <div onclick="showHistoryDetail('${row.id}')" 
-                                     style="cursor: pointer; background-color:${c}; color:${txtC}; padding:2px; font-size:11px; margin-bottom:2px; text-align:center; border-radius:2px;">
+                                     style="cursor: pointer; background-color:${bgColor}; color:${txtC}; padding:4px 2px; font-size:11.5px; margin-bottom:3px; text-align:center; border-radius:4px; font-weight:bold; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
                                     ${row.name2}
                                 </div>
                             `);
@@ -1626,6 +1646,8 @@
             });            
             fcHistoryCalendar.render();
         }
+
+        
         // ================= 全自動背景更新排程 =================
         // 設定每 3 分鐘 (180,000 毫秒) 自動檢查一次最新資料
         setInterval(() => {
