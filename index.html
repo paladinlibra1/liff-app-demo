@@ -489,14 +489,32 @@
         // 1. 單純註冊 (給圖文選單用，註冊完關閉)
         async function submitRegister(e) {
             e.preventDefault();
+
+            // ================= 🚨 新增：前端精準防呆檢查 =================
+            let missingFields = [];
+            let nameVal = document.getElementById('name').value.trim();
+            let phoneVal = document.getElementById('phone').value.trim();
+            let birthdayVal = document.getElementById('birthday').value;
+
+            if (!nameVal) missingFields.push("姓名");
+            if (!phoneVal) missingFields.push("聯絡電話");
+            if (!birthdayVal) missingFields.push("生日");
+
+            // 如果有漏填的欄位，直接跳出具體警告並中止送出
+            if (missingFields.length > 0) {
+                alert("⚠️ 綁定失敗！\n請填寫以下必填資訊：\n👉 " + missingFields.join("、"));
+                return; 
+            }
+            // =========================================================
+            
             setLoading(true);
 
             const formData = {
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value,
-                birthday: document.getElementById('birthday').value
+                name: nameVal, // 使用上面濾掉空白的乾淨值
+                phone: phoneVal,
+                birthday: birthdayVal
             };
 
             const res = await callApi("registerMember", formData);
@@ -514,14 +532,39 @@
         // 🔥🔥🔥【補回】2. 註冊並重整 (給預約攔截用) 🔥🔥🔥
         async function submitRegisterAndReload(e) {
             e.preventDefault();
+
+            // ================= 🚨 新增：前端精準防呆檢查 =================
+            let missingFields = [];
+            let nameVal = document.getElementById('name').value.trim();
+            let phoneVal = document.getElementById('phone').value.trim();
+            let birthdayVal = document.getElementById('birthday').value;
+
+            if (!nameVal) missingFields.push("姓名");
+            if (!phoneVal) missingFields.push("聯絡電話");
+            if (!birthdayVal) missingFields.push("生日");
+
+            // 如果有漏填的欄位，直接跳出具體警告並中止送出
+            if (missingFields.length > 0) {
+                alert("⚠️ 綁定失敗！\n請填寫以下必填資訊：\n👉 " + missingFields.join("、"));
+                return; 
+            }
+            
             setLoading(true);
+
+            // const formData = {
+            //     lineId: document.getElementById('lineId').value,
+            //     lineName: document.getElementById('lineName').value,
+            //     name: document.getElementById('name').value,
+            //     phone: document.getElementById('phone').value,
+            //     birthday: document.getElementById('birthday').value
+            // };
 
             const formData = {
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value,
-                birthday: document.getElementById('birthday').value
+                name: nameVal, // 使用上面濾掉空白的乾淨值
+                phone: phoneVal,
+                birthday: birthdayVal
             };
 
             const res = await callApi("registerMember", formData);
