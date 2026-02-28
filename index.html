@@ -471,7 +471,23 @@
             setButtonLoading(true);
           
             const editId = document.getElementById('editId').value;
+
+            let currentLineId = document.getElementById('lineId').value;
+            let currentPhone = document.getElementById('phone').value.trim();
+            if (document.getElementById('role').value === 'admin' && !currentLineId && currentPhone) {
+                try {
+                    const memberSnap = await db.collection("members").where("phone", "==", currentPhone).get();
+                    if (!memberSnap.empty) {
+                        currentLineId = memberSnap.docs[0].id; // 成功抓回客人的 LINE ID
+                        document.getElementById('lineId').value = currentLineId; 
+                    }
+                } catch(e) { console.log("尋找客人LINE ID失敗", e); }
+            }
+            
             const formData = {
+                // 🔥 補上這一行，讓系統知道這是老闆代訂的！
+                role: document.getElementById('role').value, 
+                
                 lineId: document.getElementById('lineId').value,
                 lineName: document.getElementById('lineName').value,
                 type: document.getElementById('type').value, 
@@ -656,6 +672,7 @@
                 const doc = await db.collection("bookings").doc(id).get();
                 if (doc.exists) {
                     const data = doc.data();
+                    document.getElementById('lineId').value = data.lineId || "";
                     document.getElementById('name').value = data.name;
                     document.getElementById('name2').value = data.name2 || "";
                     document.getElementById('phone').value = data.phone;
@@ -703,7 +720,8 @@
                         snapshot.forEach(doc => {
                             let m = doc.data();
                             if ((m.name && m.name.includes(val)) || (m.phone && m.phone.includes(val))) {
-                                results.push({n: m.name, p: m.phone});
+                                // 🔥 這裡加上 doc.id 把 LINE ID 抓出來
+                                results.push({n: m.name, p: m.phone, lid: doc.id}); 
                             }
                         });
 
