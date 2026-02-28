@@ -1144,6 +1144,21 @@
                 method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload)
             }).catch(e => console.log("通知觸發失敗", e));
         }
+
+        // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
+        // =====================================================================
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'force_refresh_admin') {
+                console.log("📥 接收到新預約/修改訊號，後台自動重新整理...");
+                
+                // 讓後台無縫抓取最新資料並重繪畫面
+                loadBookingData('auto');
+                
+                // 如果您剛好停在會員清單或歷史紀錄，也順便幫您更新
+                loadMemberData(false); 
+                loadHistoryData(false);
+            }
+        });
     </script>
 </body>
 </html>
