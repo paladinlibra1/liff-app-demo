@@ -633,10 +633,17 @@
         function editBooking(id) { window.open(`${FRONTEND_URL}?role=admin&id=${id}`, '_blank'); }
 
         async function cancelBooking(id) {
-            if (!confirm("確定要取消此筆預約嗎？\n(資料將從資料庫中刪除)")) return;
+            if (!confirm("確定要取消此筆預約嗎？\n(資料將從資料庫中刪除，並通知客人)")) return;
             document.getElementById('loading').style.display = 'block';
             
             try {
+                // 🔥 1. 從畫面現有的資料中找出這筆訂單，發送取消通知
+                let bookingData = allBookings.find(r => r.id === id);
+                if (bookingData) {
+                    triggerNotification(bookingData, "cancel");
+                }
+
+                // 2. 刪除資料庫
                 await db.collection("bookings").doc(id).delete();
                 allBookings = allBookings.filter(r => r.id !== id);
                 filterBookingTable();
@@ -1123,6 +1130,13 @@
             loadHistoryData(false);
         }, 3 * 60 * 1000); 
 
+        // ================= 🔔 觸發 LINE 通知 (背景執行) =================
+        function triggerNotification(bookingData, type) {
+            const payload = { action: "sendNotification", type: type, data: bookingData };
+            fetch(GAS_API_URL, {
+                method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload)
+            }).catch(e => console.log("通知觸發失敗", e));
+        }
     </script>
 </body>
 </html>
