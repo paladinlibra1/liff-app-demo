@@ -466,7 +466,8 @@
                 }
                 
             } catch (err) {
-                alert("初始化失敗：" + err.message);
+                logErrorToSheet(err.message, "系統初始化 (window.onload) 失敗"); // 加入這行
+                alert("初始化失敗：" + err.message + "\n(系統已自動記錄此錯誤)");
             } finally {
                 // 確保 UI 正確解鎖
                 setLoading(false);
@@ -577,7 +578,8 @@
                     }
                 }
             } catch (err) {
-                alert("發生錯誤，請稍後再試！");
+                logErrorToSheet(err.message, "提交預約 (submitBooking) 失敗"); // 加入這行
+                alert("發生錯誤，請稍後再試！\n(錯誤代碼已自動回報給管理員)");
             } finally {
                 // 🔥 3. 無論成功或失敗，最後一定要把開關解開
                 isSubmitting = false; 
@@ -811,6 +813,43 @@
                 select.value = currentVal;
             }
         }
+
+        // 1. 建立一個專門發送錯誤給 GAS 的函式
+        function logErrorToSheet(errorMsg, contextInfo = "") {
+            try {
+                // 嘗試抓取當前使用者，抓不到就顯示未知
+                let currentUser = document.getElementById('lineName')?.value || "未登入/未知使用者";
+                let currentPhone = document.getElementById('phone')?.value || "無電話";
+
+                const errorData = {
+                    time: new Date().toLocaleString('zh-TW'),
+                    user: currentUser + " (" + currentPhone + ")",
+                    message: String(errorMsg),
+                    context: contextInfo,
+                    userAgent: navigator.userAgent // 紀錄客人的手機型號/瀏覽器版本
+                };
+
+                // 背景發送給 GAS (不需要 await，不阻礙客人畫面運作)
+                fetch(GAS_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({ action: "logError", payload: errorData })
+                }).catch(e => console.log("錯誤日誌傳送失敗", e)); // 避免無限迴圈報錯
+
+            } catch (e) {
+                console.error("日誌系統本身發生錯誤", e);
+            }
+        }
+
+        // 2. 捕捉「網頁語法/執行時」發生的全域錯誤
+        window.addEventListener('error', function(event) {
+            logErrorToSheet(event.message, `檔案: ${event.filename}, 行號: ${event.lineno}`);
+        });
+
+        // 3. 捕捉「API 呼叫失敗 / 網路斷線」等非同步錯誤
+        window.addEventListener('unhandledrejection', function(event) {
+            logErrorToSheet(event.reason, "網路連線或 API 非同步錯誤");
+        });
         
     </script>
 </body>
