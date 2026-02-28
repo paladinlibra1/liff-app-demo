@@ -32,4 +32,104 @@
         <button id="btn-booking" class="btn btn-booking" onclick="migrateData('getAllBookings', 'bookings', 'btn-booking')">2. 搬移【未來的預約】</button>
         <div id="status-bookings" class="status">等待中...</div>
 
-        <button id="btn-history" class="btn btn-history" onclick="migrateData('getHistoricalBookings',
+        <button id="btn-history" class="btn btn-history" onclick="migrateData('getHistoricalBookings', 'historicalBookings', 'btn-history')">3. 搬移【歷史預約】</button>
+        <div id="status-historicalBookings" class="status">等待中...</div>
+
+        <button id="btn-operating" class="btn btn-operating" onclick="migrateData('getOperatingDays', 'operatingDays', 'btn-operating')">4. 搬移【營業日設定】</button>
+        <div id="status-operatingDays" class="status">等待中...</div>
+    </div>
+
+    <script>
+        // 🔴 您的 Firebase 金鑰
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU",
+            authDomain: "colorfashion-booking.firebaseapp.com",
+            projectId: "colorfashion-booking",
+            storageBucket: "colorfashion-booking.firebasestorage.app",
+            messagingSenderId: "658886755238",
+            appId: "1:658886755238:web:904c4a27bcc10b3b5f0567"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 🔴 您的 GAS 網址
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";
+
+        async function callApi(action) {
+            const res = await fetch(GAS_API_URL, {
+                method: "POST", headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: action })
+            });
+            return await res.json();
+        }
+
+        // 🔥 修正點：加入 btnId 參數來精準抓取按鈕
+        async function migrateData(gasAction, collectionName, btnId) {
+            const btn = document.getElementById(btnId);
+            const statusEl = document.getElementById(`status-${collectionName}`);
+            
+            btn.disabled = true;
+            statusEl.innerText = "⏳ 正在從 Google 試算表讀取資料...";
+
+            try {
+                // 1. 從試算表抓資料
+                const res = await callApi(gasAction);
+                if (res.status !== "success") throw new Error(res.message);
+                const dataArray = res.data;
+
+                if (!dataArray || dataArray.length === 0) {
+                    statusEl.innerText = "✅ 試算表中沒有資料，無需搬移。";
+                    statusEl.style.color = "green";
+                    return;
+                }
+
+                statusEl.innerText = `🚀 讀取到 ${dataArray.length} 筆資料，開始寫入 Firebase...`;
+
+                // 2. 寫入 Firebase
+                let count = 0;
+                let batch = db.batch(); 
+                let batchCount = 0;
+
+                for (let i = 0; i < dataArray.length; i++) {
+                    const item = dataArray[i];
+                    let docRef;
+
+                    if (collectionName === 'members') {
+                        if(!item.lineId) continue;
+                        docRef = db.collection("members").doc(item.lineId);
+                        batch.set(docRef, item);
+                    } 
+                    else if (collectionName === 'bookings' || collectionName === 'historicalBookings') {
+                        if(!item.id) continue;
+                        docRef = db.collection(collectionName).doc(item.id);
+                        batch.set(docRef, item);
+                    }
+                    else if (collectionName === 'operatingDays') {
+                        docRef = db.collection("operatingDays").doc(item);
+                        batch.set(docRef, { isOperating: true });
+                    }
+
+                    count++;
+                    batchCount++;
+
+                    if (batchCount === 400 || i === dataArray.length - 1) {
+                        await batch.commit();
+                        batch = db.batch(); 
+                        batchCount = 0;
+                        statusEl.innerText = `⏳ 寫入進度：${count} / ${dataArray.length}...`;
+                    }
+                }
+
+                statusEl.innerText = `🎉 搬家完成！成功轉移 ${count} 筆資料。`;
+                statusEl.style.color = "green";
+
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = "❌ 發生錯誤：" + err.message;
+                statusEl.style.color = "red";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
