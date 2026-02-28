@@ -238,10 +238,17 @@
         </div>
 
         <div id="section-member" class="section">
-            <div class="header" style="justify-content: flex-end; margin-bottom: 15px;">
+            <!-- <div class="header" style="justify-content: flex-end; margin-bottom: 15px;">
                 <button class="btn btn-spa-outline" style="background-color: #fdf2f5; color: #d68095; border: 1px solid #fae1e6; font-weight: bold; border-radius: 20px; padding: 8px 20px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 8px rgba(214, 128, 149, 0.15);" onclick="loadMemberData(true)">
                     <i class="fas fa-sync-alt"></i> 重新整理
                 </button>
+            </div> -->
+            <div class="header">
+                <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">  
+                    <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="loadMemberData(true)">
+                        <i class="fas fa-sync-alt"></i> 重新整理
+                    </button>
+                </div>
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
