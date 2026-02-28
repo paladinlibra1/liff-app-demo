@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Colorfashion 預約系統 (極速版)</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* --- 全域設定 (粉色系) --- */
+        :root {
+            --primary-color: #d68095; /* 櫻花粉 (主色調) */
+            --primary-dark: #c06c82;  /* 深粉紅 (按鈕按壓) */
+            --accent-color: #e8aeb7;  /* 淺粉 (強調/外框) */
+            --bg-color: #fdf2f5;      /* 極淡粉白背景 */
+            --text-color: #5d4037;    /* 暖棕色文字 (比純黑柔和) */
+            --card-bg: #ffffff;       /* 卡片背景 */
+            --input-bg: #fffbfb;      /* 輸入框背景 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- 卡片容器 --- */
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(214, 128, 149, 0.15); /* 粉色柔和陰影 */
+            border: 1px solid #fae1e6;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        /* --- 表單元件 --- */
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #8c6b6b; /* 藕粉色文字 */
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid transparent;
+            background-color: var(--input-bg);
+            border-radius: 15px; /* 圓角更圓潤 */
+            font-size: 16px;
+            color: #555;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            appearance: none;
+            border: 1px solid #f2e1e6;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            background-color: #fff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #f2e1e6;
+            background-color: var(--input-bg);
+            border-radius: 15px;
+            font-size: 16px;
+            color: #555;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            font-family: inherit;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            background-color: #fff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px rgba(232, 174, 183, 0.25);
+        }
+
+        /* 下拉選單箭頭 (改為紅棕色) */
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c06c82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+        }
+
+        /* --- 按鈕樣式 --- */
+        button {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #submitBtn {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: 0 6px 20px rgba(214, 128, 149, 0.4);
+        }
+
+        #submitBtn:disabled {
+            background: #e0d0d5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .cancel-btn {
+            background-color: #fff;
+            color: #e57373;
+            border: 1px solid #ffcdd2;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #fffafb;
+        }
+
+        /* 🔥 新增：搜尋框樣式 (給店家用的) */
+        #search-results {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border: 1px solid #e8aeb7; border-radius: 0 0 15px 15px;
+            max-height: 200px; overflow-y: auto; z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: none;
+        }
+        .search-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #fdf2f5; display: flex; justify-content: space-between; }
+        .search-item:hover { background-color: #fdf2f5; color: #c06c82; }
+        .search-container { position: relative; margin-bottom: 25px; display: none; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 id="pageTitle">Colorfashion 預約</h2>
+
+        <form id="bookingForm" onsubmit="submitBooking(event)">
+            <input type="hidden" id="editId" name="editId">
+            <input type="hidden" id="lineId" name="lineId">
+            <input type="hidden" id="lineName" name="lineName">
+            <input type="hidden" id="role" name="role"> 
+            
+            <div id="adminSearchBlock" class="search-container form-group">
+                <label style="color: #d32f2f;">🔍 會員快搜 (輸入姓名或電話)</label>
+                <input type="text" id="memberSearch" placeholder="例如：王小明 或 0912..." autocomplete="off">
+                <div id="search-results"></div>
+            </div>
+            
+            <div class="form-group" id="group-type">
+                <label>預約身分</label>
+                <select id="type" required>
+                    <option value="" disabled selected>請選擇預約身分</option>                    
+                    <option value="新客體驗">新客體驗</option>
+                    <option value="一般預約">一般預約</option>
+                    <option value="複檢">複檢</option> 
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>姓名</label>
+                <input type="text" id="name" required placeholder="請輸入您的姓名">
+            </div>
+
+            <div class="form-group" id="group-name2">
+                <label>同行者姓名 (選填)</label>
+                <input type="text" id="name2" placeholder="如有同行者請輸入">
+            </div>
+
+            <div class="form-group">
+                <label>聯絡電話</label>
+                <input type="tel" id="phone" required placeholder="09xx-xxx-xxx">
+            </div>
+
+            <div class="form-group" id="birthday-group" style="display: none;">
+                <label for="birthday">生日</label>
+                <input type="date" id="birthday" class="form-control">
+            </div>
+
+            <div class="form-group" id="group-date">
+                <label>預約日期</label>
+                <select id="date" required onchange="loadBusyTimes()">
+                    <option value="">載入中...</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="group-time">
+                <label>預約時間</label>
+                <select id="time" required>
+                    <option value="">請先選擇日期</option>
+                </select>
+            </div>
+            <div class="form-group" id="group-remark">
+                <label>備註 (選填)</label>
+                <textarea id="remark" rows="3" placeholder="有什麼特別需要我們注意的嗎？"></textarea>
+            </div>            
+
+            <button type="submit" id="submitBtn">確認預約</button>
+            <button type="button" id="cancelBtn" class="cancel-btn" onclick="cancelBooking()">取消此預約</button>
+        </form>
+    </div>
+
+    <script>
+        // =====================================================================
+        // 🔥 1. 初始化 Firebase 引擎
+        // =====================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU",
+            authDomain: "colorfashion-booking.firebaseapp.com",
+            projectId: "colorfashion-booking",
+            storageBucket: "colorfashion-booking.firebasestorage.app",
+            messagingSenderId: "658886755238",
+            appId: "1:658886755238:web:904c4a27bcc10b3b5f0567"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 保留 GAS API 用於錯誤回報
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";
+        const MY_LIFF_ID = "2009018559-AeGOURPY";
+
+        // ✅ 定義兩組營業時間
+        const weekDayTimes = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
+        const satTimes = ["10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"];
+        let currentAvailableTimes = [];
+
+        // =====================================================================
+        // 🚀 2. 系統啟動與極速載入
+        // =====================================================================
+        window.onload = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const role = urlParams.get('role'); 
+            const editId = urlParams.get('id'); 
+            const action = urlParams.get('action'); 
+            const prefillName = urlParams.get('name');
+            const prefillPhone = urlParams.get('phone');
+
+            if(role) document.getElementById('role').value = role;
+
+            // ⚡ 極速讀取營業日
+            loadOperatingDates();
+
+            try {
+                if (prefillName) document.getElementById('name').value = prefillName;
+                if (prefillPhone) document.getElementById('phone').value = prefillPhone;
+                
+                await liff.init({ liffId: MY_LIFF_ID });
+                let currentUserLineId = "";
+                let currentUserLineName = ""; 
+
+                // --- 【註冊綁定模式】 ---
+                if (action === 'register') {
+                    if (!liff.isLoggedIn()) { liff.login({ redirectUri: window.location.href }); return; }
+                    const profile = await liff.getProfile();
+                    currentUserLineId = profile.userId;
+                    currentUserLineName = profile.displayName;
+
+                    document.getElementById('lineId').value = currentUserLineId;
+                    document.getElementById('lineName').value = currentUserLineName;
+
+                    // 去 Firebase 查有沒有綁定過
+                    const memberDoc = await db.collection("members").doc(currentUserLineId).get();
+                    if (memberDoc.exists) {
+                        alert(`👋 哈囉 ${memberDoc.data().name}！\n\n您已經是綁定會員囉，不需要重複綁定。\n(系統將自動關閉視窗)`);
+                        liff.closeWindow();
+                        return; 
+                    }
+
+                    // 顯示綁定畫面
+                    document.getElementById('pageTitle').innerText = "會員綁定";
+                    document.getElementById('submitBtn').innerText = "確認綁定";
+                    
+                    ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'].forEach(id => {
+                        let el = document.getElementById(id); if (el) el.style.display = 'none';
+                    });
+                    
+                    document.getElementById('type').required = false;
+                    document.getElementById('date').required = false;
+                    document.getElementById('time').required = false;
+                    document.getElementById('birthday-group').style.display = 'block';
+                    document.getElementById('birthday').required = true;
+                    document.getElementById('bookingForm').onsubmit = submitRegister;
+                    return; 
+                }
+
+                // --- 【預約模式】 ---
+                if (role === 'admin') {
+                    // 店家代客預約模式
+                    document.getElementById('pageTitle').innerText = "店家代客預約";
+                    document.getElementById('pageTitle').style.color = "#d32f2f";
+                    document.getElementById('adminSearchBlock').style.display = 'block';
+                    document.getElementById('phone').required = false;
+                    document.getElementById('birthday-group').style.display = 'none';
+                    document.getElementById('birthday').required = false;
+                    setupAdminSearch();
+                } else {
+                    // 客人自訂模式
+                    if (!liff.isLoggedIn()) { liff.login({ redirectUri: window.location.href, bot_prompt: 'normal' }); return; }
+                    const profile = await liff.getProfile();
+                    currentUserLineId = profile.userId;
+                    currentUserLineName = profile.displayName;
+                    
+                    document.getElementById('lineId').value = currentUserLineId;
+                    document.getElementById('lineName').value = currentUserLineName;
+                    
+                    if (!editId) {
+                        // ⚡ 去 Firebase 極速檢查會員
+                        const memberDoc = await db.collection("members").doc(currentUserLineId).get();
+                        
+                        if (!memberDoc.exists) {
+                            // 新客：強制轉跳註冊畫面
+                            alert(`👋 您好！\n為了確保預約權益，請先完成【會員綁定】才能繼續預約喔！`);
+                            document.getElementById('pageTitle').innerText = "會員綁定 (初次預約)";
+                            document.getElementById('submitBtn').innerText = "確認綁定並繼續";
+                            
+                            ['group-type', 'group-date', 'group-time', 'group-name2', 'group-remark'].forEach(id => {
+                                let el = document.getElementById(id); if (el) el.style.display = 'none';
+                            });
+                            
+                            document.getElementById('type').required = false;
+                            document.getElementById('date').required = false;
+                            document.getElementById('time').required = false;
+                            document.getElementById('birthday-group').style.display = 'block';
+                            document.getElementById('birthday').required = true;
+                            document.getElementById('bookingForm').onsubmit = submitRegisterAndReload;
+                            return; 
+                        } else {
+                            // 舊客：自動填寫資料
+                            let memberData = memberDoc.data();
+                            if (!prefillName) document.getElementById('name').value = memberData.name;
+                            if (!prefillPhone) document.getElementById('phone').value = memberData.phone;
+                            document.getElementById('birthday-group').style.display = 'none';
+                            document.getElementById('birthday').required = false;
+                        }
+                    }
+                }
+
+                // --- 修改訂單模式 ---
+                if (editId) {
+                    document.getElementById('editId').value = editId;
+                    document.getElementById('pageTitle').innerText = "修改預約";
+                    document.getElementById('submitBtn').innerText = "更新預約內容";
+                    document.getElementById('cancelBtn').style.display = "block";
+                    await loadBookingData(editId);
+                    
+                    if (action === 'confirm') {
+                        alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
+                    }
+                }
+                
+            } catch (err) {
+                logErrorToSheet(err.message, "系統初始化 (window.onload) 失敗"); 
+                alert("初始化失敗：" + err.message + "\n(系統已自動記錄此錯誤)");
+            }
+        };
+
+        // =====================================================================
+        // ⚡ 3. 核心功能改寫 (寫入/讀取 Firebase)
+        // =====================================================================
+
+        // 單純註冊
+        async function submitRegister(e) {
+            e.preventDefault();
+            if(!checkFormFields()) return;
+            setButtonLoading(true);
+
+            try {
+                const lineId = document.getElementById('lineId').value;
+                await db.collection("members").doc(lineId).set({
+                    lineId: lineId,
+                    lineName: document.getElementById('lineName').value,
+                    name: document.getElementById('name').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    birthday: document.getElementById('birthday').value,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("綁定成功！");
+                liff.closeWindow();
+            } catch (err) {
+                logErrorToSheet(err.message, "綁定會員 (submitRegister) 失敗");
+                alert("綁定失敗：" + err.message);
+            } finally { setButtonLoading(false); }
+        }
+
+        // 註冊並重整
+        async function submitRegisterAndReload(e) {
+            e.preventDefault();
+            if(!checkFormFields()) return;
+            setButtonLoading(true);
+
+            try {
+                const lineId = document.getElementById('lineId').value;
+                await db.collection("members").doc(lineId).set({
+                    lineId: lineId,
+                    lineName: document.getElementById('lineName').value,
+                    name: document.getElementById('name').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    birthday: document.getElementById('birthday').value,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                alert("綁定成功！\n\n按確定後將自動跳轉至預約畫面...");
+                window.location.reload(); 
+            } catch (err) {
+                logErrorToSheet(err.message, "綁定會員 (submitRegisterAndReload) 失敗");
+                alert("綁定失敗：" + err.message);
+                setButtonLoading(false);
+            }
+        }
+
+        // 檢查防呆
+        function checkFormFields() {
+            let missingFields = [];
+            if (!document.getElementById('name').value.trim()) missingFields.push("姓名");
+            if (!document.getElementById('phone').value.trim()) missingFields.push("聯絡電話");
+            if (!document.getElementById('birthday').value) missingFields.push("生日");
+            if (missingFields.length > 0) {
+                alert("⚠️ 綁定失敗！\n請填寫以下必填資訊：\n👉 " + missingFields.join("、"));
+                return false; 
+            }
+            return true;
+        }
+
+        // 提交預約
+        let isSubmitting = false;
+        async function submitBooking(e) {
+            e.preventDefault();
+            if (isSubmitting) return; 
+            isSubmitting = true; 
+            setButtonLoading(true);
+          
+            const editId = document.getElementById('editId').value;
+            const formData = {
+                lineId: document.getElementById('lineId').value,
+                lineName: document.getElementById('lineName').value,
+                type: document.getElementById('type').value, 
+                name: document.getElementById('name').value.trim(),
+                name2: document.getElementById('name2').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                remark: document.getElementById('remark').value.trim()
+            };
+
+            try {
+                // 如果有 editId 就是修改，沒有就是新增
+                if (editId) {
+                    await db.collection("bookings").doc(editId).update(formData);
+                } else {
+                    formData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    formData.status = "active";
+                    await db.collection("bookings").add(formData);
+                }
+                
+                alert("預約成功！");
+                if(liff.isInClient()){ liff.closeWindow(); } 
+                else { window.location.reload(); }
+                
+            } catch (err) {
+                logErrorToSheet(err.message, "提交預約 (submitBooking) 失敗"); 
+                alert("發生錯誤，請稍後再試！\n(錯誤代碼已自動回報給管理員)");
+            } finally {
+                isSubmitting = false; 
+                setButtonLoading(false);
+            }
+        }
+
+        // 取消預約
+        async function cancelBooking() {
+            if (!confirm("確定要取消此預約嗎？\n(取消後無法復原)")) return;
+            setButtonLoading(true);
+            const editId = document.getElementById('editId').value;
+            
+            try {
+                await db.collection("bookings").doc(editId).delete();
+                alert("已成功取消預約！");
+                if(liff.isInClient()) liff.closeWindow();
+                else window.location.href = window.location.pathname;
+            } catch (err) {
+                logErrorToSheet(err.message, "取消預約 (cancelBooking) 失敗"); 
+                alert("刪除失敗：" + err.message);
+                setButtonLoading(false);
+            }
+        }
+
+        // =====================================================================
+        // 📅 4. 讀取日期與時段狀態
+        // =====================================================================
+        
+        async function loadOperatingDates() {
+            try {
+                const snapshot = await db.collection("operatingDays").get();
+                let dates = [];
+                snapshot.forEach(doc => { dates.push(doc.id); }); // doc.id 就是日期
+                
+                // 防呆：如果 Firebase 還是空的，自動幫老闆產出未來 14 天當作測試用！
+                if (dates.length === 0) {
+                    for(let i=1; i<=14; i++) {
+                        let d = new Date(); d.setDate(d.getDate() + i);
+                        dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                    }
+                }
+                
+                let sortedDates = dates.sort((a, b) => new Date(a.replace(/-/g, '/')) - new Date(b.replace(/-/g, '/')));
+                
+                // 只顯示今天以後的日子
+                const todayStr = new Date().toISOString().split('T')[0];
+                sortedDates = sortedDates.filter(d => d >= todayStr);
+
+                const select = document.getElementById('date');
+                select.innerHTML = '<option value="">請選擇日期</option>';
+                sortedDates.forEach(d => {
+                    let option = document.createElement("option");
+                    option.value = d; option.text = d; select.appendChild(option);
+                });
+            } catch (error) {
+                console.error("載入日期失敗", error);
+            }
+        }
+
+        async function loadBusyTimes() {
+            const dateStr = document.getElementById('date').value;
+            const timeSelect = document.getElementById('time');
+            const editId = document.getElementById('editId').value;
+            
+            if (!dateStr) { timeSelect.innerHTML = '<option value="">請先選擇日期</option>'; return; }
+
+            const dayOfWeek = new Date(dateStr.replace(/-/g, '/')).getDay(); 
+            currentAvailableTimes = (dayOfWeek === 6) ? satTimes : weekDayTimes; 
+
+            timeSelect.innerHTML = '<option value="">查詢時段中...</option>';
+            timeSelect.disabled = true;
+            
+            try {
+                // ⚡ 極速抓取當天的預約狀態
+                const snapshot = await db.collection("bookings").where("date", "==", dateStr).get();
+                let counts = {};
+                
+                snapshot.forEach(doc => {
+                    if (doc.id !== editId) { // 排除正在修改的這筆
+                        let t = doc.data().time;
+                        counts[t] = (counts[t] || 0) + 1;
+                        if(doc.data().name2) counts[t] += 1; // 如果有同行者，算佔2個位子
+                    }
+                });
+
+                renderTimeOptions(counts);
+            } catch (error) {
+                console.error("查詢時段失敗", error);
+                timeSelect.innerHTML = '<option value="">查詢失敗</option>';
+            }
+        }
+
+        function renderTimeOptions(counts) {
+            const timeSelect = document.getElementById('time');
+            const isTwoPeople = (document.getElementById('name2').value.trim() !== "");
+            const dateValue = document.getElementById('date').value; 
+            const currentSelected = timeSelect.value;
+
+            timeSelect.innerHTML = '<option value="">請選擇時間</option>';
+            timeSelect.disabled = false;
+            const now = new Date();
+
+            currentAvailableTimes.forEach(t => {
+                let option = document.createElement("option");
+                option.value = t; option.text = t;
+                
+                let currentCount = counts[t] || 0;
+                let isDisabled = false; let statusText = "";
+                let slotDateTime = new Date(dateValue.replace(/-/g, '/') + ' ' + t);
+                
+                if (slotDateTime <= now) {
+                    isDisabled = true; statusText = " (已過)";
+                } else {
+                    if (!isTwoPeople) {
+                        if (currentCount >= 2) { isDisabled = true; statusText = " (額滿)"; } 
+                        else if (currentCount === 1) { statusText = " (剩1位)"; }
+                    } else {
+                        if (currentCount >= 1) { isDisabled = true; statusText = " (額滿)"; } 
+                    }
+                }
+
+                if (isDisabled) {
+                    option.disabled = true; option.style.color = "#ccc"; option.text += statusText;
+                } else { option.text += statusText; }
+                timeSelect.appendChild(option);
+            });
+
+            if (currentSelected && !timeSelect.querySelector(`option[value="${currentSelected}"]`).disabled) {
+                timeSelect.value = currentSelected;
+            }
+        }
+
+        // =====================================================================
+        // 🔍 5. 修改預約與店家快搜
+        // =====================================================================
+        async function loadBookingData(id) {
+            try {
+                const doc = await db.collection("bookings").doc(id).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('name').value = data.name;
+                    document.getElementById('name2').value = data.name2 || "";
+                    document.getElementById('phone').value = data.phone;
+                    document.getElementById('type').value = data.type; 
+                    document.getElementById('remark').value = data.remark || "";
+                    
+                    let dateSelect = document.getElementById('date');
+                    if (!Array.from(dateSelect.options).some(opt => opt.value === data.date)) {
+                        let opt = document.createElement('option'); opt.value = data.date; opt.text = data.date;
+                        dateSelect.appendChild(opt);
+                    }
+                    dateSelect.value = data.date;
+                    
+                    await loadBusyTimes(); 
+                    document.getElementById('time').value = data.time;
+                } else {
+                    throw new Error("找不到訂單");
+                }
+            } catch(e) {
+                alert("找不到該筆預約，可能已經被取消。\n系統將自動為您切換至「新增預約」模式。");
+                document.getElementById('editId').value = "";
+                document.getElementById('pageTitle').innerText = (document.getElementById('role').value === 'admin') ? "店家代客預約" : "Colorfashion 預約";
+                document.getElementById('submitBtn').innerText = "確認預約";
+                document.getElementById('cancelBtn').style.display = "none";
+                const newUrl = new URL(window.location.href); newUrl.searchParams.delete('id');
+                window.history.replaceState({}, document.title, newUrl.toString());
+            }
+        }
+
+        function setupAdminSearch() {
+            let searchTimeout = null;
+            document.getElementById('memberSearch').addEventListener('input', function(e) {
+                const val = e.target.value.trim();
+                const resultBox = document.getElementById('search-results');
+                if (searchTimeout) clearTimeout(searchTimeout);
+                if (val.length < 1) { resultBox.style.display = 'none'; return; }
+
+                resultBox.innerHTML = '<div style="padding:15px;color:#999;text-align:center;">搜尋中...</div>';
+                resultBox.style.display = 'block';
+
+                searchTimeout = setTimeout(async function() {
+                    try {
+                        const snapshot = await db.collection("members").get();
+                        let results = [];
+                        snapshot.forEach(doc => {
+                            let m = doc.data();
+                            if ((m.name && m.name.includes(val)) || (m.phone && m.phone.includes(val))) {
+                                results.push({n: m.name, p: m.phone});
+                            }
+                        });
+
+                        if (results.length > 0) {
+                            resultBox.innerHTML = '';
+                            results.forEach(m => {
+                                let div = document.createElement('div'); div.className = 'search-item';
+                                div.innerHTML = `<span>${m.n}</span><span style="color:#aaa">${m.p}</span>`;
+                                div.onclick = function() {
+                                    document.getElementById('name').value = m.n;
+                                    document.getElementById('phone').value = m.p;
+                                    document.getElementById('memberSearch').value = '';
+                                    resultBox.style.display = 'none';
+                                };
+                                resultBox.appendChild(div);
+                            });
+                        } else {
+                            resultBox.innerHTML = '<div style="padding:15px;color:#f89fa1;text-align:center;">查無資料</div>';
+                        }
+                    } catch(e) { console.error(e); }
+                }, 400);
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (e.target.id !== 'memberSearch') document.getElementById('search-results').style.display = 'none';
+            });
+        }
+
+        function setButtonLoading(isLoading) {
+            const btn = document.getElementById('submitBtn');
+            if(btn) {
+                if(isLoading) {
+                    btn.disabled = true;
+                    btn.innerText = '處理中...';
+                } else {
+                    btn.disabled = false;
+                    const isEdit = document.getElementById('editId').value;
+                    btn.innerText = isEdit ? "更新預約內容" : "確認預約";
+                }
+            }
+        }
+
+        // ================= 🚨 全域錯誤捕捉與回報系統 🚨 =================
+        function logErrorToSheet(errorMsg, contextInfo = "") {
+            try {
+                let currentUser = document.getElementById('lineName')?.value || "未登入/未知使用者";
+                let currentPhone = document.getElementById('phone')?.value || "無電話";
+
+                const errorData = {
+                    time: new Date().toLocaleString('zh-TW'),
+                    user: currentUser + " (" + currentPhone + ")",
+                    message: String(errorMsg),
+                    context: contextInfo,
+                    userAgent: navigator.userAgent 
+                };
+
+                fetch(GAS_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({ action: "logError", payload: errorData })
+                }).catch(e => console.log("錯誤日誌傳送失敗", e)); 
+            } catch (e) { console.error("日誌系統本身發生錯誤", e); }
+        }
+
+        window.addEventListener('error', function(event) {
+            logErrorToSheet(event.message, `檔案: ${event.filename}, 行號: ${event.lineno}`);
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            logErrorToSheet(event.reason, "網路連線或 API 非同步錯誤");
+        });
+    </script>
+</body>
+</html>
