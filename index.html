@@ -492,6 +492,9 @@
                     formData.status = "active";
                     await db.collection("bookings").add(formData);
                 }
+
+                // 🔥🔥🔥 新增這行：預約寫入成功後，在背景發送通知訊號 🔥🔥🔥
+                triggerNotification(formData, editId ? "update" : "new");
                 
                 alert("預約成功！");
                 if(liff.isInClient()){ liff.closeWindow(); } 
@@ -752,6 +755,35 @@
             } catch (e) { console.error("日誌系統本身發生錯誤", e); }
         }
 
+        // ================= 🔔 觸發 LINE 通知 (背景執行不卡頓) =================
+        function triggerNotification(bookingData, type) {
+            // 🔴 如果您已經建好 n8n，請把 n8n 的 Webhook URL 貼在下面的引號內
+            // 例如：const WEBHOOK_URL = "https://您的n8n網址/webhook/123456";
+            const WEBHOOK_URL = ""; 
+
+            // 方案 A：如果您有填寫 n8n 網址，就打給 n8n
+            if (WEBHOOK_URL !== "") {
+                fetch(WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ event: type, data: bookingData })
+                }).catch(e => console.log("n8n 通知觸發失敗", e));
+                return;
+            }
+
+            // 方案 B：如果沒填，預設送回我們原本的 GAS，讓 GAS 幫忙發 LINE
+            const payload = {
+                action: "sendNotification", 
+                type: type, // 'new' 代表新預約, 'update' 代表修改
+                data: bookingData
+            };
+            fetch(GAS_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "sendNotification", payload: payload })
+            }).catch(e => console.log("GAS 通知觸發失敗", e));
+        }
+
         window.addEventListener('error', function(event) {
             logErrorToSheet(event.message, `檔案: ${event.filename}, 行號: ${event.lineno}`);
         });
@@ -759,6 +791,7 @@
         window.addEventListener('unhandledrejection', function(event) {
             logErrorToSheet(event.reason, "網路連線或 API 非同步錯誤");
         });
+        
     </script>
 </body>
 </html>
