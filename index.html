@@ -519,8 +519,18 @@
             const editId = document.getElementById('editId').value;
             
             try {
+                // 🔥 1. 在刪除前，先把資料抓出來用作發送通知
+                const doc = await db.collection("bookings").doc(editId).get();
+                if (doc.exists) {
+                    let bookingData = doc.data();
+                    bookingData.id = editId;
+                    triggerNotification(bookingData, "cancel"); // 觸發取消通知
+                }
+
+                // 2. 從 Firebase 刪除資料
                 await db.collection("bookings").doc(editId).delete();
-                alert("已成功取消預約！");
+                
+                alert("✅ 已成功取消預約！");
                 if(liff.isInClient()) liff.closeWindow();
                 else window.location.href = window.location.pathname;
             } catch (err) {
