@@ -514,7 +514,12 @@
                 
                 // 預約寫入成功後，在背景發送通知訊號 (這時 formData 裡面已經有 id 了)
                 triggerNotification(formData, editId ? "update" : "new");
-                
+
+                // 🔥 1. 發送跨分頁更新訊號給後台
+                localStorage.setItem('force_refresh_admin', Date.now());
+
+                // 🔥 1. 發送跨分頁更新訊號給後台
+                localStorage.setItem('force_refresh_admin', Date.now());
                 alert("預約成功！");
                 if(liff.isInClient()){ liff.closeWindow(); } 
                 else { window.location.reload(); }
