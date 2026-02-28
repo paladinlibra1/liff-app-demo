@@ -487,13 +487,16 @@
                 // 如果有 editId 就是修改，沒有就是新增
                 if (editId) {
                     await db.collection("bookings").doc(editId).update(formData);
+                    formData.id = editId; // 🔥 確保 formData 帶有 ID
                 } else {
                     formData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
                     formData.status = "active";
-                    await db.collection("bookings").add(formData);
+                    // 🔥 取得 Firebase 瞬間產生的專屬 ID
+                    let docRef = await db.collection("bookings").add(formData);
+                    formData.id = docRef.id; 
                 }
-
-                // 🔥🔥🔥 新增這行：預約寫入成功後，在背景發送通知訊號 🔥🔥🔥
+                
+                // 預約寫入成功後，在背景發送通知訊號 (這時 formData 裡面已經有 id 了)
                 triggerNotification(formData, editId ? "update" : "new");
                 
                 alert("預約成功！");
