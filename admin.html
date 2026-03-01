@@ -155,9 +155,10 @@
     <div id="dashboard" class="container">    
         <div class="tabs pc-tabs">
             <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📅 預約管理</button>
+            <button class="tab-btn" id="tab-gcal" onclick="switchTab('gcal')">📆 Google 日曆</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">🗓️ 營業日設定</button>
-            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">📜 歷史預約</button>
+            <button class="tab-btn" id="tab-history" style="display: none;" onclick="switchTab('history')">📜 歷史預約</button>
         </div>
 
         <div class="tab-select-container mobile-tabs">
@@ -170,9 +171,10 @@
             </div>
             <select id="mainTabSelect" class="tab-select" onchange="switchTab(this.value)">
                 <option value="booking">📅 預約管理</option>
+                <option value="gcal">📆 Google 日曆</option>
                 <option value="member">👥 會員清單</option>
                 <option value="operating">🗓️ 營業日設定</option>
-                <option value="history">📜 歷史預約</option>
+                <option value="history" style="display: none;">📜 歷史預約</option>
             </select>
             <div id="currentTabTitle" class="current-tab-title">📅 預約管理</div>
         </div>
@@ -185,7 +187,10 @@
                     <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border: none; border-radius: 20px; cursor: pointer;" onclick="createNewBooking()">
                         <i class="fas fa-plus"></i> 代客預約
                     </button>
-                    <button class="btn btn-spa-outline" id="viewToggleBtn" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="toggleViewMode()">
+                    <!-- <button class="btn btn-spa-outline" id="viewToggleBtn" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="toggleViewMode()">
+                        <i class="far fa-calendar-alt"></i> 日曆模式
+                    </button> -->
+                    <button class="btn btn-spa-outline" id="viewToggleBtn" style="display: none; flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="toggleViewMode()">
                         <i class="far fa-calendar-alt"></i> 日曆模式
                     </button>
                     <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="loadBookingData('manual')">
@@ -284,6 +289,19 @@
             </div>
             <div class="box-container calendar-wrapper">
                 <div id="operatingCalendar"></div> 
+            </div>
+        </div>
+
+        <div id="section-gcal" class="section">
+            <div class="header">
+                <div style="font-weight: bold; color: var(--primary-dark); font-size: 18px;">
+                    <i class="fab fa-google"></i> Google 官方日曆同步視圖
+                </div>
+            </div>
+            <div class="box-container" style="padding: 10px; text-align: center; overflow: hidden; background: white;">
+                
+                <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=Asia%2FTaipei&showPrint=0&mode=WEEK&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26" style="border:solid 1px #777" width="100%" height="700" frameborder="0" scrolling="no"></iframe>
+
             </div>
         </div>
         
