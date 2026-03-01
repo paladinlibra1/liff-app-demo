@@ -364,6 +364,7 @@
         const FRONTEND_URL = "https://paladinlibra1.github.io/liff-app-demo/index.html"; 
 
         let allBookings = []; 
+        let isBookingLoaded = false;
         let allHistoryBookings = [];
         let allMembers = [];
         let allOperatingDays = []; 
@@ -375,16 +376,14 @@
         let opCalendarLoaded = false;
 
         window.onload = function() {
-            // 🧠 智慧判斷：如果螢幕大於 768px (電腦/平板)，預設打開 Google 日曆
-            if (window.innerWidth > 768) {
-                switchTab('gcal');
-            } else {
-                // 手機版預設打開預約管理
-                switchTab('booking');
-            }
+            // 1. 不管手機或電腦，預設都打開「預約管理」
+            switchTab('booking');
             
-            // 在背景偷偷把 Firebase 的預約資料抓好備用，切換時就會瞬間顯示！
-            loadBookingData('init');
+            // 2. 隱藏載入中的轉圈圈動畫
+            document.getElementById('loading').style.display = 'none';
+            
+            // 3. 🔥 放上提示文字，這時候完全 0 消耗 Firebase 額度！
+            document.getElementById('bookingTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding: 40px; font-size: 15px;">👆 請點擊上方【單日 / 單週 / 單月】按鈕來載入資料</td></tr>';
         };
 
         function switchTab(tabName) {
