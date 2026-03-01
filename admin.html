@@ -422,23 +422,26 @@
 
         async function loadBookingData(mode = 'auto') {
             let isManual = (mode === 'manual');
-            let isInit = (mode === 'init');
-            if (isManual || isInit) document.getElementById('loading').style.display = 'block';
+            let isFirstLoad = (mode === 'first_load'); // 🔥 判斷是不是第一次點擊按鈕
+            
+            document.getElementById('loading').style.display = 'block';
 
             try {
-                // ⚡ 從 Firebase 極速抓取所有未來預約
                 const snapshot = await db.collection("bookings").get();
                 let fetchedBookings = [];
                 snapshot.forEach(doc => {
                     let data = doc.data();
-                    data.id = doc.id; // 確保有 ID 才能修改/刪除
+                    data.id = doc.id; 
                     fetchedBookings.push(data);
                 });
                 
                 allBookings = fetchedBookings;
+                isBookingLoaded = true; // ✅ 標記資料已經抓過了
                 
-                if (isInit) setFilterMode('day'); 
-                else filterBookingTable(); 
+                // 如果不是第一次按按鈕 (例如手動按重新整理)，就直接刷新表格
+                if (!isFirstLoad) {
+                    filterBookingTable(); 
+                }
                 
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
             } catch (err) { 
@@ -557,7 +560,13 @@
 
         let listOffset = 0; 
 
-        function setFilterMode(mode) {
+        async function setFilterMode(mode) {
+            
+            // ⚡ 關鍵魔法：如果是第一次點擊，先去 Firebase 把資料抓下來！
+            if (!isBookingLoaded) {
+                await loadBookingData('first_load');
+            }
+
             currentFilterMode = mode;
             listOffset = 0; 
             ['btn-day', 'btn-week', 'btn-month', 'btn-all'].forEach(id => {
