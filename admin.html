@@ -375,6 +375,15 @@
         let opCalendarLoaded = false;
 
         window.onload = function() {
+            // 🧠 智慧判斷：如果螢幕大於 768px (電腦/平板)，預設打開 Google 日曆
+            if (window.innerWidth > 768) {
+                switchTab('gcal');
+            } else {
+                // 手機版預設打開預約管理
+                switchTab('booking');
+            }
+            
+            // 在背景偷偷把 Firebase 的預約資料抓好備用，切換時就會瞬間顯示！
             loadBookingData('init');
         };
 
