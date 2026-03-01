@@ -389,7 +389,14 @@
         function switchTab(tabName) {
             const selectEl = document.getElementById('mainTabSelect');
             selectEl.value = tabName;
-            document.getElementById('currentTabTitle').innerText = selectEl.options[selectEl.selectedIndex].text;
+
+            // 🔥 防呆機制：如果選項被隱藏了 (selectedIndex 為 -1)，我們就手動給它標題，不讓程式當機！
+            if (selectEl.selectedIndex >= 0) {
+                document.getElementById('currentTabTitle').innerText = selectEl.options[selectEl.selectedIndex].text;
+            } else {
+                if (tabName === 'gcal') document.getElementById('currentTabTitle').innerText = '📆 Google 日曆';
+                if (tabName === 'history') document.getElementById('currentTabTitle').innerText = '📜 歷史預約';
+            }
 
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             let activeBtn = document.getElementById(`tab-${tabName}`);
@@ -422,23 +429,45 @@
 
         async function loadBookingData(mode = 'auto') {
             let isManual = (mode === 'manual');
-            let isFirstLoad = (mode === 'first_load'); // 🔥 判斷是不是第一次點擊按鈕
+            let isFirstLoad = (mode === 'first_load');
             
             document.getElementById('loading').style.display = 'block';
 
             try {
                 const snapshot = await db.collection("bookings").get();
                 let fetchedBookings = [];
+                
+                // 🧹 隱形打掃阿姨準備：取得今天的日期字串 (例如 "2024-05-20")
+                const now = new Date();
+                const todayStr = getFormattedDate(now);
+                let batch = db.batch();
+                let hasArchived = false;
+
                 snapshot.forEach(doc => {
                     let data = doc.data();
                     data.id = doc.id; 
-                    fetchedBookings.push(data);
+                    
+                    // 🔥 自動封存邏輯：如果這筆訂單的日期「小於今天」，就把它搬到歷史區！
+                    if (data.date < todayStr) {
+                        let oldRef = db.collection("bookings").doc(data.id);
+                        let newRef = db.collection("historicalBookings").doc(data.id);
+                        batch.set(newRef, data); // 複製到歷史區
+                        batch.delete(oldRef);    // 從主清單刪除
+                        hasArchived = true;
+                    } else {
+                        fetchedBookings.push(data); // 未過期的正常顯示
+                    }
                 });
                 
-                allBookings = fetchedBookings;
-                isBookingLoaded = true; // ✅ 標記資料已經抓過了
+                // 執行搬移
+                if (hasArchived) {
+                    await batch.commit();
+                    console.log("🧹 系統已在背景自動將舊訂單封存至歷史紀錄！");
+                }
                 
-                // 如果不是第一次按按鈕 (例如手動按重新整理)，就直接刷新表格
+                allBookings = fetchedBookings;
+                isBookingLoaded = true; 
+                
                 if (!isFirstLoad) {
                     filterBookingTable(); 
                 }
