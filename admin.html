@@ -207,7 +207,7 @@
                     <button class="btn btn-outline quick-btn" id="btn-month" onclick="setFilterMode('month')">單月</button>
                     <button class="btn btn-outline quick-btn" id="btn-all" onclick="setFilterMode('all')">全部</button>
 
-                    <div id="list-nav-mini" style="display: none; align-items: center; gap: 8px; margin-left: auto;">
+                    <div id="list-nav-mini" style="display: none; align-items: center; gap: 8px; margin-left: 5px;">
                         <button class="btn btn-outline" style="padding: 4px 8px;" onclick="changeListOffset(-1)">＜</button>
                         <span id="list-nav-label" style="font-weight: bold; color: var(--primary-dark); font-size: 14px; white-space: nowrap;"></span>
                         <button class="btn btn-outline" style="padding: 4px 8px;" onclick="changeListOffset(1)">＞</button>
@@ -788,11 +788,11 @@
                 let birthdayDisplay = row.birthday || '-';
 
                 tr.innerHTML = `
-                    <td class="col-name"><span style="color:#666; font-weight:bold;">${row.name}</span></td>
+                    <td class="col-name"><span style="color:#666;">${row.name}</span></td>
                     <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
                     <td><span style="color:#666;">${row.lineName || '-'}</span></td>                    
-                    <td class="col-referrer"><span style="color:#666; font-weight:bold;">${row.referrer || '-'}</span></td>
+                    <td class="col-referrer"><span style="color:#666;">${row.referrer || '-'}</span></td>
                     <td>
                         <div class="action-btns">
                             <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
