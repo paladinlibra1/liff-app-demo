@@ -1156,13 +1156,13 @@
         // =====================================================================
         // 🔄 7. 背景定時更新
         // =====================================================================
-        setInterval(() => {
-            console.log("🔄 執行背景定時更新...");
-            // Firebase 本身有快取機制，這會靜默取得最新狀態
-            loadBookingData('auto');
-            loadMemberData(false);
-            loadHistoryData(false);
-        }, 3 * 60 * 1000); 
+        // setInterval(() => {
+        //     console.log("🔄 執行背景定時更新...");
+        //     // Firebase 本身有快取機制，這會靜默取得最新狀態
+        //     loadBookingData('auto');
+        //     loadMemberData(false);
+        //     loadHistoryData(false);
+        // }, 3 * 60 * 1000); 
 
         // ================= 🔔 觸發 LINE 通知 (背景執行) =================
         function triggerNotification(bookingData, type) {
