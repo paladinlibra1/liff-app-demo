@@ -213,10 +213,12 @@
                         <button class="btn btn-outline" style="padding: 4px 8px;" onclick="changeListOffset(1)">＞</button>
                     </div>
 
-                    <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
-                    <div class="label-text" style="font-size: 14px; color: #888;">特定日：</div>
-                    <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
-                    <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
+                    <div style="display: none;">
+                        <div style="border-left: 2px solid #fdf2f5; height: 30px; margin: 0 10px;" class="pc-only"></div>
+                        <div class="label-text" style="font-size: 14px; color: #888; ">特定日：</div>
+                        <input type="date" id="dateFilter" onchange="setQuickFilter('custom')">
+                        <input type="text" id="searchBookingInput" placeholder="🔍 搜尋..." onkeyup="filterBookingTable()" style="flex-grow: 1; max-width: 200px;">
+                    </div>
                 </div>
 
                 <div class="box-container" style="overflow-x: auto;">
