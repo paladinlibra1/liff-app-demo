@@ -804,7 +804,8 @@
                     <td class="col-name"><span style="color:#666;">${row.name}</span></td>
                     <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
-                    <td><span style="color:#666;">${row.lineName || '-'}</span></td>                    
+                    // <td><span style="color:#666;">${row.lineName || '-'}</span></td>
+                    <td class="col-linename"><span style="color:#666;">${row.lineName || '-'}</span></td>
                     <td class="col-referrer"><span style="color:#666;">${row.referrer || '-'}</span></td>
                     <td>
                         <div class="action-btns">
@@ -849,16 +850,19 @@
             const nameCell = row.querySelector('.col-name');
             const phoneCell = row.querySelector('.col-phone');
             const bdayCell = row.querySelector('.col-birthday');
+            const lineNameCell = row.querySelector('.col-linename');
             const referrerCell = row.querySelector('.col-referrer');
         
             const currentName = nameCell.innerText.trim();
             const currentPhone = phoneCell.innerText.trim();
             let currentBday = bdayCell.innerText.trim(); if (currentBday === '-' || currentBday === 'undefined') currentBday = '';
+            let currentLineName = lineNameCell.innerText.trim(); if (currentLineName === '-') currentLineName = '';
             let currentReferrer = referrerCell.innerText.trim(); if (currentReferrer === '-' || currentReferrer === '(無)') currentReferrer = '';
         
             nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:90px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            lineNameCell.innerHTML = `<input type="text" id="edit-linename-${index}" value="${currentLineName}" placeholder="自訂暱稱" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             referrerCell.innerHTML = `<input type="text" id="edit-referrer-${index}" value="${currentReferrer}" placeholder="無" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
         
             editBtn.style.display = 'none'; saveBtn.style.display = 'inline-block'; cancelBtn.style.display = 'inline-block';
@@ -870,6 +874,7 @@
             const newName = document.getElementById(`edit-name-${index}`).value.trim();
             const newPhone = document.getElementById(`edit-phone-${index}`).value.trim();
             const newBday = document.getElementById(`edit-birthday-${index}`).value;
+            const newLineName = document.getElementById(`edit-linename-${index}`).value.trim();
             const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim(); 
         
             if (!newName || !newPhone) { alert("姓名與電話為必填項！"); return; }
@@ -881,6 +886,7 @@
                     name: newName,
                     phone: newPhone,
                     birthday: newBday,
+                    lineName: newLineName,
                     referrer: newReferrer
                 });
 
