@@ -1216,10 +1216,26 @@
         // }, 3 * 60 * 1000); 
 
         // ================= 🔔 觸發 LINE 通知 (背景執行) =================
+        // function triggerNotification(bookingData, type) {
+        //     const payload = { action: "sendNotification", type: type, data: bookingData };
+        //     fetch(GAS_API_URL, {
+        //         method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload)
+        //     }).catch(e => console.log("通知觸發失敗", e));
+        // }
+
         function triggerNotification(bookingData, type) {
-            const payload = { action: "sendNotification", type: type, data: bookingData };
+            // 🔥 修正封包格式：把 type 和 data 乖乖包進 payload 裡面，GAS 才看得懂！
+            const requestBody = { 
+                action: "sendNotification", 
+                payload: {
+                    type: type, 
+                    data: bookingData
+                }
+            };
             fetch(GAS_API_URL, {
-                method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload)
+                method: "POST", 
+                headers: { "Content-Type": "text/plain" }, 
+                body: JSON.stringify(requestBody)
             }).catch(e => console.log("通知觸發失敗", e));
         }
 
