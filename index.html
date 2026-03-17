@@ -526,7 +526,7 @@
 
                 // 如果發現已經約過了，直接擋下來！
                 if (alreadyBooked) {
-                    alert("⚠️ 預約失敗：該姓名或 LINE 帳號在 【" + formData.date + "】 已經有預約囉！\n(系統限制每人每日僅能預約一個時段)");
+                    alert("⚠️ 預約失敗：您在 【" + formData.date + "】 已經有預約囉！\n(系統限制每人每日僅能預約一個時段)");
                     isSubmitting = false; // 恢復按鈕狀態
                     setButtonLoading(false);
                     return; // ⛔ 關鍵：中斷程式，絕對不讓他把資料寫進 Firebase！
