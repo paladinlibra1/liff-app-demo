@@ -499,6 +499,43 @@
                 remark: document.getElementById('remark').value.trim()
             };
 
+            // =========================================================
+            // 🛡️ 終極防佔位機制：不分店家或客人，同一天只能預約一次！
+            // =========================================================
+            try {
+                // 去資料庫抓出「客人選的那天」所有的預約單
+                const checkSnapshot = await db.collection("bookings").where("date", "==", formData.date).get();
+                let alreadyBooked = false;
+
+                checkSnapshot.forEach(doc => {
+                    // 如果現在是在「修改模式」，要排除自己原本的那筆單，不然會自己擋自己
+                    if (editId && doc.id === editId) return;
+
+                    let existingData = doc.data();
+                    
+                    // 條件 A：LINE ID 一樣 (代表同一個 LINE 帳號，且非空值)
+                    let isSameLine = (formData.lineId && formData.lineId !== "" && existingData.lineId === formData.lineId);
+                    
+                    // 條件 B：姓名 + 電話 完全一樣
+                    let isSamePerson = (existingData.name === formData.name && existingData.phone === formData.phone);
+
+                    if (isSameLine || isSamePerson) {
+                        alreadyBooked = true;
+                    }
+                });
+
+                // 如果發現已經約過了，直接擋下來！
+                if (alreadyBooked) {
+                    alert("⚠️ 預約失敗：該姓名或 LINE 帳號在 【" + formData.date + "】 已經有預約囉！\n(系統限制每人每日僅能預約一個時段)");
+                    isSubmitting = false; // 恢復按鈕狀態
+                    setButtonLoading(false);
+                    return; // ⛔ 關鍵：中斷程式，絕對不讓他把資料寫進 Firebase！
+                }
+            } catch (error) {
+                console.error("檢查重複預約失敗：", error);
+            }
+            // =========================================================
+
             try {
                 // 如果有 editId 就是修改，沒有就是新增
                 if (editId) {
