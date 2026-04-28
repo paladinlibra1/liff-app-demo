@@ -391,6 +391,13 @@
                 }
                 
             } catch (err) {
+                // 🔥 新增：如果偵測到 Token 過期，系統自動清除舊快取並重新啟動！
+                if (err.message.includes("expired") || err.message.includes("Access token")) {
+                    console.log("偵測到 Token 過期，正在自動登出並重整...");
+                    if (liff) liff.logout();
+                    window.location.reload();
+                    return;
+                }
                 logErrorToSheet(err.message, "系統初始化 (window.onload) 失敗"); 
                 alert("初始化失敗：" + err.message + "\n(系統已自動記錄此錯誤)");
             }
