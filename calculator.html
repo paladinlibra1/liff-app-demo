@@ -3,133 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業交易佈局計算器</title>
+    <title>分批進場/止損計算器</title>
     <style>
-        :root { --primary: #2563eb; --success: #059669; --danger: #dc2626; --bg: #f8fafc; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 450px; }
-        h2 { text-align: center; margin-bottom: 1.5rem; color: #1e293b; }
+        :root { --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --gray: #64748b; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #f1f5f9; padding: 20px; color: #1e293b; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        h2 { text-align: center; margin-top: 0; color: #0f172a; }
+        .section-title { border-left: 4px solid var(--primary); padding-left: 10px; margin: 20px 0 10px; font-weight: bold; }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--gray); }
+        input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
         
-        .side-switch { display: flex; background: #edeff2; padding: 4px; border-radius: 8px; margin-bottom: 20px; }
-        .side-btn { flex: 1; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        .side-btn.active.long { background: var(--success); color: white; }
-        .side-btn.active.short { background: var(--danger); color: white; }
+        .result-card { background: #1e293b; color: white; padding: 20px; border-radius: 12px; margin-top: 25px; }
+        .res-line { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+        .res-line:last-child { border-bottom: none; margin-bottom: 0; }
+        .val { font-family: 'Courier New', monospace; font-weight: bold; }
+        .text-green { color: var(--success); }
+        .text-red { color: var(--danger); }
+        .text-yellow { color: var(--warning); }
         
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: #64748b; font-weight: 600; }
-        input { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; font-size: 1rem; outline: none; }
-        input:focus { border-color: var(--primary); ring: 2px solid #bfdbfe; }
-
-        .result-box { margin-top: 20px; padding: 1.5rem; background: #1e293b; color: white; border-radius: 12px; }
-        .res-row { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
-        .res-row:last-child { border-bottom: none; margin-bottom: 0; }
-        .val { font-family: monospace; font-size: 1.1rem; }
-        .highlight { color: #60a5fa; font-weight: bold; }
-        .defense-text { color: #fbbf24; } /* 警告色，提示防守位 */
+        .info-tag { font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>🎯 交易佈局計算器</h2>
+<div class="container">
+    <h2>📈 進階交易佈局計算器</h2>
 
-    <div class="side-switch">
-        <button id="longBtn" class="side-btn active long" onclick="setSide('long')">做多 (Buy)</button>
-        <button id="shortBtn" class="side-btn" onclick="setSide('short')">做空 (Sell)</button>
-    </div>
-    
-    <div class="input-grid">
+    <!-- 1. 進場設定 -->
+    <div class="section-title">進場配置</div>
+    <div class="input-row">
         <div>
             <label>進場價格</label>
-            <input type="number" id="entry" placeholder="0.00" oninput="calculate()">
+            <input type="number" id="entryPrice" placeholder="100" oninput="calculate()">
         </div>
         <div>
-            <label>本金 (選填)</label>
-            <input type="number" id="balance" placeholder="10000" oninput="calculate()">
+            <label>總持有股數</label>
+            <input type="number" id="totalShares" placeholder="1000" oninput="calculate()">
         </div>
     </div>
 
-    <div class="input-grid">
+    <!-- 2. 止盈設定 -->
+    <div class="section-title text-green">止盈目標 (TP)</div>
+    <div class="input-row">
         <div>
-            <label>止盈目標</label>
-            <input type="number" id="tp" placeholder="獲利價" oninput="calculate()">
-        </div>
-        <div>
-            <label>止損點 (技術位)</label>
-            <input type="number" id="sl" placeholder="原止損價" oninput="calculate()">
+            <label>預期止盈價</label>
+            <input type="number" id="tpPrice" placeholder="120" oninput="calculate()">
         </div>
     </div>
 
-    <div class="input-group">
-        <label>防守墊片 (Buffer 點數)</label>
-        <input type="number" id="buffer" value="0" placeholder="增加緩衝" oninput="calculate()">
-        <small style="color:#94a3b8; font-size: 0.75rem;">* 額外拉開的距離，避免被掃損</small>
+    <!-- 3. 兩段式停損設定 -->
+    <div class="section-title text-red">兩段式停損 (SL)</div>
+    <div class="input-row">
+        <div>
+            <label>第一道停損價 (減碼點)</label>
+            <input type="number" id="sl1Price" placeholder="95" oninput="calculate()">
+        </div>
+        <div>
+            <label>第一道停損股數</label>
+            <input type="number" id="sl1Shares" placeholder="500" oninput="calculate()">
+        </div>
+    </div>
+    <div class="input-row">
+        <div>
+            <label>最後防守價 (清倉點)</label>
+            <input type="number" id="sl2Price" placeholder="90" oninput="calculate()">
+        </div>
+        <div>
+            <label>剩餘股數 (自動計算)</label>
+            <input type="number" id="sl2Shares" readonly style="background: #f8fafc;">
+        </div>
     </div>
 
-    <div class="result-box">
-        <div class="res-row">
-            <span>最終防守位:</span>
-            <span id="finalSl" class="val defense-text">--</span>
+    <!-- 計算結果 -->
+    <div class="result-card">
+        <div class="res-line">
+            <span>總投入成本:</span>
+            <span id="resCost" class="val">$0</span>
         </div>
-        <div class="res-row">
-            <span>盈虧比 (R:R):</span>
-            <span id="rr" class="val highlight">0</span>
+        <div class="res-line">
+            <span>達標總獲利:</span>
+            <span id="resProfit" class="val text-green">$0</span>
         </div>
-        <div class="res-row">
-            <span>預期獲利:</span>
-            <span id="profit" class="val" style="color:#4ade80">$0</span>
+        <div class="res-line">
+            <span>兩段式停損總損失:</span>
+            <span id="resLoss" class="val text-red">$0</span>
         </div>
-        <div class="res-row">
-            <span>預期虧損:</span>
-            <span id="loss" class="val" style="color:#f87171">$0</span>
+        <div class="res-line" style="margin-top: 10px; font-size: 1.2rem;">
+            <span>綜合盈虧比:</span>
+            <span id="resRR" class="val text-yellow">0</span>
+        </div>
+        <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 10px;">
+            * 綜合盈虧比 = 達標總獲利 ÷ 兩段式停損總損失
         </div>
     </div>
 </div>
 
 <script>
-let side = 'long';
-
-function setSide(s) {
-    side = s;
-    document.getElementById('longBtn').classList.toggle('active', s === 'long');
-    document.getElementById('shortBtn').classList.toggle('active', s === 'short');
-    calculate();
-}
-
 function calculate() {
-    const entry = parseFloat(document.getElementById('entry').value);
-    const tp = parseFloat(document.getElementById('tp').value);
-    const sl = parseFloat(document.getElementById('sl').value);
-    const buffer = parseFloat(document.getElementById('buffer').value) || 0;
-    const balance = parseFloat(document.getElementById('balance').value) || 0;
-
-    if (!entry || !tp || !sl) return;
-
-    // 計算考慮防守點後的最終止損
-    // 做多：止損往下移；做空：止損往上移
-    const finalSl = side === 'long' ? sl - buffer : sl + buffer;
-    document.getElementById('finalSl').innerText = finalSl.toFixed(4);
-
-    // 計算盈虧點數 (用最終止損算)
-    const reward = Math.abs(tp - entry);
-    const risk = Math.abs(entry - finalSl);
+    const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
+    const totalShares = parseFloat(document.getElementById('totalShares').value) || 0;
+    const tpPrice = parseFloat(document.getElementById('tpPrice').value) || 0;
     
-    if (risk === 0) return;
+    const sl1Price = parseFloat(document.getElementById('sl1Price').value) || 0;
+    const sl1Shares = parseFloat(document.getElementById('sl1Shares').value) || 0;
+    const sl2Price = parseFloat(document.getElementById('sl2Price').value) || 0;
 
-    // 1. 盈虧比
-    const rrRatio = (reward / risk).toFixed(2);
-    document.getElementById('rr').innerText = `1 : ${rrRatio}`;
+    // 自動計算剩餘股數 (最後防守點位必須清掉剩下所有的)
+    const sl2Shares = Math.max(0, totalShares - sl1Shares);
+    document.getElementById('sl2Shares').value = sl2Shares;
 
-    // 2. 金額與百分比
-    const rewardPct = reward / entry;
-    const riskPct = risk / entry;
+    if (entry <= 0 || totalShares <= 0) return;
 
-    if (balance > 0) {
-        document.getElementById('profit').innerText = `+$${(balance * rewardPct).toFixed(2)}`;
-        document.getElementById('loss').innerText = `-$${(balance * riskPct).toFixed(2)}`;
+    // 1. 成本
+    const totalCost = entry * totalShares;
+    document.getElementById('resCost').innerText = `$${totalCost.toLocaleString()}`;
+
+    // 2. 獲利 (假設全數在 TP 價格賣出)
+    const totalProfit = (tpPrice - entry) * totalShares;
+    document.getElementById('resProfit').innerText = `$${totalProfit.toLocaleString()} (${((totalProfit/totalCost)*100).toFixed(2)}%)`;
+
+    // 3. 兩段式總損失
+    // 損失 = (第一段價差 * 股數) + (第二段價差 * 剩餘股數)
+    const loss1 = (entry - sl1Price) * sl1Shares;
+    const loss2 = (entry - sl2Price) * sl2Shares;
+    const totalLoss = loss1 + loss2;
+    
+    document.getElementById('resLoss').innerText = `$${totalLoss.toLocaleString()} (${((totalLoss/totalCost)*100).toFixed(2)}%)`;
+
+    // 4. 綜合盈虧比
+    if (totalLoss > 0) {
+        const rr = (totalProfit / totalLoss).toFixed(2);
+        document.getElementById('resRR').innerText = `1 : ${rr}`;
     } else {
-        document.getElementById('profit').innerText = `${(rewardPct * 100).toFixed(2)}%`;
-        document.getElementById('loss').innerText = `${(riskPct * 100).toFixed(2)}%`;
+        document.getElementById('resRR').innerText = "--";
     }
 }
 </script>
