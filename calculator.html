@@ -3,140 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全倉綜效佈局計算器</title>
+    <title>正金字塔 5:3:2 戰術追蹤器</title>
     <style>
-        :root { --primary: #2563eb; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #0f172a; }
-        body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 10px; margin: 0; color: #334155; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h2 { text-align: center; font-size: 1.4rem; color: var(--dark); margin-bottom: 20px; }
+        :root { --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #1e293b; }
+        body { font-family: -apple-system, sans-serif; background: #f1f5f9; padding: 10px; margin: 0; color: #334155; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        .section { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
-        .section-title { font-weight: bold; font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .header { text-align: center; border-bottom: 2px solid #f1f5f9; margin-bottom: 20px; padding-bottom: 10px; }
+        .header h2 { margin: 0; font-size: 1.2rem; color: var(--dark); }
         
-        .row { display: flex; gap: 10px; margin-bottom: 12px; }
+        /* 頂部總量設定 */
+        .total-config { background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dbeafe; }
+        .total-config label { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
+        .total-config input { width: 100%; padding: 12px; margin-top: 5px; border: 2px solid var(--primary); border-radius: 8px; font-size: 1.1rem; font-weight: bold; box-sizing: border-box; }
+
+        .section-title { font-size: 0.95rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        
+        .card { background: #fff; border: 1px solid #e2e8f0; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        .card.pos1 { border-left: 5px solid var(--primary); }
+        .card.pos2 { border-left: 5px solid var(--warning); }
+        .card.pos3 { border-left: 5px solid var(--success); }
+        .card.risk { border-left: 5px solid var(--danger); background: #fff5f5; }
+
+        .row { display: flex; gap: 8px; margin-bottom: 8px; }
         .row > div { flex: 1; }
-        label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; font-weight: 600; }
-        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; background: #fff; }
-        
-        /* 結果區域 */
+        label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 3px; }
+        input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
+        input[readonly] { background: #f8fafc; color: #64748b; border-style: dashed; }
+
+        /* 結果顯示面板 */
         .result-panel { background: var(--dark); color: white; padding: 20px; border-radius: 12px; margin-top: 20px; }
         .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .res-item { border-left: 3px solid #334155; padding-left: 12px; }
-        .res-label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 4px; }
-        .res-val { font-size: 1.1rem; font-family: 'Consolas', monospace; font-weight: bold; }
+        .res-item { border-left: 3px solid #334155; padding-left: 10px; }
+        .res-label { font-size: 0.75rem; color: #94a3b8; display: block; }
+        .res-val { font-size: 1.1rem; font-family: monospace; font-weight: bold; }
         
-        .rr-box { 
-            margin-top: 15px; padding: 15px; background: #1e293b; border-radius: 8px; text-align: center; 
-            border: 1px solid #334155;
-        }
-        .rr-val { font-size: 2.5rem; color: var(--warning); font-weight: 900; }
-        .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 8px; line-height: 1.4; }
+        .rr-display { text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
+        .rr-val { font-size: 2.2rem; color: var(--warning); font-weight: 900; }
+        .zero-risk { color: var(--success) !important; font-size: 1.5rem !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 全倉綜效佈局計算器</h2>
+    <div class="header">
+        <h2>正金字塔 5:3:2 戰術計算器</h2>
+    </div>
 
-    <!-- 1. 持倉成本區 -->
-    <div class="section">
-        <div class="section-title">📥 目前持倉配置 (含底倉與加倉)</div>
+    <!-- 1. 設定計畫總量 -->
+    <div class="total-config">
+        <label>🎯 計畫最終總持股數</label>
+        <input type="number" id="totalTarget" placeholder="輸入預計購買總股數" oninput="distribute()">
+    </div>
+
+    <!-- 2. 進場區間 -->
+    <div class="section-title" style="color:var(--primary);">📥 進場配置</div>
+    <div class="card pos1">
+        <label>建倉：底倉 (50%)</label>
         <div class="row">
-            <div><label>1. 底倉價</label><input type="number" id="p1P" value="373.5" oninput="calc()"></div>
-            <div><label>底倉股數</label><input type="number" id="p1Q" value="200" oninput="calc()"></div>
+            <div><label>均價</label><input type="number" id="p1P" placeholder="373.5" oninput="calc()"></div>
+            <div><label>股數</label><input type="number" id="p1Q" readonly></div>
         </div>
+    </div>
+    <div class="card pos2">
+        <label>加倉 1：突破 400 元 (30%)</label>
         <div class="row">
-            <div><label>2. 加倉價</label><input type="number" id="p2P" value="402.5" oninput="calc()"></div>
-            <div><label>加倉股數</label><input type="number" id="p2Q" value="100" oninput="calc()"></div>
+            <div><label>均價</label><input type="number" id="p2P" placeholder="402.5" oninput="calc()"></div>
+            <div><label>股數</label><input type="number" id="p2Q" readonly></div>
+        </div>
+    </div>
+    <div class="card pos3">
+        <label>加倉 2：突破前高 463.5 (20%)</label>
+        <div class="row">
+            <div><label>均價</label><input type="number" id="p3P" placeholder="467.5" oninput="calc()"></div>
+            <div><label>股數</label><input type="number" id="p3Q" readonly></div>
         </div>
     </div>
 
-    <!-- 2. 新防守與目標區 -->
-    <div class="section" style="border-left: 5px solid var(--danger);">
-        <div class="section-title" style="color:var(--danger);">🛡️ 新設定之防守與止盈</div>
+    <!-- 3. 動態防守區 -->
+    <div class="section-title" style="color:var(--danger);">🛡️ 全倉防守與目標</div>
+    <div class="card risk">
         <div class="row">
-            <div>
-                <label>新停損位 (停損上移)</label>
-                <input type="number" id="newSL" value="375" oninput="calc()">
-            </div>
-            <div>
-                <label>最終目標價</label>
-                <input type="number" id="newTP" value="463.5" oninput="calc()">
-            </div>
+            <div><label>當前全倉停損點</label><input type="number" id="newSL" placeholder="如：375" oninput="calc()"></div>
+            <div><label>最終獲利目標</label><input type="number" id="newTP" placeholder="如：550" oninput="calc()"></div>
         </div>
-        <div class="hint">* 當你進入第一次加倉後，將停損點從 345 上移至 375，這會大幅改變你的全倉風險。</div>
     </div>
 
-    <!-- 3. 全倉試算結果 -->
+    <!-- 結果面板 -->
     <div class="result-panel">
         <div class="res-grid">
             <div class="res-item">
-                <span class="res-label">全倉總股數</span>
-                <span id="totalQty" class="res-val">0</span>
+                <span class="res-label">目前總股數</span>
+                <span id="resTotalQ" class="res-val">0</span>
             </div>
             <div class="res-item">
-                <span class="res-label">平均成本</span>
-                <span id="avgCost" class="res-val">$0</span>
+                <span class="res-label">全倉平均成本</span>
+                <span id="resAvg" class="res-val">$0</span>
             </div>
             <div class="res-item">
                 <span class="res-label">達標總獲利</span>
-                <span id="totalProfit" class="res-val" style="color:var(--success);">$0</span>
+                <span id="resProfit" class="res-val" style="color:var(--success);">$0</span>
             </div>
             <div class="res-item">
-                <span class="res-label">觸發防守損失</span>
-                <span id="totalLoss" class="res-val" style="color:var(--danger);">$0</span>
+                <span class="res-label">觸發停損盈虧</span>
+                <span id="resLoss" class="res-val">-$0</span>
             </div>
         </div>
-        
-        <div class="rr-box">
-            <span class="res-label" style="color:white;">綜效盈虧比 (盈 : 虧)</span>
-            <div id="rrRatio" class="rr-val">0 : 1</div>
+        <div class="rr-display">
+            <span class="res-label" style="color:white; margin-bottom:5px;">綜合盈虧比 (盈 : 虧)</span>
+            <div id="resRR" class="rr-val">0 : 1</div>
         </div>
     </div>
 </div>
 
 <script>
+function distribute() {
+    const total = parseFloat(document.getElementById('totalTarget').value) || 0;
+    document.getElementById('p1Q').value = Math.floor(total * 0.5);
+    document.getElementById('p2Q').value = Math.floor(total * 0.3);
+    document.getElementById('p3Q').value = Math.floor(total * 0.2);
+    calc();
+}
+
 function calc() {
     const p1p = parseFloat(document.getElementById('p1P').value) || 0;
     const p1q = parseFloat(document.getElementById('p1Q').value) || 0;
     const p2p = parseFloat(document.getElementById('p2P').value) || 0;
     const p2q = parseFloat(document.getElementById('p2Q').value) || 0;
+    const p3p = parseFloat(document.getElementById('p3P').value) || 0;
+    const p3q = parseFloat(document.getElementById('p3Q').value) || 0;
     
-    const newSL = parseFloat(document.getElementById('newSL').value) || 0;
-    const newTP = parseFloat(document.getElementById('newTP').value) || 0;
+    const sl = parseFloat(document.getElementById('newSL').value) || 0;
+    const tp = parseFloat(document.getElementById('newTP').value) || 0;
 
-    const totalQty = p1q + p2q;
-    if (totalQty <= 0) return;
-
-    const totalCost = (p1p * p1q) + (p2p * p2q);
-    const avgCost = totalCost / totalQty;
-
-    // 總獲利 = (目標價 - 平均成本) * 總股數
-    const totalProfit = (newTP - avgCost) * totalQty;
+    // 只計算有填寫價格的部位
+    let currentTotalQ = 0;
+    let currentTotalCost = 0;
     
-    // 總損失 = (平均成本 - 新停損位) * 總股數
-    // 如果平均成本低於新停損位，則損失為負數（代表即便停損也是賺錢離場）
-    const totalLoss = (avgCost - newSL) * totalQty;
+    if(p1p > 0) { currentTotalQ += p1q; currentTotalCost += p1p * p1q; }
+    if(p2p > 0) { currentTotalQ += p2q; currentTotalCost += p2p * p2q; }
+    if(p3p > 0) { currentTotalQ += p3q; currentTotalCost += p3p * p3q; }
 
-    document.getElementById('totalQty').innerText = totalQty.toLocaleString();
-    document.getElementById('avgCost').innerText = `$${avgCost.toFixed(2)}`;
-    document.getElementById('totalProfit').innerText = `$${Math.round(totalProfit).toLocaleString()}`;
+    if (currentTotalQ <= 0) return;
+
+    const avg = currentTotalCost / currentTotalQ;
+    const totalProfit = (tp - avg) * currentTotalQ;
+    const totalLoss = (avg - sl) * currentTotalQ;
+
+    document.getElementById('resTotalQ').innerText = currentTotalQ.toLocaleString();
+    document.getElementById('resAvg').innerText = `$${avg.toFixed(2)}`;
+    document.getElementById('resProfit').innerText = `$${Math.round(totalProfit).toLocaleString()}`;
     
-    // 如果損失小於 0，代表已經進入「立於不敗之地」
-    if (totalLoss <= 0) {
-        document.getElementById('totalLoss').innerText = `已保本 (+$${Math.abs(Math.round(totalLoss)).toLocaleString()})`;
-        document.getElementById('totalLoss').style.color = "var(--success)";
-        document.getElementById('rrRatio').innerText = "∞ : 1";
+    const lossEl = document.getElementById('resLoss');
+    const rrEl = document.getElementById('resRR');
+
+    if (totalLoss <= 0 && sl > 0) {
+        // 進入零風險階段
+        const secureProfit = Math.abs(totalLoss);
+        lossEl.innerText = `已保本 (+$${Math.round(secureProfit).toLocaleString()})`;
+        lossEl.style.color = "var(--success)";
+        rrEl.innerText = "零風險 (∞ : 1)";
+        rrEl.className = "rr-val zero-risk";
     } else {
-        document.getElementById('totalLoss').innerText = `-$${Math.round(totalLoss).toLocaleString()}`;
-        document.getElementById('totalLoss').style.color = "var(--danger)";
-        const rr = (totalProfit / totalLoss).toFixed(2);
-        document.getElementById('rrRatio').innerText = `${rr} : 1`;
+        // 仍有風險階段
+        lossEl.innerText = `-$${Math.round(totalLoss).toLocaleString()}`;
+        lossEl.style.color = "var(--danger)";
+        const rr = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : 0;
+        rrEl.innerText = `${rr} : 1`;
+        rrEl.className = "rr-val";
     }
 }
-
-// 初始化
-window.onload = calc;
 </script>
 
 </body>
