@@ -3,271 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金字塔佈局計算器 - 手機優化版</title>
+    <title>全倉綜效佈局計算器</title>
     <style>
-        :root { --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #1e293b; --buffer: #818cf8; }
+        :root { --primary: #2563eb; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #0f172a; }
+        body { font-family: -apple-system, sans-serif; background: #f4f7f9; padding: 10px; margin: 0; color: #334155; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { text-align: center; font-size: 1.4rem; color: var(--dark); margin-bottom: 20px; }
         
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #f1f5f9; 
-            padding: 10px; 
-            color: #334155; 
-            margin: 0;
-        }
-
-        .container { 
-            max-width: 100%; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 15px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-        }
-
-        h2 { font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
-        .sub-title { text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 20px; }
-
-        /* 頂部設定區 */
-        .top-bar { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 20px; 
-            border: 1px solid #e2e8f0; 
-        }
-
-        /* 網格系統：手機垂直、平板以上並排 */
-        .grid { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 20px; 
-        }
-
-        @media (min-width: 768px) {
-            .grid { flex-direction: row; }
-            .grid > div { flex: 1; }
-            .top-bar { flex-direction: row; align-items: flex-end; }
-            .top-bar > div { flex: 1; }
-        }
-
-        .input-card { 
-            background: #fff; 
-            border: 1px solid #e2e8f0; 
-            padding: 12px; 
-            border-radius: 10px; 
-            margin-bottom: 12px; 
-        }
-
-        .input-card.long { border-left: 4px solid var(--primary); }
-        .input-card.exit { border-left: 4px solid var(--success); }
-        .input-card.stop { border-left: 4px solid var(--danger); }
+        .section { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .section-title { font-weight: bold; font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
         
-        .row { display: flex; gap: 8px; }
+        .row { display: flex; gap: 10px; margin-bottom: 12px; }
         .row > div { flex: 1; }
-
-        label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 4px; }
-        input { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            font-size: 1rem; 
-            -webkit-appearance: none; /* 修復 iOS 預設樣式 */
-        }
-
-        .buffer-tag { font-size: 0.75rem; color: var(--buffer); font-weight: bold; margin-top: 6px; display: block; }
-
-        /* 結果面板 */
-        .result-panel { 
-            margin-top: 25px; 
-            background: var(--dark); 
-            color: white; 
-            padding: 15px; 
-            border-radius: 12px; 
-        }
-
-        .res-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-        }
-
-        .res-item { border-left: 3px solid #334155; padding-left: 10px; }
-        .res-label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px; }
-        .res-val { font-size: 1.1rem; font-weight: bold; }
-        .pct-label { font-size: 0.85rem; opacity: 0.8; font-weight: normal; margin-left: 2px; }
+        label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; font-weight: 600; }
+        input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; background: #fff; }
         
-        .rr-display { 
-            text-align: center; 
-            background: #0f172a; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-top: 15px; 
+        /* 結果區域 */
+        .result-panel { background: var(--dark); color: white; padding: 20px; border-radius: 12px; margin-top: 20px; }
+        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .res-item { border-left: 3px solid #334155; padding-left: 12px; }
+        .res-label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 4px; }
+        .res-val { font-size: 1.1rem; font-family: 'Consolas', monospace; font-weight: bold; }
+        
+        .rr-box { 
+            margin-top: 15px; padding: 15px; background: #1e293b; border-radius: 8px; text-align: center; 
+            border: 1px solid #334155;
         }
-
-        .rr-val { font-size: 2.2rem; color: var(--warning); font-weight: 900; }
+        .rr-val { font-size: 2.5rem; color: var(--warning); font-weight: 900; }
+        .hint { font-size: 0.75rem; color: #94a3b8; margin-top: 8px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📐 金字塔佈局計算器</h2>
-    <p class="sub-title">分批進場與減碼策略工具</p>
+    <h2>📊 全倉綜效佈局計算器</h2>
 
-    <div class="top-bar">
-        <div>
-            <label>🎯 預計總購買股數</label>
-            <input type="number" id="targetTotalQty" placeholder="輸入總量" oninput="autoDistribute()">
+    <!-- 1. 持倉成本區 -->
+    <div class="section">
+        <div class="section-title">📥 目前持倉配置 (含底倉與加倉)</div>
+        <div class="row">
+            <div><label>1. 底倉價</label><input type="number" id="p1P" value="373.5" oninput="calc()"></div>
+            <div><label>底倉股數</label><input type="number" id="p1Q" value="200" oninput="calc()"></div>
         </div>
-        <div>
-            <label>⚙️ 緩衝百分比 (%)</label>
-            <input type="number" id="bufferPct" value="1.5" step="0.1" oninput="calculate()">
-        </div>
-    </div>
-
-    <div class="grid">
-        <!-- 進場配置 -->
-        <div>
-            <div class="input-card long">
-                <label>1. 底倉 (50%)</label>
-                <div class="row">
-                    <div><input type="number" id="p1P" placeholder="價" oninput="calculate()"></div>
-                    <div><input type="number" id="p1Q" placeholder="股" oninput="calculate()"></div>
-                </div>
-                <span id="b1" class="buffer-tag">區間: --</span>
-            </div>
-            <div class="input-card long">
-                <label>2. 一加 (30%)</label>
-                <div class="row">
-                    <div><input type="number" id="p2P" placeholder="價" oninput="calculate()"></div>
-                    <div><input type="number" id="p2Q" placeholder="股" oninput="calculate()"></div>
-                </div>
-                <span id="b2" class="buffer-tag">區間: --</span>
-            </div>
-            <div class="input-card long">
-                <label>3. 二加 (20%)</label>
-                <div class="row">
-                    <div><input type="number" id="p3P" placeholder="價" oninput="calculate()"></div>
-                    <div><input type="number" id="p3Q" placeholder="股" oninput="calculate()"></div>
-                </div>
-                <span id="b3" class="buffer-tag">區間: --</span>
-            </div>
-        </div>
-
-        <!-- 風控配置 -->
-        <div>
-            <div class="input-card exit">
-                <label>🎯 最終止盈目標</label>
-                <input type="number" id="tp" placeholder="價格" oninput="calculate()">
-                <span id="btp" class="buffer-tag">止盈區: --</span>
-            </div>
-            
-            <div class="input-card stop">
-                <label>🚩 第一段停損 (減碼點)</label>
-                <div class="row">
-                    <div><input type="number" id="sl1P" placeholder="價" oninput="calculate()"></div>
-                    <div><input type="number" id="sl1Q" placeholder="股" oninput="calculate()"></div>
-                </div>
-                <span id="bsl1" class="buffer-tag" style="color:var(--danger);">緩衝: --</span>
-            </div>
-
-            <div class="input-card stop">
-                <label>💀 最後防守點 (清倉)</label>
-                <div class="row">
-                    <div><input type="number" id="sl2P" placeholder="價格" oninput="calculate()"></div>
-                    <div><input type="number" id="sl2Rem" readonly style="background:#f1f5f9;" placeholder="剩"></div>
-                </div>
-                <span id="bsl2" class="buffer-tag" style="color:var(--danger);">終極: --</span>
-            </div>
+        <div class="row">
+            <div><label>2. 加倉價</label><input type="number" id="p2P" value="402.5" oninput="calc()"></div>
+            <div><label>加倉股數</label><input type="number" id="p2Q" value="100" oninput="calc()"></div>
         </div>
     </div>
 
-    <!-- 結果 -->
+    <!-- 2. 新防守與目標區 -->
+    <div class="section" style="border-left: 5px solid var(--danger);">
+        <div class="section-title" style="color:var(--danger);">🛡️ 新設定之防守與止盈</div>
+        <div class="row">
+            <div>
+                <label>新停損位 (停損上移)</label>
+                <input type="number" id="newSL" value="375" oninput="calc()">
+            </div>
+            <div>
+                <label>最終目標價</label>
+                <input type="number" id="newTP" value="463.5" oninput="calc()">
+            </div>
+        </div>
+        <div class="hint">* 當你進入第一次加倉後，將停損點從 345 上移至 375，這會大幅改變你的全倉風險。</div>
+    </div>
+
+    <!-- 3. 全倉試算結果 -->
     <div class="result-panel">
         <div class="res-grid">
             <div class="res-item">
+                <span class="res-label">全倉總股數</span>
+                <span id="totalQty" class="res-val">0</span>
+            </div>
+            <div class="res-item">
                 <span class="res-label">平均成本</span>
-                <span id="resAvg" class="res-val">--</span>
+                <span id="avgCost" class="res-val">$0</span>
             </div>
             <div class="res-item">
-                <span class="res-label">總投入本金</span>
-                <span id="resCost" class="res-val">$0</span>
+                <span class="res-label">達標總獲利</span>
+                <span id="totalProfit" class="res-val" style="color:var(--success);">$0</span>
             </div>
             <div class="res-item">
-                <span class="res-label">達標獲利</span>
-                <span class="res-val" style="color:var(--success);">
-                    <span id="resProfit">$0</span><span id="resProfitPct" class="pct-label"></span>
-                </span>
-            </div>
-            <div class="res-item">
-                <span class="res-label">停損損失</span>
-                <span class="res-val" style="color:var(--danger);">
-                    <span id="resLoss">$0</span><span id="resLossPct" class="pct-label"></span>
-                </span>
+                <span class="res-label">觸發防守損失</span>
+                <span id="totalLoss" class="res-val" style="color:var(--danger);">$0</span>
             </div>
         </div>
-        <div class="rr-display">
-            <div class="res-label" style="color:#94a3b8; margin-bottom:5px;">盈虧比 (盈 : 虧)</div>
-            <div id="resRR" class="rr-val">0 : 1</div>
+        
+        <div class="rr-box">
+            <span class="res-label" style="color:white;">綜效盈虧比 (盈 : 虧)</span>
+            <div id="rrRatio" class="rr-val">0 : 1</div>
         </div>
     </div>
 </div>
 
 <script>
-function autoDistribute() {
-    const total = parseFloat(document.getElementById('targetTotalQty').value) || 0;
-    document.getElementById('p1Q').value = Math.floor(total * 0.5);
-    document.getElementById('p2Q').value = Math.floor(total * 0.3);
-    document.getElementById('p3Q').value = Math.floor(total * 0.2);
-    document.getElementById('sl1Q').value = Math.floor(total * 0.5);
-    calculate();
-}
-
-function calculate() {
-    const bf = (parseFloat(document.getElementById('bufferPct').value) || 0) / 100;
+function calc() {
+    const p1p = parseFloat(document.getElementById('p1P').value) || 0;
+    const p1q = parseFloat(document.getElementById('p1Q').value) || 0;
+    const p2p = parseFloat(document.getElementById('p2P').value) || 0;
+    const p2q = parseFloat(document.getElementById('p2Q').value) || 0;
     
-    const updateBuf = (pId, bId, type) => {
-        const val = parseFloat(document.getElementById(pId).value);
-        const el = document.getElementById(bId);
-        if(!val) return el.innerText = "--";
-        if(type==='r') el.innerText = `${(val*(1-bf)).toFixed(2)}~${(val*(1+bf)).toFixed(2)}`;
-        else el.innerText = (val*(1-bf)).toFixed(2);
-    };
+    const newSL = parseFloat(document.getElementById('newSL').value) || 0;
+    const newTP = parseFloat(document.getElementById('newTP').value) || 0;
 
-    updateBuf('p1P','b1','r'); updateBuf('p2P','b2','r'); updateBuf('p3P','b3','r');
-    updateBuf('tp','btp','u'); updateBuf('sl1P','bsl1','d'); updateBuf('sl2P','bsl2','d');
+    const totalQty = p1q + p2q;
+    if (totalQty <= 0) return;
 
-    const p1P = parseFloat(document.getElementById('p1P').value) || 0, p1Q = parseFloat(document.getElementById('p1Q').value) || 0;
-    const p2P = parseFloat(document.getElementById('p2P').value) || 0, p2Q = parseFloat(document.getElementById('p2Q').value) || 0;
-    const p3P = parseFloat(document.getElementById('p3P').value) || 0, p3Q = parseFloat(document.getElementById('p3Q').value) || 0;
-    const tp = parseFloat(document.getElementById('tp').value) || 0;
-    const sl1P = parseFloat(document.getElementById('sl1P').value) || 0, sl1Q = parseFloat(document.getElementById('sl1Q').value) || 0;
-    const sl2P = parseFloat(document.getElementById('sl2P').value) || 0;
+    const totalCost = (p1p * p1q) + (p2p * p2q);
+    const avgCost = totalCost / totalQty;
 
-    const totalQty = p1Q + p2Q + p3Q;
-    const remQty = Math.max(0, totalQty - sl1Q);
-    document.getElementById('sl2Rem').value = remQty || "";
+    // 總獲利 = (目標價 - 平均成本) * 總股數
+    const totalProfit = (newTP - avgCost) * totalQty;
+    
+    // 總損失 = (平均成本 - 新停損位) * 總股數
+    // 如果平均成本低於新停損位，則損失為負數（代表即便停損也是賺錢離場）
+    const totalLoss = (avgCost - newSL) * totalQty;
 
-    if (totalQty > 0) {
-        const cost = (p1P * p1Q) + (p2P * p2Q) + (p3P * p3Q);
-        const avg = cost / totalQty;
-        const profit = (tp - avg) * totalQty;
-        const loss = ((avg - sl1P) * sl1Q) + ((avg - sl2P) * remQty);
-
-        document.getElementById('resAvg').innerText = `$${avg.toFixed(2)}`;
-        document.getElementById('resCost').innerText = `$${Math.round(cost).toLocaleString()}`;
-        document.getElementById('resProfit').innerText = `$${Math.round(profit).toLocaleString()}`;
-        document.getElementById('resProfitPct').innerText = `(${((profit/cost)*100).toFixed(1)}%)`;
-        document.getElementById('resLoss').innerText = `$${Math.round(loss).toLocaleString()}`;
-        document.getElementById('resLossPct').innerText = `(${((loss/cost)*100).toFixed(1)}%)`;
-        
-        if(loss > 0 && profit > 0) document.getElementById('resRR').innerText = `${(profit/loss).toFixed(2)} : 1`;
+    document.getElementById('totalQty').innerText = totalQty.toLocaleString();
+    document.getElementById('avgCost').innerText = `$${avgCost.toFixed(2)}`;
+    document.getElementById('totalProfit').innerText = `$${Math.round(totalProfit).toLocaleString()}`;
+    
+    // 如果損失小於 0，代表已經進入「立於不敗之地」
+    if (totalLoss <= 0) {
+        document.getElementById('totalLoss').innerText = `已保本 (+$${Math.abs(Math.round(totalLoss)).toLocaleString()})`;
+        document.getElementById('totalLoss').style.color = "var(--success)";
+        document.getElementById('rrRatio').innerText = "∞ : 1";
+    } else {
+        document.getElementById('totalLoss').innerText = `-$${Math.round(totalLoss).toLocaleString()}`;
+        document.getElementById('totalLoss').style.color = "var(--danger)";
+        const rr = (totalProfit / totalLoss).toFixed(2);
+        document.getElementById('rrRatio').innerText = `${rr} : 1`;
     }
 }
+
+// 初始化
+window.onload = calc;
 </script>
+
 </body>
 </html>
