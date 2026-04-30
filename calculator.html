@@ -3,140 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分批進場/止損計算器</title>
+    <title>交易佈局計算器 - 手動專業版</title>
     <style>
-        :root { --primary: #3b82f6; --success: #22c55e; --danger: #ef4444; --warning: #f59e0b; --gray: #64748b; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: #f1f5f9; padding: 20px; color: #1e293b; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        h2 { text-align: center; margin-top: 0; color: #0f172a; }
-        .section-title { border-left: 4px solid var(--primary); padding-left: 10px; margin: 20px 0 10px; font-weight: bold; }
-        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
-        label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--gray); }
-        input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --warning: #ca8a04; --dark: #1e293b; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: #f1f5f9; padding: 20px; color: #334155; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         
-        .result-card { background: #1e293b; color: white; padding: 20px; border-radius: 12px; margin-top: 25px; }
-        .res-line { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
-        .res-line:last-child { border-bottom: none; margin-bottom: 0; }
-        .val { font-family: 'Courier New', monospace; font-weight: bold; }
-        .text-green { color: var(--success); }
-        .text-red { color: var(--danger); }
-        .text-yellow { color: var(--warning); }
+        .header-box { background: var(--dark); color: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; text-align: center; }
+        .header-box input { width: 150px; font-size: 1.5rem; text-align: center; color: var(--primary); font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 25px; }
+        .section { background: #fff; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        h3 { margin-top: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
         
-        .info-tag { font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px; }
+        .ma-hint { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+        .ma-item { background: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; font-size: 0.85rem; border: 1px dashed #cbd5e1; }
+        .ma-item b { display: block; color: var(--primary); }
+
+        .input-row { display: grid; grid-template-columns: 2fr 1.2fr; gap: 10px; margin-bottom: 10px; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #64748b; }
+        input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; }
+
+        .result-panel { margin-top: 30px; background: var(--dark); color: white; padding: 25px; border-radius: 15px; }
+        .res-inner { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .res-item { border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        .res-label { font-size: 0.85rem; color: #94a3b8; }
+        .res-val { font-size: 1.2rem; font-family: 'Consolas', monospace; font-weight: bold; display: block; }
+        .rr-box { grid-column: span 2; text-align: center; background: #0f172a; padding: 15px; border-radius: 10px; margin-top: 10px; }
+        .highlight-rr { font-size: 2.2rem; color: var(--warning); font-weight: 800; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📈 進階交易佈局計算器</h2>
+    <div class="header-box">
+        <h2 style="margin:0 0 10px 0;">📊 專業交易佈局計算器</h2>
+        <label style="color:#94a3b8;">請輸入今日收盤價/現價</label>
+        <input type="number" id="basePrice" placeholder="0.0" oninput="updateMA(); calculate();">
+    </div>
 
-    <!-- 1. 進場設定 -->
-    <div class="section-title">進場配置</div>
-    <div class="input-row">
-        <div>
-            <label>進場價格</label>
-            <input type="number" id="entryPrice" placeholder="100" oninput="calculate()">
+    <div class="grid">
+        <!-- 進場配置 -->
+        <div class="section">
+            <h3 style="color:var(--primary);">📥 正金字塔進場配置</h3>
+            <div class="ma-hint">
+                <div class="ma-item"><span>MA5 (攻擊)</span><b id="ma5">--</b></div>
+                <div class="ma-item"><span>MA20 (月線)</span><b id="ma20">--</b></div>
+                <div class="ma-item"><span>MA60 (季線)</span><b id="ma60">--</b></div>
+            </div>
+            
+            <div class="input-row">
+                <label>1. 底倉價格 (50%-60%股數)</label>
+                <label>股數</label>
+                <input type="number" id="p1P" oninput="calculate()">
+                <input type="number" id="p1Q" oninput="calculate()">
+                
+                <label>2. 一次加倉 (20%-30%股數)</label>
+                <label>股數</label>
+                <input type="number" id="p2P" oninput="calculate()">
+                <input type="number" id="p2Q" oninput="calculate()">
+                
+                <label>3. 二次加倉 (10%-20%股數)</label>
+                <label>股數</label>
+                <input type="number" id="p3P" oninput="calculate()">
+                <input type="number" id="p3Q" oninput="calculate()">
+            </div>
         </div>
-        <div>
-            <label>總持有股數</label>
-            <input type="number" id="totalShares" placeholder="1000" oninput="calculate()">
+
+        <!-- 出場與風控 -->
+        <div class="section">
+            <h3 style="color:var(--success);">🛡️ 止盈與兩段式防守</h3>
+            
+            <label>🎯 最終止盈目標價</label>
+            <input type="number" id="tp" placeholder="目標獲利點" oninput="calculate()" style="margin-bottom:15px; border-left: 5px solid var(--success);">
+            
+            <label>🚩 第一段停損 (減碼點)</label>
+            <div class="input-row" style="grid-template-columns: 1.5fr 1fr;">
+                <input type="number" id="sl1P" placeholder="價格" oninput="calculate()">
+                <input type="number" id="sl1Q" placeholder="股數" oninput="calculate()">
+            </div>
+            
+            <label>💀 最後防守位 (全清點)</label>
+            <input type="number" id="sl2P" placeholder="絕對止損價" oninput="calculate()" style="border-left: 5px solid var(--danger);">
+            <p style="font-size: 0.75rem; color:#94a3b8; margin-top:10px;">* 建議將最後防守位設在 MA20 或 MA60 之下</p>
         </div>
     </div>
 
-    <!-- 2. 止盈設定 -->
-    <div class="section-title text-green">止盈目標 (TP)</div>
-    <div class="input-row">
-        <div>
-            <label>預期止盈價</label>
-            <input type="number" id="tpPrice" placeholder="120" oninput="calculate()">
-        </div>
-    </div>
-
-    <!-- 3. 兩段式停損設定 -->
-    <div class="section-title text-red">兩段式停損 (SL)</div>
-    <div class="input-row">
-        <div>
-            <label>第一道停損價 (減碼點)</label>
-            <input type="number" id="sl1Price" placeholder="95" oninput="calculate()">
-        </div>
-        <div>
-            <label>第一道停損股數</label>
-            <input type="number" id="sl1Shares" placeholder="500" oninput="calculate()">
-        </div>
-    </div>
-    <div class="input-row">
-        <div>
-            <label>最後防守價 (清倉點)</label>
-            <input type="number" id="sl2Price" placeholder="90" oninput="calculate()">
-        </div>
-        <div>
-            <label>剩餘股數 (自動計算)</label>
-            <input type="number" id="sl2Shares" readonly style="background: #f8fafc;">
-        </div>
-    </div>
-
-    <!-- 計算結果 -->
-    <div class="result-card">
-        <div class="res-line">
-            <span>總投入成本:</span>
-            <span id="resCost" class="val">$0</span>
-        </div>
-        <div class="res-line">
-            <span>達標總獲利:</span>
-            <span id="resProfit" class="val text-green">$0</span>
-        </div>
-        <div class="res-line">
-            <span>兩段式停損總損失:</span>
-            <span id="resLoss" class="val text-red">$0</span>
-        </div>
-        <div class="res-line" style="margin-top: 10px; font-size: 1.2rem;">
-            <span>綜合盈虧比:</span>
-            <span id="resRR" class="val text-yellow">0</span>
-        </div>
-        <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 10px;">
-            * 綜合盈虧比 = 達標總獲利 ÷ 兩段式停損總損失
+    <!-- 結果面板 -->
+    <div class="result-panel">
+        <div class="res-inner">
+            <div class="res-item">
+                <span class="res-label">平均成本 / 總股數</span>
+                <span class="res-val" id="resAvg">$0 / 0</span>
+            </div>
+            <div class="res-item">
+                <span class="res-label">總投入金額</span>
+                <span class="res-val" id="resCost">$0</span>
+            </div>
+            <div class="res-item">
+                <span class="res-label">預期總獲利</span>
+                <span class="res-val" id="resProfit" style="color:var(--success);">$0</span>
+            </div>
+            <div class="res-item">
+                <span class="res-label">兩段停損總損失</span>
+                <span class="res-val" id="resLoss" style="color:var(--danger);">$0</span>
+            </div>
+            <div class="rr-box">
+                <span class="res-label" style="color:white; margin-bottom:5px; display:block;">綜合盈虧比 (盈 : 虧)</span>
+                <span id="resRR" class="highlight-rr">0 : 1</span>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+// 自動計算參考均線 (以現價為基礎的模擬值，僅供參考)
+function updateMA() {
+    const base = parseFloat(document.getElementById('basePrice').value);
+    if (!base) return;
+    // 這裡提供的是一般市場常用的支撐比例，實戰請依看盤軟體為準
+    document.getElementById('ma5').innerText = (base * 0.99).toFixed(2);
+    document.getElementById('ma20').innerText = (base * 0.96).toFixed(2);
+    document.getElementById('ma60').innerText = (base * 0.92).toFixed(2);
+}
+
 function calculate() {
-    const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
-    const totalShares = parseFloat(document.getElementById('totalShares').value) || 0;
-    const tpPrice = parseFloat(document.getElementById('tpPrice').value) || 0;
-    
-    const sl1Price = parseFloat(document.getElementById('sl1Price').value) || 0;
-    const sl1Shares = parseFloat(document.getElementById('sl1Shares').value) || 0;
-    const sl2Price = parseFloat(document.getElementById('sl2Price').value) || 0;
+    const p1P = parseFloat(document.getElementById('p1P').value) || 0;
+    const p1Q = parseFloat(document.getElementById('p1Q').value) || 0;
+    const p2P = parseFloat(document.getElementById('p2P').value) || 0;
+    const p2Q = parseFloat(document.getElementById('p2Q').value) || 0;
+    const p3P = parseFloat(document.getElementById('p3P').value) || 0;
+    const p3Q = parseFloat(document.getElementById('p3Q').value) || 0;
 
-    // 自動計算剩餘股數 (最後防守點位必須清掉剩下所有的)
-    const sl2Shares = Math.max(0, totalShares - sl1Shares);
-    document.getElementById('sl2Shares').value = sl2Shares;
+    const tp = parseFloat(document.getElementById('tp').value) || 0;
+    const sl1P = parseFloat(document.getElementById('sl1P').value) || 0;
+    const sl1Q = parseFloat(document.getElementById('sl1Q').value) || 0;
+    const sl2P = parseFloat(document.getElementById('sl2P').value) || 0;
 
-    if (entry <= 0 || totalShares <= 0) return;
+    const totalQty = p1Q + p2Q + p3Q;
+    if (totalQty <= 0) return;
 
-    // 1. 成本
-    const totalCost = entry * totalShares;
+    const totalCost = (p1P * p1Q) + (p2P * p2Q) + (p3P * p3Q);
+    const avgPrice = totalCost / totalQty;
+
+    // 更新基本資訊
+    document.getElementById('resAvg').innerText = `$${avgPrice.toFixed(2)} / ${totalQty.toLocaleString()}`;
     document.getElementById('resCost').innerText = `$${totalCost.toLocaleString()}`;
 
-    // 2. 獲利 (假設全數在 TP 價格賣出)
-    const totalProfit = (tpPrice - entry) * totalShares;
+    // 計算獲利
+    const totalProfit = (tp - avgPrice) * totalQty;
     document.getElementById('resProfit').innerText = `$${totalProfit.toLocaleString()} (${((totalProfit/totalCost)*100).toFixed(2)}%)`;
 
-    // 3. 兩段式總損失
-    // 損失 = (第一段價差 * 股數) + (第二段價差 * 剩餘股數)
-    const loss1 = (entry - sl1Price) * sl1Shares;
-    const loss2 = (entry - sl2Price) * sl2Shares;
-    const totalLoss = loss1 + loss2;
+    // 計算兩段式損失 (平均成本 - 停損價)
+    const loss1 = (avgPrice - sl1P) * sl1Q;
+    const loss2 = (avgPrice - sl2P) * (totalQty - sl1Q);
+    const totalLoss = (loss1 > 0 ? loss1 : 0) + (loss2 > 0 ? loss2 : 0);
     
     document.getElementById('resLoss').innerText = `$${totalLoss.toLocaleString()} (${((totalLoss/totalCost)*100).toFixed(2)}%)`;
 
-    // 4. 綜合盈虧比
-    if (totalLoss > 0) {
+    // 盈虧比計算
+    if (totalLoss > 0 && totalProfit > 0) {
         const rr = (totalProfit / totalLoss).toFixed(2);
         document.getElementById('resRR').innerText = `${rr} : 1`;
     } else {
-        document.getElementById('resRR').innerText = "--";
+        document.getElementById('resRR').innerText = "0 : 1";
     }
 }
 </script>
