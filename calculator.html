@@ -3,155 +3,226 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金字塔佈局計算器 - 自由減碼版</title>
+    <title>金字塔佈局計算器 - 手機優化版</title>
     <style>
         :root { --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #1e293b; --buffer: #818cf8; }
-        body { font-family: "PingFang TC", sans-serif; background: #f1f5f9; padding: 20px; color: #334155; }
-        .container { max-width: 950px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         
-        .top-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
-        input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        .buffer-tag { font-size: 0.75rem; color: var(--buffer); font-weight: bold; margin-top: 4px; display: block; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #f1f5f9; 
+            padding: 10px; 
+            color: #334155; 
+            margin: 0;
+        }
 
-        .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 30px; }
-        .input-card { background: #fff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-        .input-card.long { border-left: 5px solid var(--primary); }
-        .input-card.exit { border-left: 5px solid var(--success); }
-        .input-card.stop { border-left: 5px solid var(--danger); }
-        
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; color: #64748b; margin-bottom: 4px; }
-        .shares-label { font-size: 0.75rem; color: var(--primary); }
+        .container { 
+            max-width: 100%; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
 
-        .result-panel { margin-top: 30px; background: var(--dark); color: white; padding: 25px; border-radius: 16px; }
-        .res-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-        .res-item { border-left: 3px solid #334155; padding-left: 15px; }
-        .res-val { font-size: 1.3rem; font-family: 'Consolas', monospace; font-weight: bold; display: block; }
-        .pct-label { font-size: 0.9rem; font-weight: normal; margin-left: 5px; opacity: 0.8; }
+        h2 { font-size: 1.4rem; text-align: center; margin-bottom: 5px; }
+        .sub-title { text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 20px; }
+
+        /* 頂部設定區 */
+        .top-bar { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 20px; 
+            border: 1px solid #e2e8f0; 
+        }
+
+        /* 網格系統：手機垂直、平板以上並排 */
+        .grid { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        }
+
+        @media (min-width: 768px) {
+            .grid { flex-direction: row; }
+            .grid > div { flex: 1; }
+            .top-bar { flex-direction: row; align-items: flex-end; }
+            .top-bar > div { flex: 1; }
+        }
+
+        .input-card { 
+            background: #fff; 
+            border: 1px solid #e2e8f0; 
+            padding: 12px; 
+            border-radius: 10px; 
+            margin-bottom: 12px; 
+        }
+
+        .input-card.long { border-left: 4px solid var(--primary); }
+        .input-card.exit { border-left: 4px solid var(--success); }
+        .input-card.stop { border-left: 4px solid var(--danger); }
         
-        .rr-display { text-align: center; background: #0f172a; padding: 20px; border-radius: 12px; margin-top: 20px; border: 1px solid #1e293b; }
-        .rr-val { font-size: 2.8rem; color: var(--warning); font-weight: 900; }
+        .row { display: flex; gap: 8px; }
+        .row > div { flex: 1; }
+
+        label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 1rem; 
+            -webkit-appearance: none; /* 修復 iOS 預設樣式 */
+        }
+
+        .buffer-tag { font-size: 0.75rem; color: var(--buffer); font-weight: bold; margin-top: 6px; display: block; }
+
+        /* 結果面板 */
+        .result-panel { 
+            margin-top: 25px; 
+            background: var(--dark); 
+            color: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+        }
+
+        .res-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+        }
+
+        .res-item { border-left: 3px solid #334155; padding-left: 10px; }
+        .res-label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 2px; }
+        .res-val { font-size: 1.1rem; font-weight: bold; }
+        .pct-label { font-size: 0.85rem; opacity: 0.8; font-weight: normal; margin-left: 2px; }
+        
+        .rr-display { 
+            text-align: center; 
+            background: #0f172a; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-top: 15px; 
+        }
+
+        .rr-val { font-size: 2.2rem; color: var(--warning); font-weight: 900; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div style="text-align:center; margin-bottom:20px;">
-        <h2>📐 金字塔佈局計算器 (自由減碼版)</h2>
-        <p style="color:#64748b;">手動配置進場、減碼與緩衝位，精確掌握每一塊錢的風險</p>
-    </div>
+    <h2>📐 金字塔佈局計算器</h2>
+    <p class="sub-title">分批進場與減碼策略工具</p>
 
     <div class="top-bar">
         <div>
             <label>🎯 預計總購買股數</label>
-            <input type="number" id="targetTotalQty" placeholder="輸入總量自動分配 5:3:2" oninput="autoDistribute()">
+            <input type="number" id="targetTotalQty" placeholder="輸入總量" oninput="autoDistribute()">
         </div>
         <div>
-            <label>⚙️ 設定緩衝百分比 (%)</label>
+            <label>⚙️ 緩衝百分比 (%)</label>
             <input type="number" id="bufferPct" value="1.5" step="0.1" oninput="calculate()">
         </div>
     </div>
 
     <div class="grid">
         <!-- 進場配置 -->
-        <div class="section">
+        <div>
             <div class="input-card long">
-                <label>1. 底倉 (建議 50%)</label>
+                <label>1. 底倉 (50%)</label>
                 <div class="row">
-                    <input type="number" id="p1P" placeholder="目標價" oninput="calculate()">
-                    <input type="number" id="p1Q" placeholder="股數" oninput="calculate()">
+                    <div><input type="number" id="p1P" placeholder="價" oninput="calculate()"></div>
+                    <div><input type="number" id="p1Q" placeholder="股" oninput="calculate()"></div>
                 </div>
-                <span id="b1" class="buffer-tag">區間: -- ~ --</span>
+                <span id="b1" class="buffer-tag">區間: --</span>
             </div>
             <div class="input-card long">
-                <label>2. 一加 (建議 30%)</label>
+                <label>2. 一加 (30%)</label>
                 <div class="row">
-                    <input type="number" id="p2P" placeholder="目標價" oninput="calculate()">
-                    <input type="number" id="p2Q" placeholder="股數" oninput="calculate()">
+                    <div><input type="number" id="p2P" placeholder="價" oninput="calculate()"></div>
+                    <div><input type="number" id="p2Q" placeholder="股" oninput="calculate()"></div>
                 </div>
-                <span id="b2" class="buffer-tag">區間: -- ~ --</span>
+                <span id="b2" class="buffer-tag">區間: --</span>
             </div>
             <div class="input-card long">
-                <label>3. 二加 (建議 20%)</label>
+                <label>3. 二加 (20%)</label>
                 <div class="row">
-                    <input type="number" id="p3P" placeholder="目標價" oninput="calculate()">
-                    <input type="number" id="p3Q" placeholder="股數" oninput="calculate()">
+                    <div><input type="number" id="p3P" placeholder="價" oninput="calculate()"></div>
+                    <div><input type="number" id="p3Q" placeholder="股" oninput="calculate()"></div>
                 </div>
-                <span id="b3" class="buffer-tag">區間: -- ~ --</span>
+                <span id="b3" class="buffer-tag">區間: --</span>
             </div>
         </div>
 
         <!-- 風控配置 -->
-        <div class="section">
+        <div>
             <div class="input-card exit">
                 <label>🎯 最終止盈目標</label>
-                <input type="number" id="tp" placeholder="目標價" oninput="calculate()">
-                <span id="btp" class="buffer-tag">分批止盈區: -- 以上</span>
+                <input type="number" id="tp" placeholder="價格" oninput="calculate()">
+                <span id="btp" class="buffer-tag">止盈區: --</span>
             </div>
             
-            <!-- 第一段減碼 -->
             <div class="input-card stop">
                 <label>🚩 第一段停損 (減碼點)</label>
                 <div class="row">
-                    <input type="number" id="sl1P" placeholder="減碼價" oninput="calculate()">
-                    <input type="number" id="sl1Q" placeholder="減碼股數" oninput="calculate()">
+                    <div><input type="number" id="sl1P" placeholder="價" oninput="calculate()"></div>
+                    <div><input type="number" id="sl1Q" placeholder="股" oninput="calculate()"></div>
                 </div>
-                <span id="bsl1" class="buffer-tag" style="color:var(--danger);">減碼緩衝位: --</span>
+                <span id="bsl1" class="buffer-tag" style="color:var(--danger);">緩衝: --</span>
             </div>
 
-            <!-- 第二段清倉 -->
             <div class="input-card stop">
-                <label>💀 最後防守點 (清倉點)</label>
+                <label>💀 最後防守點 (清倉)</label>
                 <div class="row">
-                    <input type="number" id="sl2P" placeholder="最後價" oninput="calculate()">
-                    <input type="number" id="sl2Rem" readonly style="background:#f1f5f9; color:var(--danger); font-weight:bold;" placeholder="剩餘股數">
+                    <div><input type="number" id="sl2P" placeholder="價格" oninput="calculate()"></div>
+                    <div><input type="number" id="sl2Rem" readonly style="background:#f1f5f9;" placeholder="剩"></div>
                 </div>
-                <span id="bsl2" class="buffer-tag" style="color:var(--danger);">終極防線: --</span>
+                <span id="bsl2" class="buffer-tag" style="color:var(--danger);">終極: --</span>
             </div>
         </div>
     </div>
 
-    <!-- 結果面板 -->
+    <!-- 結果 -->
     <div class="result-panel">
         <div class="res-grid">
             <div class="res-item">
-                <span style="color:#94a3b8; font-size:0.8rem;">平均成本 / 目前總持股</span>
-                <span id="resAvg" class="res-val">-- / 0</span>
+                <span class="res-label">平均成本</span>
+                <span id="resAvg" class="res-val">--</span>
             </div>
             <div class="res-item">
-                <span style="color:#94a3b8; font-size:0.8rem;">總投入本金</span>
+                <span class="res-label">總投入本金</span>
                 <span id="resCost" class="res-val">$0</span>
             </div>
             <div class="res-item">
-                <span style="color:#94a3b8; font-size:0.8rem;">達標預期獲利</span>
+                <span class="res-label">達標獲利</span>
                 <span class="res-val" style="color:var(--success);">
-                    <span id="resProfit">$0</span>
-                    <span id="resProfitPct" class="pct-label">(0%)</span>
+                    <span id="resProfit">$0</span><span id="resProfitPct" class="pct-label"></span>
                 </span>
             </div>
             <div class="res-item">
-                <span style="color:#94a3b8; font-size:0.8rem;">兩段式停損總損失</span>
+                <span class="res-label">停損損失</span>
                 <span class="res-val" style="color:var(--danger);">
-                    <span id="resLoss">$0</span>
-                    <span id="resLossPct" class="pct-label">(0%)</span>
+                    <span id="resLoss">$0</span><span id="resLossPct" class="pct-label"></span>
                 </span>
             </div>
         </div>
         <div class="rr-display">
-            <div style="color:#94a3b8; font-size:1rem; margin-bottom:5px;">綜合盈虧比 (盈 : 虧)</div>
+            <div class="res-label" style="color:#94a3b8; margin-bottom:5px;">盈虧比 (盈 : 虧)</div>
             <div id="resRR" class="rr-val">0 : 1</div>
         </div>
     </div>
 </div>
 
 <script>
-// 自動分配 5:3:2 股數
 function autoDistribute() {
     const total = parseFloat(document.getElementById('targetTotalQty').value) || 0;
     document.getElementById('p1Q').value = Math.floor(total * 0.5);
     document.getElementById('p2Q').value = Math.floor(total * 0.3);
     document.getElementById('p3Q').value = Math.floor(total * 0.2);
-    // 預設第一段減碼一半，可手動修改
     document.getElementById('sl1Q').value = Math.floor(total * 0.5);
     calculate();
 }
@@ -159,77 +230,44 @@ function autoDistribute() {
 function calculate() {
     const bf = (parseFloat(document.getElementById('bufferPct').value) || 0) / 100;
     
-    // 進場/止盈/止損 緩衝字樣更新
-    const updateBufferText = (inputId, tagId, type) => {
-        const val = parseFloat(document.getElementById(inputId).value);
-        const tag = document.getElementById(tagId);
-        if (val) {
-            if (type === 'range') tag.innerText = `掛單區間: ${(val * (1 - bf)).toFixed(2)} ~ ${(val * (1 + bf)).toFixed(2)}`;
-            if (type === 'down') tag.innerText = `緩衝防守位: ${(val * (1 - bf)).toFixed(2)}`;
-            if (type === 'up') tag.innerText = `分批止盈區: ${(val * (1 - bf)).toFixed(2)} 以上`;
-        } else {
-            tag.innerText = "--";
-        }
+    const updateBuf = (pId, bId, type) => {
+        const val = parseFloat(document.getElementById(pId).value);
+        const el = document.getElementById(bId);
+        if(!val) return el.innerText = "--";
+        if(type==='r') el.innerText = `${(val*(1-bf)).toFixed(2)}~${(val*(1+bf)).toFixed(2)}`;
+        else el.innerText = (val*(1-bf)).toFixed(2);
     };
 
-    updateBufferText('p1P', 'b1', 'range');
-    updateBufferText('p2P', 'b2', 'range');
-    updateBufferText('p3P', 'b3', 'range');
-    updateBufferText('tp', 'btp', 'up');
-    updateBufferText('sl1P', 'bsl1', 'down');
-    updateBufferText('sl2P', 'bsl2', 'down');
+    updateBuf('p1P','b1','r'); updateBuf('p2P','b2','r'); updateBuf('p3P','b3','r');
+    updateBuf('tp','btp','u'); updateBuf('sl1P','bsl1','d'); updateBuf('sl2P','bsl2','d');
 
-    // 取得所有數值
-    const p1P = parseFloat(document.getElementById('p1P').value) || 0;
-    const p1Q = parseFloat(document.getElementById('p1Q').value) || 0;
-    const p2P = parseFloat(document.getElementById('p2P').value) || 0;
-    const p2Q = parseFloat(document.getElementById('p2Q').value) || 0;
-    const p3P = parseFloat(document.getElementById('p3P').value) || 0;
-    const p3Q = parseFloat(document.getElementById('p3Q').value) || 0;
-    
+    const p1P = parseFloat(document.getElementById('p1P').value) || 0, p1Q = parseFloat(document.getElementById('p1Q').value) || 0;
+    const p2P = parseFloat(document.getElementById('p2P').value) || 0, p2Q = parseFloat(document.getElementById('p2Q').value) || 0;
+    const p3P = parseFloat(document.getElementById('p3P').value) || 0, p3Q = parseFloat(document.getElementById('p3Q').value) || 0;
     const tp = parseFloat(document.getElementById('tp').value) || 0;
-    const sl1P = parseFloat(document.getElementById('sl1P').value) || 0;
-    const sl1Q = parseFloat(document.getElementById('sl1Q').value) || 0;
+    const sl1P = parseFloat(document.getElementById('sl1P').value) || 0, sl1Q = parseFloat(document.getElementById('sl1Q').value) || 0;
     const sl2P = parseFloat(document.getElementById('sl2P').value) || 0;
 
     const totalQty = p1Q + p2Q + p3Q;
-    
-    // 自動計算最後一段剩餘股數
     const remQty = Math.max(0, totalQty - sl1Q);
-    document.getElementById('sl2Rem').value = remQty > 0 ? remQty : "";
+    document.getElementById('sl2Rem').value = remQty || "";
 
     if (totalQty > 0) {
-        const totalCost = (p1P * p1Q) + (p2P * p2Q) + (p3P * p3Q);
-        const avgPrice = totalCost / totalQty;
-        
-        // 總獲利 (以平均成本與目標止盈算)
-        const totalProfit = (tp - avgPrice) * totalQty;
-        
-        // 兩段損失計算
-        // 損失 = (平均成本 - 停損價) * 該段股數
-        const loss1 = (avgPrice - sl1P) * sl1Q;
-        const loss2 = (avgPrice - sl2P) * remQty;
-        const totalLoss = (loss1 > 0 ? loss1 : 0) + (loss2 > 0 ? loss2 : 0);
+        const cost = (p1P * p1Q) + (p2P * p2Q) + (p3P * p3Q);
+        const avg = cost / totalQty;
+        const profit = (tp - avg) * totalQty;
+        const loss = ((avg - sl1P) * sl1Q) + ((avg - sl2P) * remQty);
 
-        // 更新結果面板
-        document.getElementById('resAvg').innerText = `$${avgPrice.toFixed(2)} / ${totalQty.toLocaleString()}`;
-        document.getElementById('resCost').innerText = `$${totalCost.toLocaleString()}`;
+        document.getElementById('resAvg').innerText = `$${avg.toFixed(2)}`;
+        document.getElementById('resCost').innerText = `$${Math.round(cost).toLocaleString()}`;
+        document.getElementById('resProfit').innerText = `$${Math.round(profit).toLocaleString()}`;
+        document.getElementById('resProfitPct').innerText = `(${((profit/cost)*100).toFixed(1)}%)`;
+        document.getElementById('resLoss').innerText = `$${Math.round(loss).toLocaleString()}`;
+        document.getElementById('resLossPct').innerText = `(${((loss/cost)*100).toFixed(1)}%)`;
         
-        document.getElementById('resProfit').innerText = `$${totalProfit.toLocaleString()}`;
-        document.getElementById('resProfitPct').innerText = `(${((totalProfit/totalCost)*100).toFixed(2)}%)`;
-        
-        document.getElementById('resLoss').innerText = `$${totalLoss.toLocaleString()}`;
-        document.getElementById('resLossPct').innerText = `(${((totalLoss/totalCost)*100).toFixed(2)}%)`;
-
-        if (totalLoss > 0 && totalProfit > 0) {
-            const rr = (totalProfit / totalLoss).toFixed(2);
-            document.getElementById('resRR').innerText = `${rr} : 1`;
-        } else {
-            document.getElementById('resRR').innerText = "0 : 1";
-        }
+        if(loss > 0 && profit > 0) document.getElementById('resRR').innerText = `${(profit/loss).toFixed(2)} : 1`;
     }
 }
 </script>
-
 </body>
 </html>
