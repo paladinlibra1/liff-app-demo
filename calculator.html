@@ -142,7 +142,7 @@ async function fetchPrice() {
             // 自動填入底倉進場價
             document.getElementById('p1P').value = data.price;
             calc();
-            alert(`成功獲取 ${symbol} 最新報價：${data.price}`);
+            alert(`成功獲取 [${data.name}] 最新報價：${data.price} 元`);
         } else {
             alert("讀取失敗，請檢查代號格式 (如台股加 TPE:)");
         }
