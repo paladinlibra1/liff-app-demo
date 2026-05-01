@@ -163,8 +163,8 @@ async function fetchPrice() {
         
         if (data.price && data.price !== "#N/A") {
             // 1. 自動填入底倉進場價
-            document.getElementById('p1P').value = data.price;
-            calc();
+            //document.getElementById('p1P').value = data.price;
+            //calc();
             
             // 2. 顯示專屬的報價 Label
             labelBox.innerHTML = `📊 【${data.name}】 最新市價：<span>$${data.price}</span>`;
