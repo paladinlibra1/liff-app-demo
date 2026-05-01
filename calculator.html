@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金字塔分段風控計算器</title>
+    <title>金字塔分段風控計算器 - GAS即時版</title>
     <style>
         :root { --primary: #3b82f6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --dark: #1e293b; }
         body { font-family: -apple-system, sans-serif; background: #f1f5f9; padding: 10px; margin: 0; color: #334155; }
@@ -11,6 +11,12 @@
         
         .header { text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px; }
         .header h2 { margin: 0; font-size: 1.2rem; color: var(--dark); }
+
+        /* GAS 搜尋列 */
+        .api-box { display: flex; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .api-box input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        .api-box button { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .api-box button:disabled { opacity: 0.5; }
 
         .config-box { background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dbeafe; }
         .config-box label { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
@@ -26,23 +32,17 @@
         label { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 3px; font-weight: bold; }
         input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; box-sizing: border-box; }
         
-        /* 獲利目標區 */
         .tp-box { background: #f0fdf4; border: 1px solid #dcfce7; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
 
-        /* 結果面板 */
         .result-panel { background: var(--dark); color: white; padding: 20px; border-radius: 12px; margin-top: 20px; }
         .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .res-item { border-left: 3px solid #334155; padding-left: 10px; }
         .res-label { font-size: 0.75rem; color: #94a3b8; display: block; }
         .res-val { font-size: 1.1rem; font-family: monospace; font-weight: bold; }
         
-        .alert-box { 
-            grid-column: span 2; text-align: center; padding: 15px; border-radius: 8px; margin-top: 10px;
-            font-weight: bold; font-size: 1.2rem;
-        }
+        .alert-box { grid-column: span 2; text-align: center; padding: 15px; border-radius: 8px; margin-top: 10px; font-weight: bold; font-size: 1.2rem; }
         .safe { background: #065f46; color: #34d399; }
         .danger { background: #991b1b; color: #fca5a5; border: 2px solid #ef4444; }
-
         .rr-display { text-align: center; margin-top: 15px; color: var(--warning); font-size: 1.5rem; font-weight: 900; }
     </style>
 </head>
@@ -50,7 +50,13 @@
 
 <div class="container">
     <div class="header">
-        <h2>正金字塔分段風控計算器 (5:3:2)</h2>
+        <h2>正金字塔分段風控計算器 (GAS報價版)</h2>
+    </div>
+
+    <!-- GAS 報價功能 -->
+    <div class="api-box">
+        <input type="text" id="stockCode" placeholder="代號: TPE:2330 或 AAPL">
+        <button id="fetchBtn" onclick="fetchPrice()">讀取報價</button>
     </div>
 
     <div class="config-box">
@@ -91,7 +97,6 @@
         <input type="number" id="tp" placeholder="目標價" oninput="calc()">
     </div>
 
-    <!-- 結果面板 -->
     <div class="result-panel">
         <div class="res-grid">
             <div class="res-item">
@@ -111,16 +116,44 @@
                 <span id="resLoss" class="res-val">-$0</span>
             </div>
 
-            <!-- 風控警示區 -->
-            <div id="alertBox" class="alert-box safe">
-                風險監測：OK (0%)
-            </div>
+            <div id="alertBox" class="alert-box safe">風險監測：OK (0%)</div>
         </div>
         <div class="rr-display" id="resRR">盈虧比 0 : 1</div>
     </div>
 </div>
 
 <script>
+// 重要：請在此處填入你的 GAS 部署網址
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwayGsRl-souaAe311e1b2SPM4A5SlpudVm_iCzVbsvKU0BcFAG4WOg6O6wBc5IkJaq/exec"; 
+
+async function fetchPrice() {
+    const symbol = document.getElementById('stockCode').value.toUpperCase();
+    const btn = document.getElementById('fetchBtn');
+    if (!symbol) return alert("請輸入代號");
+
+    btn.disabled = true;
+    btn.innerText = "讀取中...";
+
+    try {
+        const response = await fetch(`${GAS_URL}?symbol=${encodeURIComponent(symbol)}`);
+        const data = await response.json();
+        
+        if (data.price && data.price !== "#N/A") {
+            // 自動填入底倉進場價
+            document.getElementById('p1P').value = data.price;
+            calc();
+            alert(`成功獲取 ${symbol} 最新報價：${data.price}`);
+        } else {
+            alert("讀取失敗，請檢查代號格式 (如台股加 TPE:)");
+        }
+    } catch (e) {
+        alert("網路錯誤或 GAS 設定不正確");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "讀取報價";
+    }
+}
+
 function distribute() {
     const total = parseFloat(document.getElementById('totalQty').value) || 0;
     document.getElementById('p1Q').value = Math.floor(total * 0.5);
@@ -136,9 +169,7 @@ function calc() {
         { p: 'p3P', s: 'p3S', q: 'p3Q' }
     ];
 
-    let totalCost = 0;
-    let totalQty = 0;
-    let totalLoss = 0;
+    let totalCost = 0, totalQty = 0, totalLoss = 0;
     const tp = parseFloat(document.getElementById('tp').value) || 0;
 
     data.forEach(item => {
@@ -149,8 +180,6 @@ function calc() {
         if (price > 0) {
             totalCost += price * qty;
             totalQty += qty;
-            // 該階段損失 = (進場價 - 停損價) * 股數
-            // 若停損價高於進場價(保本/移動停利)，則損失為負(即賺錢)
             totalLoss += (price - stop) * qty;
         }
     });
@@ -161,13 +190,11 @@ function calc() {
     const totalProfit = (tp - avgPrice) * totalQty;
     const lossPercentage = (totalLoss / totalCost) * 100;
 
-    // 更新介面
     document.getElementById('resAvg').innerText = `$${avgPrice.toFixed(2)}`;
     document.getElementById('resQty').innerText = totalQty.toLocaleString();
     document.getElementById('resProfit').innerText = `$${Math.round(totalProfit).toLocaleString()}`;
     document.getElementById('resLoss').innerText = `-$${Math.round(totalLoss).toLocaleString()}`;
 
-    // 風控警示邏輯
     const alertBox = document.getElementById('alertBox');
     if (lossPercentage > 10) {
         alertBox.className = "alert-box danger";
@@ -177,7 +204,6 @@ function calc() {
         alertBox.innerText = `風險正常：${lossPercentage.toFixed(2)}%`;
     }
 
-    // 盈虧比
     if (totalLoss > 0 && totalProfit > 0) {
         document.getElementById('resRR').innerText = `綜合盈虧比 ${(totalProfit / totalLoss).toFixed(2)} : 1`;
     } else {
