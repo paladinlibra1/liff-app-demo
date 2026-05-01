@@ -13,10 +13,25 @@
         .header h2 { margin: 0; font-size: 1.2rem; color: var(--dark); }
 
         /* GAS 搜尋列 */
-        .api-box { display: flex; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .api-box { display: flex; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
         .api-box input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
         .api-box button { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .api-box button:disabled { opacity: 0.5; }
+
+        /* 新增：最新報價顯示標籤的樣式 */
+        .price-label-box {
+            background: #e0f2fe;
+            color: #0284c7;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            border: 1px dashed #7dd3fc;
+            display: none; /* 預設先隱藏，抓到資料才顯示 */
+        }
+        .price-label-box span { color: var(--danger); font-size: 1.3rem; }
 
         .config-box { background: #eff6ff; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dbeafe; }
         .config-box label { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
@@ -57,6 +72,11 @@
     <div class="api-box">
         <input type="text" id="stockCode" placeholder="請輸入台股代號 (如 2330, 6547)">
         <button id="fetchBtn" onclick="fetchPrice()">讀取報價</button>
+    </div>
+
+    <!-- 新增：用來儲存與顯示即時報價的 Label 區塊 -->
+    <div id="livePriceLabel" class="price-label-box">
+        <!-- 內容會由 JS 自動填入 -->
     </div>
 
     <div class="config-box">
@@ -123,28 +143,36 @@
 </div>
 
 <script>
-// 重要：請在此處填入你的 GAS 部署網址
+// 你的 GAS 部署網址
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwayGsRl-souaAe311e1b2SPM4A5SlpudVm_iCzVbsvKU0BcFAG4WOg6O6wBc5IkJaq/exec"; 
 
 async function fetchPrice() {
     const symbol = document.getElementById('stockCode').value.toUpperCase();
     const btn = document.getElementById('fetchBtn');
+    const labelBox = document.getElementById('livePriceLabel');
+
     if (!symbol) return alert("請輸入代號");
 
     btn.disabled = true;
     btn.innerText = "讀取中...";
+    labelBox.style.display = "none"; // 讀取時先隱藏舊標籤
 
     try {
         const response = await fetch(`${GAS_URL}?symbol=${encodeURIComponent(symbol)}`);
         const data = await response.json();
         
         if (data.price && data.price !== "#N/A") {
-            // 自動填入底倉進場價
+            // 1. 自動填入底倉進場價
             document.getElementById('p1P').value = data.price;
             calc();
-            alert(`成功獲取 [${data.name}] 最新報價：${data.price} 元`);
+            
+            // 2. 顯示專屬的報價 Label
+            labelBox.innerHTML = `📊 【${data.name}】 最新市價：<span>$${data.price}</span>`;
+            labelBox.style.display = "block"; // 將隱藏的標籤顯示出來
+            
+            // 我把 alert 拿掉了，因為畫面已經有顯示，這樣操作起來會更順暢！
         } else {
-            alert("讀取失敗，請檢查代號格式 (如台股加 TPE:)");
+            alert("讀取失敗，請確認代號是否正確。");
         }
     } catch (e) {
         alert("網路錯誤或 GAS 設定不正確");
@@ -177,17 +205,26 @@ function calc() {
         const stop = parseFloat(document.getElementById(item.s).value) || 0;
         const qty = parseFloat(document.getElementById(item.q).value) || 0;
 
-        if (price > 0) {
+        // 特製的分段停損邏輯：各階段獨立計算風險
+        if (price > 0 && qty > 0) {
             totalCost += price * qty;
             totalQty += qty;
-            totalLoss += (price - stop) * qty;
+            if (stop > 0) {
+                totalLoss += (price - stop) * qty;
+            }
         }
     });
 
-    if (totalQty <= 0) return;
+    if (totalQty <= 0) {
+        document.getElementById('resAvg').innerText = `$0`;
+        document.getElementById('resQty').innerText = `0`;
+        document.getElementById('resProfit').innerText = `$0`;
+        document.getElementById('resLoss').innerText = `-$0`;
+        return;
+    }
 
     const avgPrice = totalCost / totalQty;
-    const totalProfit = (tp - avgPrice) * totalQty;
+    const totalProfit = (tp > avgPrice) ? (tp - avgPrice) * totalQty : 0;
     const lossPercentage = (totalLoss / totalCost) * 100;
 
     document.getElementById('resAvg').innerText = `$${avgPrice.toFixed(2)}`;
