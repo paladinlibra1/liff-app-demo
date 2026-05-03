@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>股票正金字塔交易計算機</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #22c55e;
+      --danger: #ef4444;
+      --border: #374151;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #111827 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 960px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .full { grid-column: 1 / -1; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: #d1d5db;
+    }
+    input {
+      width: 100%;
+      border: 1px solid #4b5563;
+      border-radius: 10px;
+      background: #111827;
+      color: #f9fafb;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-calc { background: var(--primary); color: #052e16; }
+    .btn-reset { background: #374151; color: #f3f4f6; }
+    .err {
+      margin-top: 10px;
+      color: #fecaca;
+      background: rgba(127, 29, 29, 0.35);
+      border: 1px solid #7f1d1d;
+      border-radius: 10px;
+      padding: 10px;
+      display: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid #374151;
+      text-align: right;
+      padding: 8px 6px;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .kpi > div {
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 10px;
+      background: #111827;
+    }
+    .kpi .name { color: #9ca3af; font-size: 12px; margin-bottom: 6px; }
+    .kpi .val { font-size: 20px; font-weight: 700; }
+    .danger { color: #fca5a5; }
+    .good { color: #86efac; }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .kpi { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>股票正金字塔交易計算機</h1>
+    <p class="sub">建倉比例固定為 5:3:2，並限制「最大總虧損」不超過總資金 10%。</p>
+
+    <div class="grid">
+      <div class="card">
+        <label for="capital">總資金</label>
+        <input id="capital" type="number" step="0.01" value="100000">
+      </div>
+      <div class="card">
+        <label for="budget">計畫投入資金</label>
+        <input id="budget" type="number" step="0.01" value="60000">
+      </div>
+
+      <div class="card">
+        <label for="entry1">第 1 段進場價（5）</label>
+        <input id="entry1" type="number" step="0.01" value="100">
+      </div>
+      <div class="card">
+        <label for="stop1">第 1 段停損價</label>
+        <input id="stop1" type="number" step="0.01" value="95">
+      </div>
+
+      <div class="card">
+        <label for="entry2">第 2 段進場價（3）</label>
+        <input id="entry2" type="number" step="0.01" value="105">
+      </div>
+      <div class="card">
+        <label for="stop2">第 2 段停損價</label>
+        <input id="stop2" type="number" step="0.01" value="100">
+      </div>
+
+      <div class="card">
+        <label for="entry3">第 3 段進場價（2）</label>
+        <input id="entry3" type="number" step="0.01" value="110">
+      </div>
+      <div class="card">
+        <label for="stop3">第 3 段停損價</label>
+        <input id="stop3" type="number" step="0.01" value="104">
+      </div>
+
+      <div class="card full">
+        <label for="target">目標價</label>
+        <input id="target" type="number" step="0.01" value="130">
+        <div class="actions">
+          <button class="btn-calc" id="btnCalc">計算</button>
+          <button class="btn-reset" id="btnReset">重設</button>
+        </div>
+        <div class="err" id="errBox"></div>
+      </div>
+    </div>
+
+    <div class="card full" style="margin-top:14px;">
+      <h3 style="margin:0 0 8px;">結果</h3>
+      <div class="kpi">
+        <div>
+          <div class="name">安全可用預算</div>
+          <div class="val" id="safeBudget">-</div>
+        </div>
+        <div>
+          <div class="name">總風險占比</div>
+          <div class="val" id="riskRatio">-</div>
+        </div>
+        <div>
+          <div class="name">盈虧比 (Reward/Risk)</div>
+          <div class="val" id="rr">-</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>段別</th>
+            <th>股數</th>
+            <th>投入金額</th>
+            <th>分段風險</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+
+      <p id="summary" style="margin:10px 0 0; color:#d1d5db;"></p>
+    </div>
+  </div>
+
+  <script>
+    const WEIGHTS = [5, 3, 2];
+    const MAX_LOSS_RATIO = 0.10;
+
+    const byId = (id) => document.getElementById(id);
+    const fmt = (n) => Number(n).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+
+    function getNum(id) {
+      const val = Number(byId(id).value);
+      if (!Number.isFinite(val)) {
+        throw new Error("欄位格式錯誤，請確認皆為數字。");
+      }
+      return val;
+    }
+
+    function validate(capital, budget, entries, stops, target) {
+      if (capital <= 0) throw new Error("總資金必須大於 0。");
+      if (budget <= 0) throw new Error("計畫投入資金必須大於 0。");
+      if (budget > capital) throw new Error("計畫投入資金不能大於總資金。");
+      if (target <= 0) throw new Error("目標價必須大於 0。");
+      for (let i = 0; i < 3; i++) {
+        if (entries[i] <= 0 || stops[i] <= 0) throw new Error(`第 ${i + 1} 段價格必須大於 0。`);
+        if (stops[i] >= entries[i]) throw new Error(`第 ${i + 1} 段停損價必須小於進場價。`);
+      }
+    }
+
+    function simulate(totalBudget, entries, stops) {
+      const sumWeight = WEIGHTS.reduce((a, b) => a + b, 0);
+      const quantities = [];
+      const usedPerStage = [];
+      const riskPerStage = [];
+      let usedBudget = 0;
+      let totalRisk = 0;
+
+      for (let i = 0; i < 3; i++) {
+        const stageBudget = totalBudget * WEIGHTS[i] / sumWeight;
+        const qty = Math.floor(stageBudget / entries[i]);
+        const used = qty * entries[i];
+        const risk = qty * (entries[i] - stops[i]);
+        quantities.push(qty);
+        usedPerStage.push(used);
+        riskPerStage.push(risk);
+        usedBudget += used;
+        totalRisk += risk;
+      }
+      return { quantities, usedPerStage, riskPerStage, usedBudget, totalRisk };
+    }
+
+    function findSafeBudget(plannedBudget, entries, stops, riskCap) {
+      const direct = simulate(plannedBudget, entries, stops);
+      if (direct.totalRisk <= riskCap) return plannedBudget;
+
+      let left = 0;
+      let right = plannedBudget;
+      for (let i = 0; i < 60; i++) {
+        const mid = (left + right) / 2;
+        const s = simulate(mid, entries, stops);
+        if (s.totalRisk <= riskCap) left = mid;
+        else right = mid;
+      }
+      return left;
+    }
+
+    function calculate() {
+      const capital = getNum("capital");
+      const budget = getNum("budget");
+      const target = getNum("target");
+      const entries = [getNum("entry1"), getNum("entry2"), getNum("entry3")];
+      const stops = [getNum("stop1"), getNum("stop2"), getNum("stop3")];
+      validate(capital, budget, entries, stops, target);
+
+      const riskCap = capital * MAX_LOSS_RATIO;
+      const safeBudget = findSafeBudget(budget, entries, stops, riskCap);
+      const s = simulate(safeBudget, entries, stops);
+      const totalQty = s.quantities.reduce((a, b) => a + b, 0);
+      if (totalQty <= 0) throw new Error("目前條件下無法買入，請提高預算或調整價格。");
+
+      const avgCost = s.usedBudget / totalQty;
+      const targetProfit = (target - avgCost) * totalQty;
+      const rr = s.totalRisk > 0 ? targetProfit / s.totalRisk : Infinity;
+      const riskRatio = s.totalRisk / capital;
+
+      byId("safeBudget").textContent = fmt(safeBudget);
+      byId("riskRatio").textContent = (riskRatio * 100).toFixed(2) + "%";
+      byId("riskRatio").className = "val " + (riskRatio <= MAX_LOSS_RATIO ? "good" : "danger");
+      byId("rr").textContent = Number.isFinite(rr) ? rr.toFixed(2) : "Infinity";
+      byId("rr").className = "val " + (rr >= 1 ? "good" : "danger");
+
+      const rows = byId("rows");
+      rows.innerHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>第 ${i + 1} 段 (${WEIGHTS[i]})</td>
+          <td>${fmt(s.quantities[i])}</td>
+          <td>${fmt(s.usedPerStage[i])}</td>
+          <td>${fmt(s.riskPerStage[i])}</td>
+        `;
+        rows.appendChild(tr);
+      }
+
+      const note = targetProfit < 0 ? "（目標價低於成本，報酬為負）" : "";
+      byId("summary").textContent =
+        `總持股 ${fmt(totalQty)} 股，平均成本 ${fmt(avgCost)}，` +
+        `停損總風險 ${fmt(s.totalRisk)}，目標總損益 ${fmt(targetProfit)} ${note}`;
+    }
+
+    function setError(msg) {
+      const box = byId("errBox");
+      if (!msg) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = msg;
+    }
+
+    byId("btnCalc").addEventListener("click", () => {
+      try {
+        setError("");
+        calculate();
+      } catch (err) {
+        setError(err.message || String(err));
+      }
+    });
+
+    byId("btnReset").addEventListener("click", () => {
+      location.reload();
+    });
+
+    try { calculate(); } catch (err) { setError(err.message || String(err)); }
+  </script>
+</body>
+</html>
