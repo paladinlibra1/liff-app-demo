@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>我的預約紀錄</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --primary-color: #d68095;
+  --primary-dark: #c06c82;
+  --accent-color: #e8aeb7;
+  --bg-color: #fdf2f5;
+  --text-color: #5d4037;
+  --card-bg: #ffffff;
+  --muted: #b09090;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  padding: 20px 16px 40px;
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+  animation: fadeIn 0.5s ease-out;
+}
+.header .avatar {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-color);
+  object-fit: cover;
+  margin-bottom: 10px;
+  display: none;
+}
+.header h2 {
+  color: var(--primary-dark);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.header p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-top: 4px;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(214,128,149,0.12);
+  border: 1px solid #fae1e6;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(214,128,149,0.35);
+}
+
+/* ── Cards ── */
+.card-list { display: flex; flex-direction: column; gap: 14px; }
+
+.booking-card {
+  background: var(--card-bg);
+  border-radius: 18px;
+  padding: 18px 20px;
+  border: 1px solid #fae1e6;
+  box-shadow: 0 4px 14px rgba(214,128,149,0.1);
+  animation: fadeIn 0.4s ease-out;
+  transition: transform 0.2s;
+}
+.booking-card:active { transform: scale(0.99); }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card-date {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+.badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.badge-upcoming {
+  background: #fce4ec;
+  color: #c06c82;
+}
+.badge-past {
+  background: #f3f3f3;
+  color: #aaa;
+}
+
+.card-info { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #7a5c5c;
+}
+.info-row .icon { font-size: 1rem; width: 20px; text-align: center; }
+.info-row .label { color: var(--muted); min-width: 50px; font-size: 0.82rem; }
+.info-row .value { font-weight: 500; }
+
+.card-actions { display: flex; gap: 10px; }
+.btn-edit {
+  flex: 1;
+  padding: 10px 0;
+  border: 1.5px solid var(--accent-color);
+  background: #fff;
+  color: var(--primary-dark);
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-edit:hover { background: #fdf2f5; }
+
+.btn-cancel {
+  flex: 1;
+  padding: 10px 0;
+  border: 1.5px solid #ffcdd2;
+  background: #fff;
+  color: #e57373;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-cancel:hover { background: #fff5f5; }
+
+/* ── Empty / Loading ── */
+.empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--muted);
+  animation: fadeIn 0.5s;
+}
+.empty-state .emoji { font-size: 3rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.95rem; line-height: 1.6; }
+
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #fae1e6;
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+/* ── New Booking Button ── */
+.new-booking-btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: #fff;
+  border: none;
+  border-radius: 15px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(214,128,149,0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.new-booking-btn:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(214,128,149,0.3); }
+
+/* ── Error ── */
+.error-box {
+  background: #fff5f5;
+  border: 1px solid #ffcdd2;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  color: #c62828;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Divider ── */
+.section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+
+/* ── Remark chip ── */
+.remark-chip {
+  background: #fdf2f5;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  color: #9e6b6b;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img id="avatarImg" class="avatar" src="" alt="avatar">
+  <h2>📋 我的預約紀錄</h2>
+  <p id="welcomeText">載入中...</p>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tabUpcoming" onclick="switchTab('upcoming')">即將到來</button>
+  <button class="tab-btn" id="tabPast" onclick="switchTab('past')">歷史紀錄</button>
+</div>
+
+<div id="listArea">
+  <div class="loading-state">
+    <div class="spinner"></div>
+    <p>正在讀取您的預約...</p>
+  </div>
+</div>
+
+<button class="new-booking-btn" onclick="goNewBooking()">＋ 新增預約</button>
+
+<script>
+// ── Firebase 設定（與 index.html 相同）──
+const firebaseConfig = {
+  apiKey: "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU",
+  authDomain: "colorfashion-booking.firebaseapp.com",
+  projectId: "colorfashion-booking",
+  storageBucket: "colorfashion-booking.firebasestorage.app",
+  messagingSenderId: "658886755238",
+  appId: "1:658886755238:web:904c4a27bcc10b3b5f0567"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const MY_LIFF_ID = "2009018559-AeGOURPY"; // ← 與 index.html 相同，或改成查詢頁專屬 LIFF ID
+const BOOKING_PAGE_URL = "index.html";      // ← 預約頁相對路徑
+
+let allBookings = [];
+let currentTab = 'upcoming';
+let currentUserLineId = '';
+
+// ── 啟動 ──
+window.onload = async function () {
+  try {
+    await liff.init({ liffId: MY_LIFF_ID });
+
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href });
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    currentUserLineId = profile.userId;
+
+    // 顯示大頭貼與歡迎文字
+    const avatar = document.getElementById('avatarImg');
+    avatar.src = profile.pictureUrl || '';
+    avatar.style.display = profile.pictureUrl ? 'inline-block' : 'none';
+    document.getElementById('welcomeText').textContent = `${profile.displayName} 的預約紀錄`;
+
+    await fetchBookings();
+
+  } catch (err) {
+    if (err.message && (err.message.includes("expired") || err.message.includes("Access token"))) {
+      liff.logout();
+      window.location.reload();
+      return;
+    }
+    showError('初始化失敗：' + err.message);
+  }
+};
+
+// ── 讀取預約 ──
+async function fetchBookings() {
+  try {
+    const snapshot = await db.collection("bookings")
+      .where("lineId", "==", currentUserLineId)
+      .get();
+
+    allBookings = [];
+    snapshot.forEach(doc => {
+      allBookings.push({ id: doc.id, ...doc.data() });
+    });
+
+    // 依日期排序
+    allBookings.sort((a, b) => {
+      const da = new Date((a.date + ' ' + a.time).replace(/-/g, '/'));
+      const db2 = new Date((b.date + ' ' + b.time).replace(/-/g, '/'));
+      return da - db2;
+    });
+
+    renderList();
+  } catch (err) {
+    showError('讀取預約失敗：' + err.message);
+  }
+}
+
+// ── 切換 Tab ──
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabUpcoming').classList.toggle('active', tab === 'upcoming');
+  document.getElementById('tabPast').classList.toggle('active', tab === 'past');
+  renderList();
+}
+
+// ── 渲染清單 ──
+function renderList() {
+  const now = new Date();
+  const upcoming = allBookings.filter(b => {
+    return new Date((b.date + ' ' + b.time).replace(/-/g, '/')) >= now;
+  });
+  const past = allBookings.filter(b => {
+    return new Date((b.date + ' ' + b.time).replace(/-/g, '/')) < now;
+  }).reverse(); // 最新的在上面
+
+  const list = currentTab === 'upcoming' ? upcoming : past;
+  const area = document.getElementById('listArea');
+
+  if (list.length === 0) {
+    const msg = currentTab === 'upcoming'
+      ? '<div class="emoji">🌸</div><p>目前沒有即將到來的預約<br>點下方按鈕來新增預約吧！</p>'
+      : '<div class="emoji">📖</div><p>還沒有歷史預約紀錄</p>';
+    area.innerHTML = `<div class="empty-state">${msg}</div>`;
+    return;
+  }
+
+  let html = '<div class="card-list">';
+  list.forEach(b => {
+    const isPast = currentTab === 'past';
+    const badge = isPast
+      ? '<span class="badge badge-past">已完成</span>'
+      : '<span class="badge badge-upcoming">即將到來</span>';
+
+    const actions = isPast ? '' : `
+      <div class="card-actions">
+        <button class="btn-edit" onclick="editBooking('${b.id}')">✏️ 修改</button>
+        <button class="btn-cancel" onclick="cancelBooking('${b.id}', '${b.date}', '${b.time}')">✕ 取消</button>
+      </div>`;
+
+    const remark = b.remark
+      ? `<div class="remark-chip">📝 ${escapeHtml(b.remark)}</div>`
+      : '';
+
+    const companion = b.name2
+      ? `<div class="info-row"><span class="icon">👥</span><span class="label">同行者</span><span class="value">${escapeHtml(b.name2)}</span></div>`
+      : '';
+
+    html += `
+      <div class="booking-card">
+        <div class="card-header">
+          <span class="card-date">📅 ${b.date} ${b.time}</span>
+          ${badge}
+        </div>
+        <div class="card-info">
+          <div class="info-row">
+            <span class="icon">👤</span>
+            <span class="label">姓名</span>
+            <span class="value">${escapeHtml(b.name)}</span>
+          </div>
+          ${companion}
+          <div class="info-row">
+            <span class="icon">📞</span>
+            <span class="label">電話</span>
+            <span class="value">${escapeHtml(b.phone || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="icon">🏷️</span>
+            <span class="label">類型</span>
+            <span class="value">${escapeHtml(b.type || '-')}</span>
+          </div>
+        </div>
+        ${remark}
+        ${actions}
+      </div>`;
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+// ── 修改預約 ──
+function editBooking(id) {
+  const url = `${BOOKING_PAGE_URL}?id=${id}`;
+  if (liff.isInClient()) {
+    liff.openWindow({ url: window.location.origin + '/' + url, external: false });
+  } else {
+    window.location.href = url;
+  }
+}
+
+// ── 取消預約 ──
+async function cancelBooking(id, date, time) {
+  if (!confirm(`確定要取消 ${date} ${time} 的預約嗎？\n（取消後無法復原）`)) return;
+
+  // 找到按鈕並顯示處理中
+  const btns = document.querySelectorAll('.btn-cancel');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    await db.collection("bookings").doc(id).delete();
+
+    // 從本地清單移除
+    allBookings = allBookings.filter(b => b.id !== id);
+    renderList();
+    showToast('✅ 預約已成功取消');
+  } catch (err) {
+    alert('取消失敗：' + err.message);
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+// ── 新增預約 ──
+function goNewBooking() {
+  if (liff.isInClient()) {
+    liff.openWindow({ url: window.location.origin + '/' + BOOKING_PAGE_URL, external: false });
+  } else {
+    window.location.href = BOOKING_PAGE_URL;
+  }
+}
+
+// ── 工具函式 ──
+function showError(msg) {
+  document.getElementById('listArea').innerHTML =
+    `<div class="error-box">⚠️ ${msg}<br><br>請重新整理頁面，或聯絡店家。</div>`;
+  document.getElementById('welcomeText').textContent = '';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)',
+    background: '#333', color: '#fff', padding: '12px 24px',
+    borderRadius: '30px', fontSize: '0.9rem', zIndex: '9999',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.2)', opacity: '0',
+    transition: 'opacity 0.3s'
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.style.opacity = '1', 10);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
