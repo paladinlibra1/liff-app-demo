@@ -426,7 +426,12 @@ function renderList() {
 
 // ── 修改預約 ──
 function editBooking(id) {
-  window.location.href = `https://liff.line.me/2009018559-AeGOURPY?id=${id}`;
+  const url = `https://liff.line.me/2009018559-AeGOURPY?id=${id}`;
+  if (liff.isInClient()) {
+    liff.openWindow({ url, external: false });
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ── 取消預約 ──
@@ -452,7 +457,11 @@ async function cancelBooking(id, date, time) {
 
 // ── 新增預約 ──
 function goNewBooking() {
-  window.location.href = BOOKING_PAGE_URL;
+  if (liff.isInClient()) {
+    liff.openWindow({ url: BOOKING_PAGE_URL, external: false });
+  } else {
+    window.location.href = BOOKING_PAGE_URL;
+  }
 }
 
 // ── 工具函式 ──
