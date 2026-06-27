@@ -438,14 +438,22 @@ function editBooking(id) {
 async function cancelBooking(id, date, time) {
   if (!confirm(`確定要取消 ${date} ${time} 的預約嗎？\n（取消後無法復原）`)) return;
 
-  // 找到按鈕並顯示處理中
   const btns = document.querySelectorAll('.btn-cancel');
   btns.forEach(b => b.disabled = true);
 
   try {
-    await db.collection("bookings").doc(id).delete();
+    // 先抓出預約資料，用來觸發通知
+    const doc = await db.collection("bookings").doc(id).get();
+    if (doc.exists) {
+      const bookingData = { id, ...doc.data() };
 
-    // 從本地清單移除
+      // 從 Firebase 刪除
+      await db.collection("bookings").doc(id).delete();
+
+      // 觸發 GAS 通知（讓 GAS 去刪 Google 日曆事件）
+      triggerNotification(bookingData, "cancel");
+    }
+
     allBookings = allBookings.filter(b => b.id !== id);
     renderList();
     showToast('✅ 預約已成功取消');
@@ -484,6 +492,22 @@ function showToast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.style.opacity = '1', 10);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+// ── 觸發 GAS 通知（同步 Google 日曆）──
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";
+
+function triggerNotification(bookingData, type) {
+  const payload = {
+    action: "sendNotification",
+    type: type,
+    data: bookingData
+  };
+  fetch(GAS_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ action: "sendNotification", payload: payload })
+  }).catch(e => console.log("GAS 通知觸發失敗", e));
 }
 
 function escapeHtml(str) {
