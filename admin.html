@@ -448,34 +448,35 @@
                 const snapshot = await db.collection("bookings").get();
                 let fetchedBookings = [];
                 
-                // 🧹 隱形打掃阿姨準備：取得今天的日期字串 (例如 "2024-05-20")
-                const now = new Date();
-                const todayStr = getFormattedDate(now);
-                let batch = db.batch();
-                let hasArchived = false;
+                // 🧹 封存邏輯已移至 GAS 定時觸發 (archiveOldBookings)，此處不再執行
+                // const now = new Date();
+                // const todayStr = getFormattedDate(now);
+                // let batch = db.batch();
+                // let hasArchived = false;
 
                 snapshot.forEach(doc => {
                     let data = doc.data();
                     data.id = doc.id; 
                     
-                    // 🔥 自動封存邏輯：如果這筆訂單的日期「早於今天」，就把它搬到歷史區！
-                    // 注意：今天的預約不封存，只封存昨天以前的
-                    if (data.date < todayStr) {
-                        let oldRef = db.collection("bookings").doc(data.id);
-                        let newRef = db.collection("historicalBookings").doc(data.id);
-                        batch.set(newRef, data); // 複製到歷史區
-                        batch.delete(oldRef);    // 從主清單刪除
-                        hasArchived = true;
-                    } else {
-                        fetchedBookings.push(data); // 未過期的正常顯示
-                    }
+                    // // 🔥 自動封存邏輯：如果這筆訂單的日期「早於今天」，就把它搬到歷史區！
+                    // // 注意：今天的預約不封存，只封存昨天以前的
+                    // if (data.date < todayStr) {
+                    //     let oldRef = db.collection("bookings").doc(data.id);
+                    //     let newRef = db.collection("historicalBookings").doc(data.id);
+                    //     batch.set(newRef, data); // 複製到歷史區
+                    //     batch.delete(oldRef);    // 從主清單刪除
+                    //     hasArchived = true;
+                    // } else {
+                    //     fetchedBookings.push(data); // 未過期的正常顯示
+                    // }
+                    fetchedBookings.push(data); // 全部正常顯示，封存交給 GAS
                 });
                 
-                // 執行搬移
-                if (hasArchived) {
-                    await batch.commit();
-                    console.log("🧹 系統已在背景自動將舊訂單封存至歷史紀錄！");
-                }
+                // // 執行搬移
+                // if (hasArchived) {
+                //     await batch.commit();
+                //     console.log("🧹 系統已在背景自動將舊訂單封存至歷史紀錄！");
+                // }
                 
                 allBookings = fetchedBookings;
                 isBookingLoaded = true; 
