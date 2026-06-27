@@ -507,72 +507,76 @@
             };
 
             // =========================================================
-            // 🛡️ 終極防佔位機制：不分店家或客人，同一天只能預約一次！
+            // 🛡️ Transaction 防競態：檢查 + 寫入 不可分割
             // =========================================================
             try {
-                // 去資料庫抓出「客人選的那天」所有的預約單
-                const checkSnapshot = await db.collection("bookings").where("date", "==", formData.date).get();
-                let alreadyBooked = false;
+                let newDocRef = editId ? null : db.collection("bookings").doc(); // 預先產生 ID
 
-                checkSnapshot.forEach(doc => {
-                    // 如果現在是在「修改模式」，要排除自己原本的那筆單，不然會自己擋自己
-                    if (editId && doc.id === editId) return;
+                await db.runTransaction(async (transaction) => {
+                    // 在 Transaction 內讀取當天所有預約
+                    const checkSnapshot = await db.collection("bookings").where("date", "==", formData.date).get();
+                    let alreadyBooked = false;
+                    let slotCount = 0;
 
-                    let existingData = doc.data();
-                    
-                    // 條件 A：LINE ID 一樣 (代表同一個 LINE 帳號，且非空值)
-                    let isSameLine = (formData.lineId && formData.lineId !== "" && existingData.lineId === formData.lineId);
-                    
-                    // 條件 B：姓名 + 電話 完全一樣
-                    let isSamePerson = (existingData.name === formData.name && existingData.phone === formData.phone);
+                    checkSnapshot.forEach(doc => {
+                        if (editId && doc.id === editId) return; // 排除自己
 
-                    if (isSameLine || isSamePerson) {
-                        alreadyBooked = true;
+                        let existingData = doc.data();
+
+                        // 條件 A：LINE ID 一樣
+                        let isSameLine = (formData.lineId && formData.lineId !== "" && existingData.lineId === formData.lineId);
+                        // 條件 B：姓名 + 電話 完全一樣
+                        let isSamePerson = (existingData.name === formData.name && existingData.phone === formData.phone);
+                        if (isSameLine || isSamePerson) alreadyBooked = true;
+
+                        // 計算同時段人數
+                        if (existingData.time === formData.time) {
+                            slotCount += 1;
+                            if (existingData.name2) slotCount += 1;
+                        }
+                    });
+
+                    // 同一天已有預約
+                    if (alreadyBooked) {
+                        throw { code: "already_booked" };
+                    }
+
+                    // 時段已額滿
+                    const isTwoPeople = !!formData.name2;
+                    const maxSlot = isTwoPeople ? 1 : 2;
+                    if (!editId && slotCount >= maxSlot) {
+                        throw { code: "slot_full" };
+                    }
+
+                    // 通過檢查 → 在 Transaction 內寫入
+                    if (editId) {
+                        transaction.update(db.collection("bookings").doc(editId), formData);
+                    } else {
+                        formData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                        formData.status = "active";
+                        transaction.set(newDocRef, formData);
                     }
                 });
 
-                // 如果發現已經約過了，直接擋下來！
-                if (alreadyBooked) {
-                    alert("⚠️ 預約失敗：您在 【" + formData.date + "】 已經有預約囉！\n(系統限制每人每日僅能預約一個時段)");
-                    isSubmitting = false; // 恢復按鈕狀態
-                    setButtonLoading(false);
-                    return; // ⛔ 關鍵：中斷程式，絕對不讓他把資料寫進 Firebase！
-                }
-            } catch (error) {
-                console.error("檢查重複預約失敗：", error);
-            }
-            // =========================================================
-
-            try {
-                // 如果有 editId 就是修改，沒有就是新增
-                if (editId) {
-                    await db.collection("bookings").doc(editId).update(formData);
-                    formData.id = editId; // 🔥 確保 formData 帶有 ID
-                } else {
-                    formData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                    formData.status = "active";
-                    // 🔥 取得 Firebase 瞬間產生的專屬 ID
-                    let docRef = await db.collection("bookings").add(formData);
-                    formData.id = docRef.id; 
-                }
-                
-                // 預約寫入成功後，在背景發送通知訊號 (這時 formData 裡面已經有 id 了)
+                // Transaction 成功
+                formData.id = editId || newDocRef.id;
                 triggerNotification(formData, editId ? "update" : "new");
-
-                // 🔥 1. 發送跨分頁更新訊號給後台
-                localStorage.setItem('force_refresh_admin', Date.now());
-
-                // 🔥 1. 發送跨分頁更新訊號給後台
                 localStorage.setItem('force_refresh_admin', Date.now());
                 alert("預約成功！");
-                if(liff.isInClient()){ liff.closeWindow(); } 
+                if(liff.isInClient()){ liff.closeWindow(); }
                 else { window.location.reload(); }
-                
+
             } catch (err) {
-                logErrorToSheet(err.message, "提交預約 (submitBooking) 失敗"); 
-                alert("發生錯誤，請稍後再試！\n(錯誤代碼已自動回報給管理員)");
+                if (err.code === "already_booked") {
+                    alert("⚠️ 預約失敗：您在 【" + formData.date + "】 已經有預約囉！\n(系統限制每人每日僅能預約一個時段)");
+                } else if (err.code === "slot_full") {
+                    alert("⚠️ 預約失敗：您選的時段【" + formData.time + "】已經額滿了！\n請重新選擇其他時段。");
+                } else {
+                    logErrorToSheet(err.message, "提交預約 (submitBooking) 失敗");
+                    alert("發生錯誤，請稍後再試！\n(錯誤代碼已自動回報給管理員)");
+                }
             } finally {
-                isSubmitting = false; 
+                isSubmitting = false;
                 setButtonLoading(false);
             }
         }
