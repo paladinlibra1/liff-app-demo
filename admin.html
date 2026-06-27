@@ -383,6 +383,8 @@
         let fcBookingCalendar = null; 
         let fcOperatingCalendar = null;
         let opCalendarLoaded = false;
+        let historyViewMode = 'list';
+        let fcHistoryCalendar = null;
 
         window.onload = function() {
             // 1. 不管手機或電腦，預設都打開「預約管理」
@@ -456,7 +458,8 @@
                     let data = doc.data();
                     data.id = doc.id; 
                     
-                    // 🔥 自動封存邏輯：如果這筆訂單的日期「小於今天」，就把它搬到歷史區！
+                    // 🔥 自動封存邏輯：如果這筆訂單的日期「早於今天」，就把它搬到歷史區！
+                    // 注意：今天的預約不封存，只封存昨天以前的
                     if (data.date < todayStr) {
                         let oldRef = db.collection("bookings").doc(data.id);
                         let newRef = db.collection("historicalBookings").doc(data.id);
@@ -717,17 +720,20 @@
             document.getElementById('loading').style.display = 'block';
             
             try {
-                // 🔥 1. 從畫面現有的資料中找出這筆訂單，發送取消通知
+                // 1. 先從畫面現有的資料中找出這筆訂單
                 let bookingData = allBookings.find(r => r.id === id);
-                if (bookingData) {
-                    triggerNotification(bookingData, "cancel");
-                }
 
-                // 2. 刪除資料庫
+                // 2. 先刪除資料庫
                 await db.collection("bookings").doc(id).delete();
                 allBookings = allBookings.filter(r => r.id !== id);
                 filterBookingTable();
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
+
+                // 3. 刪除成功後，再觸發通知（讓 GAS 刪 Google 日曆）
+                if (bookingData) {
+                    triggerNotification(bookingData, "cancel");
+                }
+
                 alert("取消成功！");
             } catch (err) {
                 alert("取消失敗：" + err.message);
@@ -1080,9 +1086,6 @@
             document.getElementById('historyTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
-        let historyViewMode = 'list'; 
-        let fcHistoryCalendar = null; 
-
         function toggleHistoryViewMode() {
             if (historyViewMode === 'list') {
                 historyViewMode = 'calendar';
