@@ -281,7 +281,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 const MY_LIFF_ID = "2009018559-Bbz87reV";
-const BOOKING_PAGE_URL = "index.html";      // ← 預約頁相對路徑
+const BOOKING_PAGE_URL = "https://liff.line.me/2009018559-AeGOURPY";
 
 let allBookings = [];
 let currentTab = 'upcoming';
@@ -457,11 +457,7 @@ async function cancelBooking(id, date, time) {
 
 // ── 新增預約 ──
 function goNewBooking() {
-  if (liff.isInClient()) {
-    liff.openWindow({ url: window.location.origin + '/' + BOOKING_PAGE_URL, external: false });
-  } else {
-    window.location.href = BOOKING_PAGE_URL;
-  }
+  window.location.href = BOOKING_PAGE_URL;
 }
 
 // ── 工具函式 ──
