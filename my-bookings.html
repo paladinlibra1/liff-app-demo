@@ -287,75 +287,10 @@ let allBookings = [];
 let currentTab = 'upcoming';
 let currentUserLineId = '';
 
-// ── 假資料（預覽模式用）──
-const PREVIEW_BOOKINGS = [
-  {
-    id: "preview-1",
-    date: "2026-07-15",
-    time: "14:00",
-    name: "王小美",
-    phone: "0912-345-678",
-    type: "剪髮＋染髮",
-    remark: "希望染成亞麻棕色",
-    name2: ""
-  },
-  {
-    id: "preview-2",
-    date: "2026-08-02",
-    time: "10:30",
-    name: "王小美",
-    phone: "0912-345-678",
-    type: "護髮",
-    remark: "",
-    name2: "林小芳"
-  },
-  {
-    id: "preview-3",
-    date: "2026-05-20",
-    time: "15:00",
-    name: "王小美",
-    phone: "0912-345-678",
-    type: "剪髮",
-    remark: "",
-    name2: ""
-  },
-  {
-    id: "preview-4",
-    date: "2026-03-08",
-    time: "11:00",
-    name: "王小美",
-    phone: "0912-345-678",
-    type: "燙髮",
-    remark: "上次燙的很好看！",
-    name2: ""
-  }
-];
-
 // ── 啟動 ──
 window.onload = async function () {
-  // ── 預覽模式（非 LINE 環境）──
-  const isPreview = window.location.search.includes('preview') ||
-    !window.liff || typeof liff === 'undefined';
-
-  if (isPreview || window.location.hostname === 'localhost' || window.location.protocol === 'file:') {
-    document.getElementById('welcomeText').textContent = '👀 預覽模式（假資料）';
-    showPreviewBanner();
-    allBookings = PREVIEW_BOOKINGS;
-    renderList();
-    return;
-  }
-
   try {
     await liff.init({ liffId: MY_LIFF_ID });
-
-    // 若 LIFF init 失敗或不在 LINE 環境，改用預覽模式
-    if (!liff.isInClient() && !liff.isLoggedIn()) {
-      document.getElementById('welcomeText').textContent = '👀 預覽模式（假資料）';
-      showPreviewBanner();
-      allBookings = PREVIEW_BOOKINGS;
-      renderList();
-      return;
-    }
 
     if (!liff.isLoggedIn()) {
       liff.login({ redirectUri: window.location.href });
@@ -373,31 +308,14 @@ window.onload = async function () {
     await fetchBookings();
 
   } catch (err) {
-    // LIFF 初始化失敗 → 自動切換預覽模式
-    console.warn('LIFF init failed, switching to preview mode:', err.message);
-    document.getElementById('welcomeText').textContent = '👀 預覽模式（假資料）';
-    showPreviewBanner();
-    allBookings = PREVIEW_BOOKINGS;
-    renderList();
+    if (err.message && (err.message.includes("expired") || err.message.includes("Access token"))) {
+      liff.logout();
+      window.location.reload();
+      return;
+    }
+    showError('初始化失敗：' + err.message);
   }
 };
-
-function showPreviewBanner() {
-  const banner = document.createElement('div');
-  banner.style.cssText = `
-    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-    border: 1.5px solid #f0c040;
-    border-radius: 12px;
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    font-size: 0.82rem;
-    color: #856404;
-    text-align: center;
-    line-height: 1.5;
-  `;
-  banner.innerHTML = '🔍 <strong>預覽模式</strong>：目前顯示假資料，請在 LINE App 中開啟以查看真實預約';
-  document.querySelector('.tabs').before(banner);
-}
 
 // ── 讀取預約 ──
 async function fetchBookings() {
