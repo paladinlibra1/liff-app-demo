@@ -262,7 +262,7 @@
         const MY_LIFF_ID = "2009018559-AeGOURPY";
 
         // ✅ 定義兩組營業時間
-        const weekDayTimes = ["12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
+        const weekDayTimes = ["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
         const satTimes = ["10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
         let currentAvailableTimes = [];
 
@@ -658,26 +658,33 @@
             timeSelect.disabled = true;
             
             try {
-                // ⚡ 極速抓取當天的預約狀態
-                const snapshot = await db.collection("bookings").where("date", "==", dateStr).get();
+                // ⚡ 同時抓取當天預約狀態 + 封鎖時段
+                const [bookingSnapshot, operatingDoc] = await Promise.all([
+                    db.collection("bookings").where("date", "==", dateStr).get(),
+                    db.collection("operatingDays").doc(dateStr).get()
+                ]);
+
                 let counts = {};
-                
-                snapshot.forEach(doc => {
-                    if (doc.id !== editId) { // 排除正在修改的這筆
+                bookingSnapshot.forEach(doc => {
+                    if (doc.id !== editId) {
                         let t = doc.data().time;
                         counts[t] = (counts[t] || 0) + 1;
-                        if(doc.data().name2) counts[t] += 1; // 如果有同行者，算佔2個位子
+                        if(doc.data().name2) counts[t] += 1;
                     }
                 });
 
-                renderTimeOptions(counts);
+                const blockedTimes = (operatingDoc.exists && operatingDoc.data().blockedTimes) 
+                    ? operatingDoc.data().blockedTimes 
+                    : [];
+
+                renderTimeOptions(counts, blockedTimes);
             } catch (error) {
                 console.error("查詢時段失敗", error);
                 timeSelect.innerHTML = '<option value="">查詢失敗</option>';
             }
         }
 
-        function renderTimeOptions(counts) {
+        function renderTimeOptions(counts, blockedTimes = []) {
             const timeSelect = document.getElementById('time');
             const isTwoPeople = (document.getElementById('name2').value.trim() !== "");
             const dateValue = document.getElementById('date').value; 
@@ -695,7 +702,10 @@
                 let isDisabled = false; let statusText = "";
                 let slotDateTime = new Date(dateValue.replace(/-/g, '/') + ' ' + t);
                 
-                if (slotDateTime <= now) {
+                // 優先判斷封鎖時段
+                if (blockedTimes.includes(t)) {
+                    isDisabled = true; statusText = " (不開放)";
+                } else if (slotDateTime <= now) {
                     isDisabled = true; statusText = " (已過)";
                 } else {
                     if (!isTwoPeople) {
