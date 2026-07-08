@@ -281,7 +281,8 @@
         <div id="section-operating" class="section">
             <div class="header" style="background: #e8f5e9; padding: 15px; border-radius: 10px; color: #2e7d32; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div style="flex: 1; min-width: 250px;">
-                    <strong>💡 批次設定模式：</strong> 跳著點擊日期進行複選，選好後點擊右側按鈕統一處理。
+                    <strong>💡 批次設定模式：</strong> 跳著點擊日期進行複選，選好後點擊右側按鈕統一處理。<br>
+                    <span style="font-size:0.85rem; color:#555;">📌 單擊已設定的營業日可封鎖特定時段</span>
                 </div>
                 <div id="batch-controls" style="display: none; gap: 8px;">
                     <button class="btn btn-success" style="padding: 8px 15px;" onclick="processBatch(true)">全部設為營業</button>
@@ -291,6 +292,20 @@
             </div>
             <div class="box-container calendar-wrapper">
                 <div id="operatingCalendar"></div> 
+            </div>
+
+            <!-- 封鎖時段面板 -->
+            <div id="blockTimesPanel" style="display:none; margin-top:16px; background:#fff8f8; border:1.5px solid #ffcdd2; border-radius:14px; padding:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <strong style="color:#c62828;">🚫 封鎖時段設定 — <span id="blockPanelDate"></span></strong>
+                    <button onclick="closeBlockPanel()" style="border:none; background:transparent; font-size:1.2rem; cursor:pointer; color:#999;">✕</button>
+                </div>
+                <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">勾選要封鎖的時段，客人將無法預約這些時間。</p>
+                <div id="blockTimeCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-cancel" onclick="saveBlockedTimes()" style="flex:1;">💾 儲存封鎖時段</button>
+                    <button class="btn btn-outline" onclick="clearBlockedTimes()" style="flex:1;">🗑️ 清除所有封鎖</button>
+                </div>
             </div>
         </div>
 
@@ -913,7 +928,14 @@
             try {
                 const snapshot = await db.collection("operatingDays").get();
                 allOperatingDays = [];
-                snapshot.forEach(doc => { allOperatingDays.push(doc.id); });
+                allBlockedTimes = {};
+                snapshot.forEach(doc => {
+                    allOperatingDays.push(doc.id);
+                    const data = doc.data();
+                    if (data.blockedTimes && data.blockedTimes.length > 0) {
+                        allBlockedTimes[doc.id] = data.blockedTimes;
+                    }
+                });
                 
                 if (!opCalendarLoaded) {
                     initOperatingCalendar();
@@ -923,6 +945,75 @@
                 }
             } catch (err) { alert("網路錯誤：" + err.message); }
             document.getElementById('loading').style.display = 'none';
+        }
+
+        let allBlockedTimes = {};
+        let currentBlockDate = "";
+
+        // 開啟封鎖時段面板
+        function openBlockPanel(dateStr) {
+            currentBlockDate = dateStr;
+            document.getElementById('blockPanelDate').textContent = dateStr;
+
+            // 判斷是週六還是平日，產生對應時段
+            const dow = new Date(dateStr.replace(/-/g, '/')).getDay();
+            const times = (dow === 6)
+                ? ["10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"]
+                : ["12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30"];
+
+            const blocked = allBlockedTimes[dateStr] || [];
+            const container = document.getElementById('blockTimeCheckboxes');
+            container.innerHTML = times.map(t => `
+                <label style="display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; border:1.5px solid ${blocked.includes(t) ? '#e57373' : '#eee'}; background:${blocked.includes(t) ? '#fff5f5' : '#fafafa'}; cursor:pointer; font-size:0.9rem;">
+                    <input type="checkbox" value="${t}" ${blocked.includes(t) ? 'checked' : ''} style="accent-color:#e57373;">
+                    ${t}
+                </label>
+            `).join('');
+
+            document.getElementById('blockTimesPanel').style.display = 'block';
+            document.getElementById('blockTimesPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeBlockPanel() {
+            document.getElementById('blockTimesPanel').style.display = 'none';
+            currentBlockDate = "";
+        }
+
+        async function saveBlockedTimes() {
+            if (!currentBlockDate) return;
+            const checked = [...document.querySelectorAll('#blockTimeCheckboxes input:checked')].map(el => el.value);
+            try {
+                document.getElementById('loading').style.display = 'block';
+                await db.collection("operatingDays").doc(currentBlockDate).update({ blockedTimes: checked });
+                if (checked.length > 0) {
+                    allBlockedTimes[currentBlockDate] = checked;
+                } else {
+                    delete allBlockedTimes[currentBlockDate];
+                }
+                fcOperatingCalendar.refetchEvents();
+                closeBlockPanel();
+                alert(`✅ 已儲存！${currentBlockDate} 封鎖了 ${checked.length} 個時段。`);
+            } catch (err) {
+                alert("儲存失敗：" + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        async function clearBlockedTimes() {
+            if (!currentBlockDate || !confirm(`確定要清除 ${currentBlockDate} 的所有封鎖時段嗎？`)) return;
+            try {
+                document.getElementById('loading').style.display = 'block';
+                await db.collection("operatingDays").doc(currentBlockDate).update({ blockedTimes: [] });
+                delete allBlockedTimes[currentBlockDate];
+                document.querySelectorAll('#blockTimeCheckboxes input').forEach(el => el.checked = false);
+                fcOperatingCalendar.refetchEvents();
+                alert("✅ 已清除所有封鎖時段！");
+            } catch (err) {
+                alert("清除失敗：" + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
         let tempSelectedDates = []; 
@@ -936,11 +1027,29 @@
                     let events = allOperatingDays.map(date => ({
                         start: date, title: '🟢 營業日', allDay: true, backgroundColor: '#4CAF50', borderColor: '#388E3C', display: 'block'
                     }));
+                    // 有封鎖時段的日期，額外加上標記
+                    Object.keys(allBlockedTimes).forEach(date => {
+                        if (allBlockedTimes[date] && allBlockedTimes[date].length > 0) {
+                            events.push({
+                                start: date, title: `🚫 封鎖 ${allBlockedTimes[date].length} 時段`, allDay: true,
+                                backgroundColor: '#e57373', borderColor: '#c62828', display: 'block'
+                            });
+                        }
+                    });
                     successCallback(events);
                 },
 
                 dateClick: function(info) {
                     const dateStr = info.dateStr;
+                    const isOperating = allOperatingDays.includes(dateStr);
+
+                    // 如果是營業日，單擊開啟封鎖時段面板
+                    if (isOperating) {
+                        openBlockPanel(dateStr);
+                        return;
+                    }
+
+                    // 非營業日維持批次選取功能
                     const index = tempSelectedDates.indexOf(dateStr);
                     if (index > -1) {
                         tempSelectedDates.splice(index, 1);
