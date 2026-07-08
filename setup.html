@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏪 預約系統安裝精靈</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    min-height: 100vh;
+    padding: 40px 16px;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #1d1d1f;
+  }
+  .hero p {
+    color: #6e6e73;
+    margin-top: 8px;
+    font-size: 1rem;
+  }
+
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #999;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+  .step-dot.active { background: #d68095; color: #fff; }
+  .step-dot.done { background: #4CAF50; color: #fff; }
+  .step-label {
+    font-size: 0.82rem;
+    color: #999;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .step-label.active { color: #d68095; font-weight: 700; }
+  .step-connector {
+    width: 32px; height: 2px;
+    background: #e0e0e0;
+    flex-shrink: 0;
+    margin: 0 4px;
+  }
+  .step-connector.done { background: #4CAF50; }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    display: none;
+    animation: fadeUp 0.35s ease-out;
+  }
+  .card.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-desc {
+    font-size: 0.88rem;
+    color: #6e6e73;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .card-desc a {
+    color: #d68095;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .card-desc a:hover { text-decoration: underline; }
+
+  /* Form */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #3a3a3c;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    color: #1d1d1f;
+    background: #fafafa;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .field input:focus, .field select:focus {
+    border-color: #d68095;
+    box-shadow: 0 0 0 3px rgba(214,128,149,0.12);
+    background: #fff;
+  }
+  .field input.error { border-color: #e57373; }
+  .field .hint {
+    font-size: 0.78rem;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+
+  /* Section divider */
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #d68095;
+    margin: 24px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1.5px solid #fae1e6;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+  }
+  .btn {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #d68095, #c06c82);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(214,128,149,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(214,128,149,0.4); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: #f5f5f7;
+    color: #6e6e73;
+  }
+  .btn-secondary:hover { background: #e8e8ed; }
+
+  /* Output */
+  .output-box {
+    background: #1c1c1e;
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    margin-top: 8px;
+  }
+  .output-box pre {
+    color: #f5f5f7;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 14px; right: 14px;
+    padding: 6px 14px;
+    background: #d68095;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { background: #c06c82; }
+  .copy-btn.copied { background: #4CAF50; }
+
+  /* Checklist */
+  .checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #f5f5f7;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .check-item .num {
+    width: 24px; height: 24px;
+    background: #d68095;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .check-item strong { color: #1d1d1f; display: block; margin-bottom: 2px; }
+  .check-item span { color: #6e6e73; font-size: 0.85rem; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    background: #1d1d1f;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  .tag {
+    display: inline-block;
+    background: #fff3f5;
+    color: #d68095;
+    border: 1px solid #fae1e6;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="hero">
+    <h1>🏪 預約系統安裝精靈</h1>
+    <p>填入設定值，自動產生 <code>config.js</code></p>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-dot active" id="dot-1">1</div>
+      <div class="step-label active" id="lbl-1">店家資訊</div>
+    </div>
+    <div class="step-connector" id="conn-1"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-2">2</div>
+      <div class="step-label" id="lbl-2">Firebase</div>
+    </div>
+    <div class="step-connector" id="conn-2"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-3">3</div>
+      <div class="step-label" id="lbl-3">LINE / GAS</div>
+    </div>
+    <div class="step-connector" id="conn-3"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-4">4</div>
+      <div class="step-label" id="lbl-4">完成</div>
+    </div>
+  </div>
+
+  <!-- Step 1: 店家資訊 -->
+  <div class="card active" id="step-1">
+    <div class="card-title">🏪 店家基本資訊</div>
+    <div class="card-desc">填入店家名稱和營業時間設定。</div>
+
+    <div class="field">
+      <label>店家名稱</label>
+      <input type="text" id="storeName" placeholder="例：Color Fashion">
+    </div>
+
+    <div class="section-label">平日營業時間</div>
+    <div class="field-row">
+      <div class="field">
+        <label>開始時間</label>
+        <select id="weekdayStart">
+          <option value="09:00">09:00</option>
+          <option value="09:30">09:30</option>
+          <option value="10:00">10:00</option>
+          <option value="10:30">10:30</option>
+          <option value="11:00">11:00</option>
+          <option value="11:30">11:30</option>
+          <option value="12:00" selected>12:00</option>
+          <option value="12:30">12:30</option>
+          <option value="13:00">13:00</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>結束時間</label>
+        <select id="weekdayEnd">
+          <option value="17:00">17:00</option>
+          <option value="17:30">17:30</option>
+          <option value="18:00">18:00</option>
+          <option value="18:30">18:30</option>
+          <option value="19:00">19:00</option>
+          <option value="19:30" selected>19:30</option>
+          <option value="20:00">20:00</option>
+          <option value="20:30">20:30</option>
+          <option value="21:00">21:00</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-label">週六營業時間</div>
+    <div class="field-row">
+      <div class="field">
+        <label>開始時間</label>
+        <select id="satStart">
+          <option value="09:00">09:00</option>
+          <option value="09:30">09:30</option>
+          <option value="10:00">10:00</option>
+          <option value="10:30" selected>10:30</option>
+          <option value="11:00">11:00</option>
+          <option value="11:30">11:30</option>
+          <option value="12:00">12:00</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>結束時間</label>
+        <select id="satEnd">
+          <option value="15:00">15:00</option>
+          <option value="15:30">15:30</option>
+          <option value="16:00">16:00</option>
+          <option value="16:30" selected>16:30</option>
+          <option value="17:00">17:00</option>
+          <option value="17:30">17:30</option>
+          <option value="18:00">18:00</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Firebase -->
+  <div class="card" id="step-2">
+    <div class="card-title">🔥 Firebase 設定</div>
+    <div class="card-desc">
+      到 <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a> → 新專案 → 專案設定 → 你的應用程式 → 複製 firebaseConfig 裡的值。
+    </div>
+
+    <div class="field">
+      <label>API Key</label>
+      <input type="text" id="fb_apiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="field">
+      <label>Auth Domain</label>
+      <input type="text" id="fb_authDomain" placeholder="your-app.firebaseapp.com">
+    </div>
+    <div class="field">
+      <label>Project ID</label>
+      <input type="text" id="fb_projectId" placeholder="your-app">
+    </div>
+    <div class="field">
+      <label>Storage Bucket</label>
+      <input type="text" id="fb_storageBucket" placeholder="your-app.firebasestorage.app">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Messaging Sender ID</label>
+        <input type="text" id="fb_messagingSenderId" placeholder="123456789">
+      </div>
+      <div class="field">
+        <label>App ID</label>
+        <input type="text" id="fb_appId" placeholder="1:123:web:abc">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(1)">← 上一步</button>
+      <button class="btn btn-primary" onclick="goStep(3)">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: LINE / GAS -->
+  <div class="card" id="step-3">
+    <div class="card-title">📱 LINE & GAS 設定</div>
+    <div class="card-desc">
+      到 <a href="https://developers.line.biz/console/" target="_blank">LINE Developers</a> 取得 LIFF ID，再到 Google Apps Script 部署取得 Webhook URL。
+    </div>
+
+    <div class="section-label">LINE LIFF</div>
+    <div class="field">
+      <label>預約頁 LIFF ID <span class="tag">index.html</span></label>
+      <input type="text" id="liff_booking" placeholder="2009018559-xxxxxxxx">
+    </div>
+    <div class="field">
+      <label>預約管理 LIFF ID <span class="tag">my-bookings.html</span></label>
+      <input type="text" id="liff_myBookings" placeholder="2009018559-xxxxxxxx">
+    </div>
+
+    <div class="section-label">Google Apps Script</div>
+    <div class="field">
+      <label>GAS Webhook URL</label>
+      <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <div class="hint">GAS 部署後取得的 Web App URL</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(2)">← 上一步</button>
+      <button class="btn btn-primary" onclick="generate()">產生 config.js ✨</button>
+    </div>
+  </div>
+
+  <!-- Step 4: 完成 -->
+  <div class="card" id="step-4">
+    <div class="card-title">✅ config.js 產生完成！</div>
+    <div class="card-desc">複製下方程式碼，貼到你的新 repo 的 <code>config.js</code> 檔案裡。</div>
+
+    <div class="output-box">
+      <button class="copy-btn" id="copyBtn" onclick="copyConfig()">複製</button>
+      <pre id="outputCode"></pre>
+    </div>
+
+    <div class="section-label">接下來要做的事</div>
+    <div class="checklist">
+      <div class="check-item">
+        <div class="num">1</div>
+        <div>
+          <strong>貼上 config.js</strong>
+          <span>把上方程式碼貼到新 repo 的 config.js，取代原本的內容</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">2</div>
+        <div>
+          <strong>開啟 GitHub Pages</strong>
+          <span>repo → Settings → Pages → main branch → Save</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">3</div>
+        <div>
+          <strong>更新 LIFF Endpoint URL</strong>
+          <span>把 GitHub Pages 網址填回 LINE Developers 的 LIFF 設定裡</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">4</div>
+        <div>
+          <strong>設定 GAS 觸發器</strong>
+          <span>sendDailyRemindersFirebase（每天早上9點）+ archiveOldBookings（每天凌晨1點）</span>
+        </div>
+      </div>
+      <div class="check-item">
+        <div class="num">5</div>
+        <div>
+          <strong>更新圖文選單</strong>
+          <span>把新的 LIFF URL 填進圖文選單 GAS 腳本，重新執行</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(1); resetForm()">重新設定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentStep = 1;
+
+function goStep(n) {
+  // 驗證
+  if (n > currentStep) {
+    if (!validate(currentStep)) return;
+  }
+
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step-' + currentStep).classList.add('active');
+  updateSteps();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateSteps() {
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    const lbl = document.getElementById('lbl-' + i);
+    dot.className = 'step-dot ' + (i < currentStep ? 'done' : i === currentStep ? 'active' : '');
+    lbl.className = 'step-label ' + (i === currentStep ? 'active' : '');
+    if (i < 4) {
+      const conn = document.getElementById('conn-' + i);
+      conn.className = 'step-connector ' + (i < currentStep ? 'done' : '');
+    }
+  }
+}
+
+function validate(step) {
+  if (step === 1) {
+    if (!document.getElementById('storeName').value.trim()) {
+      showToast('⚠️ 請填入店家名稱');
+      document.getElementById('storeName').focus();
+      return false;
+    }
+  }
+  if (step === 2) {
+    const fields = ['fb_apiKey','fb_authDomain','fb_projectId','fb_storageBucket','fb_messagingSenderId','fb_appId'];
+    for (let f of fields) {
+      if (!document.getElementById(f).value.trim()) {
+        showToast('⚠️ 請填入所有 Firebase 設定值');
+        document.getElementById(f).focus();
+        return false;
+      }
+    }
+  }
+  if (step === 3) {
+    if (!document.getElementById('liff_booking').value.trim() ||
+        !document.getElementById('liff_myBookings').value.trim() ||
+        !document.getElementById('gasUrl').value.trim()) {
+      showToast('⚠️ 請填入所有 LINE 和 GAS 設定值');
+      return false;
+    }
+  }
+  return true;
+}
+
+function generateTimes(start, end) {
+  const times = [];
+  let [h, m] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  while (h < eh || (h === eh && m <= em)) {
+    times.push((h < 10 ? '0' : '') + h + ':' + (m === 0 ? '00' : m));
+    m += 30;
+    if (m >= 60) { m -= 60; h++; }
+  }
+  return times;
+}
+
+function generate() {
+  if (!validate(3)) return;
+
+  const weekdayTimes = generateTimes(
+    document.getElementById('weekdayStart').value,
+    document.getElementById('weekdayEnd').value
+  );
+  const satTimes = generateTimes(
+    document.getElementById('satStart').value,
+    document.getElementById('satEnd').value
+  );
+
+  const config = `/**
+ * ╔══════════════════════════════════════════════╗
+ * ║   店家設定檔 - 每家店只改這個檔案              ║
+ * ║   店家：${document.getElementById('storeName').value.trim().padEnd(20)}      ║
+ * ╚══════════════════════════════════════════════╝
+ */
+const STORE_CONFIG = {
+
+  // ── Firebase 設定 ──────────────────────────────
+  firebase: {
+    apiKey:            "${document.getElementById('fb_apiKey').value.trim()}",
+    authDomain:        "${document.getElementById('fb_authDomain').value.trim()}",
+    projectId:         "${document.getElementById('fb_projectId').value.trim()}",
+    storageBucket:     "${document.getElementById('fb_storageBucket').value.trim()}",
+    messagingSenderId: "${document.getElementById('fb_messagingSenderId').value.trim()}",
+    appId:             "${document.getElementById('fb_appId').value.trim()}"
+  },
+
+  // ── LINE LIFF ID ───────────────────────────────
+  liffId: {
+    booking:    "${document.getElementById('liff_booking').value.trim()}",
+    myBookings: "${document.getElementById('liff_myBookings').value.trim()}"
+  },
+
+  // ── GAS Webhook URL ────────────────────────────
+  gasUrl: "${document.getElementById('gasUrl').value.trim()}",
+
+  // ── 店家資訊 ───────────────────────────────────
+  storeName: "${document.getElementById('storeName').value.trim()}",
+
+  // ── 營業時間 ───────────────────────────────────
+  times: {
+    weekday:  ${JSON.stringify(weekdayTimes)},
+    saturday: ${JSON.stringify(satTimes)}
+  }
+
+};`;
+
+  document.getElementById('outputCode').textContent = config;
+  goStep(4);
+}
+
+function copyConfig() {
+  const text = document.getElementById('outputCode').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ 已複製';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '複製'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function resetForm() {
+  document.querySelectorAll('input').forEach(el => el.value = '');
+  currentStep = 1;
+  updateSteps();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
