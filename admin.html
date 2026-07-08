@@ -1049,7 +1049,10 @@
                         return;
                     }
 
-                    // 非營業日維持批次選取功能
+                    // 非營業日：關掉面板
+                    closeBlockPanel();
+
+                    // 維持批次選取功能
                     const index = tempSelectedDates.indexOf(dateStr);
                     if (index > -1) {
                         tempSelectedDates.splice(index, 1);
