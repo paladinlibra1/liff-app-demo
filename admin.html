@@ -1043,8 +1043,9 @@
                     const dateStr = info.dateStr;
                     const isOperating = allOperatingDays.includes(dateStr);
 
-                    // 如果是營業日，單擊開啟封鎖時段面板
+                    // 如果是營業日，清掉批次選取，開啟封鎖時段面板
                     if (isOperating) {
+                        clearSelection();
                         openBlockPanel(dateStr);
                         return;
                     }
