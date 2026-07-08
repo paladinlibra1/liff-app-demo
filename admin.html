@@ -9,6 +9,7 @@
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="config.js"></script>
 
     <style>
         /* ================================================================= */
@@ -373,19 +374,11 @@
         // =====================================================================
         // 🔥 1. 初始化 Firebase 引擎
         // =====================================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU",
-            authDomain: "colorfashion-booking.firebaseapp.com",
-            projectId: "colorfashion-booking",
-            storageBucket: "colorfashion-booking.firebasestorage.app",
-            messagingSenderId: "658886755238",
-            appId: "1:658886755238:web:904c4a27bcc10b3b5f0567"
-        };
-        firebase.initializeApp(firebaseConfig);
+        firebase.initializeApp(STORE_CONFIG.firebase);
         const db = firebase.firestore();
 
-        const FRONTEND_URL = "https://paladinlibra1.github.io/liff-app-demo/index.html"; 
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";        
+        const FRONTEND_URL = "https://liff.line.me/" + STORE_CONFIG.liffId.booking;
+        const GAS_API_URL = STORE_CONFIG.gasUrl;
 
         let allBookings = []; 
         let isBookingLoaded = false;
