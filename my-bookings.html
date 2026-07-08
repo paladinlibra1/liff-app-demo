@@ -7,6 +7,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
 <style>
 :root {
   --primary-color: #d68095;
@@ -268,20 +269,12 @@ body {
 <button class="new-booking-btn" onclick="goNewBooking()">＋ 新增預約</button>
 
 <script>
-// ── Firebase 設定（與 index.html 相同）──
-const firebaseConfig = {
-  apiKey: "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU",
-  authDomain: "colorfashion-booking.firebaseapp.com",
-  projectId: "colorfashion-booking",
-  storageBucket: "colorfashion-booking.firebasestorage.app",
-  messagingSenderId: "658886755238",
-  appId: "1:658886755238:web:904c4a27bcc10b3b5f0567"
-};
-firebase.initializeApp(firebaseConfig);
+// ── Firebase 設定（從 config.js 讀取）──
+firebase.initializeApp(STORE_CONFIG.firebase);
 const db = firebase.firestore();
 
-const MY_LIFF_ID = "2009018559-Bbz87reV";
-const BOOKING_PAGE_URL = "https://liff.line.me/2009018559-AeGOURPY";
+const MY_LIFF_ID = STORE_CONFIG.liffId.myBookings;
+const BOOKING_PAGE_URL = "https://liff.line.me/" + STORE_CONFIG.liffId.booking;
 
 let allBookings = [];
 let currentTab = 'upcoming';
@@ -495,7 +488,7 @@ function showToast(msg) {
 }
 
 // ── 觸發 GAS 通知（同步 Google 日曆）──
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec";
+const GAS_API_URL = STORE_CONFIG.gasUrl;
 
 function triggerNotification(bookingData, type) {
   const payload = {
