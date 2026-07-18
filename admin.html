@@ -336,7 +336,7 @@
                     </button>
                     <button id="gcalBtn-fc" onclick="switchGcalView('fc')"
                         style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:transparent; color:#999; transition:all 0.2s;">
-                        🎨 顏色分類
+                        🎨 自訂日曆
                     </button>
                 </div>
             </div>
@@ -1027,7 +1027,7 @@
                     : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
                 slotMinTime: '09:00:00',
                 slotMaxTime: '21:00:00',
-                height: window.innerWidth < 600 ? 'auto' : 'calc(100vh - 250px)',
+                height: window.innerWidth < 600 ? 'auto' : 'calc(100vh - 350px)',
                 allDaySlot: false,
                 eventDisplay: 'block',
                 events: async function(fetchInfo, successCallback) {
