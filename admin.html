@@ -96,7 +96,14 @@
         .current-tab-title { font-size: 18px; font-weight: 700; color: var(--text-color); letter-spacing: 1px; margin: 0; pointer-events: none; }
         .mobile-tabs { display: none !important; }
 
-        /* FullCalendar 日曆樣式微調 */
+        /* FullCalendar 顏色日曆 - 強制黑字 */
+        #fcColorCalendar .fc-event,
+        #fcColorCalendar .fc-event-title,
+        #fcColorCalendar .fc-event-time,
+        #fcColorCalendar .fc-list-event-title {
+            color: #1d1d1f !important;
+            font-weight: 600 !important;
+        }
         .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
         .fc-event-title { font-weight: bold; }
         .fc-daygrid-day { cursor: pointer; transition: background-color 0.2s; }
