@@ -1003,43 +1003,50 @@
 
         function initColorCalendar() {
             const el = document.getElementById('fcColorCalendar');
+            const typeColors = {
+                '一般預約': '#4CAF50',
+                '新客體驗': '#f6c026',
+                '複檢':     '#29b6f6'
+            };
+
             fcColorCalendar = new FullCalendar.Calendar(el, {
-                initialView: 'timeGridWeek',
+                initialView: window.innerWidth < 600 ? 'listWeek' : 'timeGridWeek',
                 locale: 'zh-tw',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                headerToolbar: window.innerWidth < 600
+                    ? { left: 'prev,next', center: 'title', right: 'today' }
+                    : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
                 slotMinTime: '09:00:00',
                 slotMaxTime: '21:00:00',
-                height: 'calc(100vh - 250px)',
+                height: window.innerWidth < 600 ? 'auto' : 'calc(100vh - 250px)',
                 allDaySlot: false,
-                events: function(fetchInfo, successCallback) {
-                    // 從 Firebase 讀取 bookings + historicalBookings
-                    const promises = [
-                        db.collection('bookings').get(),
-                        db.collection('historicalBookings').get()
-                    ];
-                    Promise.all(promises).then(([snap1, snap2]) => {
+                events: async function(fetchInfo, successCallback) {
+                    try {
+                        // 同時讀取 bookings 和 historicalBookings
+                        const [snap1, snap2] = await Promise.all([
+                            db.collection('bookings').get(),
+                            db.collection('historicalBookings').get()
+                        ]);
                         const events = [];
-                        const typeColors = {
-                            '一般預約': '#4CAF50',
-                            '新客體驗': '#f6c026',
-                            '複檢':     '#29b6f6'
-                        };
                         [snap1, snap2].forEach(snap => {
                             snap.forEach(doc => {
                                 const d = doc.data();
                                 if (!d.date || !d.time) return;
                                 const start = d.date + 'T' + d.time + ':00';
+                                const end = new Date(new Date(start).getTime() + 30*60000).toISOString();
                                 const color = typeColors[d.type] || '#ef5350';
-                                const title = d.name + (d.name2 ? ' & ' + d.name2 : '') + ' (' + (d.type || '其他') + ')';
-                                events.push({ id: doc.id, title, start, color, extendedProps: d });
+                                const title = (d.name || '') + (d.name2 ? ' & ' + d.name2 : '');
+                                events.push({ id: doc.id, title, start, end, color, extendedProps: d });
                             });
                         });
                         successCallback(events);
-                    });
+                    } catch(e) {
+                        console.error('顏色日曆讀取失敗', e);
+                        successCallback([]);
+                    }
                 },
                 eventClick: function(info) {
                     const d = info.event.extendedProps;
-                    alert(`👤 ${d.name}${d.name2 ? ' & ' + d.name2 : ''}\n📞 ${d.phone || '無'}\n🏷️ ${d.type || '無'}\n📝 ${d.remark || '無'}`);
+                    alert(`👤 ${d.name || ''}${d.name2 ? ' & ' + d.name2 : ''}\n🏷️ ${d.type || '無'}\n📞 ${d.phone || '無'}\n📝 ${d.remark || '無'}`);
                 }
             });
             fcColorCalendar.render();
