@@ -317,15 +317,41 @@
         </div> -->
 
         <div id="section-gcal" class="section">
-            <div class="box-container calendar-wrapper" style="padding: 0; overflow: hidden; border: none;">
-                
-                <iframe id="googleCalendarIframe" 
-                        src="https://calendar.google.com/calendar/embed?wkst=1&ctz=Asia%2FTaipei&mode=WEEK&showTz=0&showCalendars=0&showPrint=0&showTitle=0&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26" 
-                        style="border-width:0; background-color: #ffffff; display: block; width: 100%; height: calc(100vh - 130px);" 
-                        frameborder="0" 
-                        scrolling="no">
+            <!-- 切換按鈕 -->
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <div style="background:#f5f5f7; border-radius:20px; padding:4px; display:flex; gap:4px;">
+                    <button id="gcalBtn-iframe" onclick="switchGcalView('iframe')"
+                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#d68095,#c06c82); color:#fff; transition:all 0.2s;">
+                        📅 Google 日曆
+                    </button>
+                    <button id="gcalBtn-fc" onclick="switchGcalView('fc')"
+                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:transparent; color:#999; transition:all 0.2s;">
+                        🎨 顏色分類
+                    </button>
+                </div>
+            </div>
+
+            <!-- iframe 版 -->
+            <div id="gcal-iframe-view" class="box-container calendar-wrapper" style="padding:0; overflow:hidden; border:none;">
+                <iframe id="googleCalendarIframe"
+                        src="https://calendar.google.com/calendar/embed?wkst=1&ctz=Asia%2FTaipei&mode=WEEK&showTz=0&showCalendars=0&showPrint=0&showTitle=0&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26"
+                        style="border-width:0; background:#fff; display:block; width:100%; height:calc(100vh - 180px);"
+                        frameborder="0" scrolling="no">
                 </iframe>
-                
+            </div>
+
+            <!-- FullCalendar 顏色版 -->
+            <div id="gcal-fc-view" style="display:none;">
+                <!-- 圖例 -->
+                <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; font-size:0.82rem; font-weight:600;">
+                    <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#4CAF50;display:inline-block;"></span>一般預約</span>
+                    <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#f6c026;display:inline-block;"></span>新客體驗</span>
+                    <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#29b6f6;display:inline-block;"></span>複檢</span>
+                    <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#ef5350;display:inline-block;"></span>其他</span>
+                </div>
+                <div class="box-container calendar-wrapper" style="padding:12px;">
+                    <div id="fcColorCalendar"></div>
+                </div>
             </div>
         </div>
         
@@ -940,8 +966,84 @@
             document.getElementById('loading').style.display = 'none';
         }
 
-        let allBlockedTimes = {};
-        let currentBlockDate = "";
+        // =====================================================================
+        // 📆 Google 日曆 切換視圖
+        // =====================================================================
+        let fcColorCalendar = null;
+        let gcalCurrentView = 'iframe';
+
+        function switchGcalView(mode) {
+            gcalCurrentView = mode;
+            const iframeView = document.getElementById('gcal-iframe-view');
+            const fcView = document.getElementById('gcal-fc-view');
+            const btnIframe = document.getElementById('gcalBtn-iframe');
+            const btnFc = document.getElementById('gcalBtn-fc');
+
+            const activeStyle = 'background:linear-gradient(135deg,#d68095,#c06c82); color:#fff;';
+            const inactiveStyle = 'background:transparent; color:#999;';
+
+            if (mode === 'iframe') {
+                iframeView.style.display = 'block';
+                fcView.style.display = 'none';
+                btnIframe.style.cssText += activeStyle;
+                btnFc.style.cssText += inactiveStyle;
+            } else {
+                iframeView.style.display = 'none';
+                fcView.style.display = 'block';
+                btnIframe.style.cssText += inactiveStyle;
+                btnFc.style.cssText += activeStyle;
+
+                if (!fcColorCalendar) {
+                    initColorCalendar();
+                } else {
+                    fcColorCalendar.refetchEvents();
+                }
+            }
+        }
+
+        function initColorCalendar() {
+            const el = document.getElementById('fcColorCalendar');
+            fcColorCalendar = new FullCalendar.Calendar(el, {
+                initialView: 'timeGridWeek',
+                locale: 'zh-tw',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                slotMinTime: '09:00:00',
+                slotMaxTime: '21:00:00',
+                height: 'calc(100vh - 250px)',
+                allDaySlot: false,
+                events: function(fetchInfo, successCallback) {
+                    // 從 Firebase 讀取 bookings + historicalBookings
+                    const promises = [
+                        db.collection('bookings').get(),
+                        db.collection('historicalBookings').get()
+                    ];
+                    Promise.all(promises).then(([snap1, snap2]) => {
+                        const events = [];
+                        const typeColors = {
+                            '一般預約': '#4CAF50',
+                            '新客體驗': '#f6c026',
+                            '複檢':     '#29b6f6'
+                        };
+                        [snap1, snap2].forEach(snap => {
+                            snap.forEach(doc => {
+                                const d = doc.data();
+                                if (!d.date || !d.time) return;
+                                const start = d.date + 'T' + d.time + ':00';
+                                const color = typeColors[d.type] || '#ef5350';
+                                const title = d.name + (d.name2 ? ' & ' + d.name2 : '') + ' (' + (d.type || '其他') + ')';
+                                events.push({ id: doc.id, title, start, color, extendedProps: d });
+                            });
+                        });
+                        successCallback(events);
+                    });
+                },
+                eventClick: function(info) {
+                    const d = info.event.extendedProps;
+                    alert(`👤 ${d.name}${d.name2 ? ' & ' + d.name2 : ''}\n📞 ${d.phone || '無'}\n🏷️ ${d.type || '無'}\n📝 ${d.remark || '無'}`);
+                }
+            });
+            fcColorCalendar.render();
+        }
 
         // 開啟封鎖時段面板
         function openBlockPanel(dateStr) {
