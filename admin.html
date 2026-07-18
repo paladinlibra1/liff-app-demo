@@ -115,6 +115,26 @@
             align-items: center !important;
             gap: 4px !important;
             padding: 1px 4px !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden !important;
+        }
+        #fcColorCalendar .fc-timegrid-event .fc-event-time {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            flex-shrink: 0 !important;
+            font-size: 0.78rem !important;
+            padding: 0 !important;
+        }
+        #fcColorCalendar .fc-timegrid-event .fc-event-title-container {
+            flex-grow: 1 !important;
+            overflow: hidden !important;
+        }
+        #fcColorCalendar .fc-timegrid-event .fc-event-title {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            font-size: 0.85rem !important;
+            padding: 0 !important;
         }
         .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
         .fc-event-title { font-weight: bold; }
