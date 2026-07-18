@@ -360,18 +360,18 @@
             <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
                 <div style="background:#f5f5f7; border-radius:20px; padding:4px; display:flex; gap:4px;">
                     <button id="gcalBtn-iframe" onclick="switchGcalView('iframe')"
-                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#d68095,#c06c82); color:#fff; transition:all 0.2s;">
+                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:transparent; color:#999; transition:all 0.2s;">
                         📅 Google 日曆
                     </button>
                     <button id="gcalBtn-fc" onclick="switchGcalView('fc')"
-                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:transparent; color:#999; transition:all 0.2s;">
+                        style="padding:7px 18px; border:none; border-radius:16px; font-size:0.85rem; font-weight:600; cursor:pointer; background:linear-gradient(135deg,#d68095,#c06c82); color:#fff; transition:all 0.2s;">
                         🎨 自訂日曆
                     </button>
                 </div>
             </div>
 
             <!-- iframe 版 -->
-            <div id="gcal-iframe-view" class="box-container calendar-wrapper" style="padding:0; overflow:hidden; border:none;">
+            <div id="gcal-iframe-view" class="box-container calendar-wrapper" style="display:none; padding:0; overflow:hidden; border:none;">
                 <iframe id="googleCalendarIframe"
                         src="https://calendar.google.com/calendar/embed?wkst=1&ctz=Asia%2FTaipei&mode=WEEK&showTz=0&showCalendars=0&showPrint=0&showTitle=0&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26"
                         style="border-width:0; background:#fff; display:block; width:100%; height:calc(100vh - 180px);"
@@ -380,7 +380,7 @@
             </div>
 
             <!-- FullCalendar 顏色版 -->
-            <div id="gcal-fc-view" style="display:none;">
+            <div id="gcal-fc-view" style="display:block;">
                 <!-- 圖例 -->
                 <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; font-size:0.82rem; font-weight:600;">
                     <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#4CAF50;display:inline-block;"></span>一般預約</span>
@@ -478,7 +478,10 @@
             if (selectEl.selectedIndex >= 0) {
                 document.getElementById('currentTabTitle').innerText = selectEl.options[selectEl.selectedIndex].text;
             } else {
-                if (tabName === 'gcal') document.getElementById('currentTabTitle').innerText = '📆 Google 日曆';
+                if (tabName === 'gcal') {
+                    document.getElementById('currentTabTitle').innerText = '📆 Google 日曆';
+                    if (!fcColorCalendar) initColorCalendar();
+                }
                 if (tabName === 'history') document.getElementById('currentTabTitle').innerText = '📜 歷史預約';
             }
 
@@ -1009,7 +1012,7 @@
         // 📆 Google 日曆 切換視圖
         // =====================================================================
         let fcColorCalendar = null;
-        let gcalCurrentView = 'iframe';
+        let gcalCurrentView = 'fc';
 
         function switchGcalView(mode) {
             gcalCurrentView = mode;
