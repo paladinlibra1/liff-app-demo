@@ -96,17 +96,16 @@
         .current-tab-title { font-size: 18px; font-weight: 700; color: var(--text-color); letter-spacing: 1px; margin: 0; pointer-events: none; }
         .mobile-tabs { display: none !important; }
 
-        /* FullCalendar 顏色日曆 - 強制黑字 */
-        #fcColorCalendar .fc-event,
-        #fcColorCalendar .fc-event-title,
-        #fcColorCalendar .fc-event-time,
-        #fcColorCalendar .fc-list-event-title,
-        #fcColorCalendar .fc-daygrid-event,
-        #fcColorCalendar .fc-daygrid-event .fc-event-title,
-        #fcColorCalendar .fc-timegrid-event .fc-event-title,
-        #fcColorCalendar .fc-timegrid-event .fc-event-time {
+        /* FullCalendar 顏色日曆 - 強制黑字，保留背景色 */
+        #fcColorCalendar .fc-event .fc-event-title,
+        #fcColorCalendar .fc-event .fc-event-time,
+        #fcColorCalendar .fc-list-event-title a {
             color: #1d1d1f !important;
             font-weight: 600 !important;
+        }
+        #fcColorCalendar .fc-daygrid-event,
+        #fcColorCalendar .fc-timegrid-event {
+            opacity: 1 !important;
         }
         .fc-event { cursor: pointer; padding: 2px 4px; border: none; }
         .fc-event-title { font-weight: bold; }
@@ -1030,6 +1029,7 @@
                 slotMaxTime: '21:00:00',
                 height: window.innerWidth < 600 ? 'auto' : 'calc(100vh - 250px)',
                 allDaySlot: false,
+                eventDisplay: 'block',
                 events: async function(fetchInfo, successCallback) {
                     try {
                         // 同時讀取 bookings 和 historicalBookings
@@ -1058,6 +1058,20 @@
                 eventClick: function(info) {
                     const d = info.event.extendedProps;
                     alert(`👤 ${d.name || ''}${d.name2 ? ' & ' + d.name2 : ''}\n🏷️ ${d.type || '無'}\n📞 ${d.phone || '無'}\n📝 ${d.remark || '無'}`);
+                },
+                eventDidMount: function(info) {
+                    const bg = info.event.backgroundColor;
+                    if (bg) {
+                        info.el.style.backgroundColor = bg;
+                        info.el.style.borderColor = bg;
+                        info.el.style.setProperty('background-color', bg, 'important');
+                        info.el.style.setProperty('border-color', bg, 'important');
+                        // 設定文字顏色
+                        const titleEl = info.el.querySelector('.fc-event-title');
+                        const timeEl = info.el.querySelector('.fc-event-time');
+                        if (titleEl) titleEl.style.setProperty('color', '#1d1d1f', 'important');
+                        if (timeEl) timeEl.style.setProperty('color', '#1d1d1f', 'important');
+                    }
                 }
             });
             fcColorCalendar.render();
