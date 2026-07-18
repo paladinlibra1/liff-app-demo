@@ -1062,15 +1062,18 @@
                 eventDidMount: function(info) {
                     const bg = info.event.backgroundColor;
                     if (bg) {
-                        info.el.style.backgroundColor = bg;
-                        info.el.style.borderColor = bg;
                         info.el.style.setProperty('background-color', bg, 'important');
                         info.el.style.setProperty('border-color', bg, 'important');
-                        // 設定文字顏色
-                        const titleEl = info.el.querySelector('.fc-event-title');
-                        const timeEl = info.el.querySelector('.fc-event-time');
-                        if (titleEl) titleEl.style.setProperty('color', '#1d1d1f', 'important');
-                        if (timeEl) timeEl.style.setProperty('color', '#1d1d1f', 'important');
+
+                        // 週/日視圖的內層容器
+                        const inner = info.el.querySelector('.fc-timegrid-event-harness-inset, .fc-event-main, .fc-timegrid-event');
+                        if (inner) inner.style.setProperty('background-color', bg, 'important');
+
+                        // 文字顏色
+                        ['.fc-event-title', '.fc-event-time', '.fc-event-main'].forEach(sel => {
+                            const el = info.el.querySelector(sel);
+                            if (el) el.style.setProperty('color', '#1d1d1f', 'important');
+                        });
                     }
                 }
             });
