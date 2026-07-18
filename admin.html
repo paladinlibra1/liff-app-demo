@@ -1034,8 +1034,9 @@
                                 const start = d.date + 'T' + d.time + ':00';
                                 const end = new Date(new Date(start).getTime() + 30*60000).toISOString();
                                 const color = typeColors[d.type] || '#ef5350';
+                                const textColor = d.type === '新客體驗' ? '#333' : '#fff';
                                 const title = (d.name || '') + (d.name2 ? ' & ' + d.name2 : '');
-                                events.push({ id: doc.id, title, start, end, color, extendedProps: d });
+                                events.push({ id: doc.id, title, start, end, color, textColor, extendedProps: d });
                             });
                         });
                         successCallback(events);
