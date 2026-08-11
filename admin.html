@@ -85,6 +85,7 @@
         
         table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
         th, td { padding: 16px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .remark-cell { font-size: 13px; color: #666; min-width: 250px; max-width: 350px; white-space: pre-wrap; word-wrap: break-word; }
         th { background-color: #fafafa; color: #666666; font-weight: 600; white-space: nowrap; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; } 
         tr:hover { background-color: #fdfdfd; } 
         
@@ -158,7 +159,7 @@
         
         /* 手機版 (RWD) */
         @media (max-width: 768px) {
-            body { padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); }
+            body { padding: 12px; padding-top: calc(env(safe-area-inset-top) + 20px); }
             .container { padding: 0; }
             .tab-select-container { margin-bottom: 15px; }
             .current-tab-title { font-size: 16px; }
@@ -176,10 +177,40 @@
             .controls > .quick-btn { flex: 0 1 auto; padding: 8px 14px; font-size: 13px; white-space: nowrap; border-radius: 20px; }
             .controls > input { flex: 1 1 100%; width: 100%; max-width: 100% !important; margin-top: 5px; background: white; box-sizing: border-box; }
             #list-nav-mini { display: flex !important; margin-left: auto; gap: 5px; align-items: center; }
-            th, td { white-space: nowrap !important; padding: 12px 10px; font-size: 13.5px; }
-            .box-container { overflow-x: auto; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.04); }
+            th, td { padding: 12px 10px; font-size: 13.5px; }
+            .box-container { overflow-x: visible; border-radius: 8px; box-shadow: 0 2px 15px rgba(0,0,0,0.04); }
             .action-btns { display: flex; flex-direction: row; gap: 8px; }
             .btn-sm { padding: 8px 15px !important; font-size: 13px !important; }
+
+            /* 表格卡片化：避免手機需要橫向滑動，只用上下滑動 */
+            #bookingTable, #memberTable, #historyTable { display: block; width: 100%; }
+            #bookingTable thead, #memberTable thead, #historyTable thead { display: none; }
+            #bookingTable tbody, #memberTable tbody, #historyTable tbody { display: block; width: 100%; }
+            #bookingTable tr, #memberTable tr, #historyTable tr {
+                display: block; width: 100%; box-sizing: border-box;
+                margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 10px;
+                padding: 4px 0; background: white;
+            }
+            #bookingTable td, #memberTable td, #historyTable td {
+                display: flex; align-items: center; gap: 12px;
+                text-align: right; white-space: normal;
+                padding: 10px 14px; border-bottom: 1px solid #f5f5f5;
+            }
+            #bookingTable td:not(.action-btns), #memberTable td:not(.action-btns), #historyTable td:not(.action-btns) {
+                justify-content: space-between;
+            }
+            #bookingTable td:last-child, #memberTable td:last-child, #historyTable td:last-child { border-bottom: none; }
+            #bookingTable td[data-label]::before, #memberTable td[data-label]::before, #historyTable td[data-label]::before {
+                content: attr(data-label); flex-shrink: 0; text-align: left;
+                font-size: 12px; font-weight: 600; color: #999;
+            }
+            #bookingTable td[colspan], #memberTable td[colspan], #historyTable td[colspan] {
+                display: block; text-align: center;
+            }
+            #bookingTable .action-btns, #memberTable .action-btns, #historyTable .action-btns {
+                justify-content: flex-end; flex-wrap: wrap;
+            }
+            .remark-cell { min-width: 0 !important; max-width: 100% !important; text-align: right; }
             .calendar-wrapper { padding: 5px !important; }
             #section-operating .calendar-wrapper { padding: 5px; }
             #bookingCalendar .fc-event { pointer-events: none !important; } 
@@ -784,12 +815,12 @@
             data.forEach(row => {
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><span style="color:#666;">${row.date}</span><br><span style="color:#666;">${row.time}</span></td>
-                    <td>${row.type}</td>
-                    <td><span style="color:#666;">${row.name}</span></td>
-                    <td>${row.name2 ? `<strong style="color:#666;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
-                    <td>${row.phone}</td>
-                    <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
+                    <td data-label="預約時間"><span style="color:#666;">${row.date}</span><br><span style="color:#666;">${row.time}</span></td>
+                    <td data-label="身分">${row.type}</td>
+                    <td data-label="預約人姓名"><span style="color:#666;">${row.name}</span></td>
+                    <td data-label="同行者姓名">${row.name2 ? `<strong style="color:#666;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
+                    <td data-label="聯絡電話">${row.phone}</td>
+                    <td data-label="備註"><div class="remark-cell">${row.remark || '-'}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                         <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
@@ -895,17 +926,15 @@
                 let birthdayDisplay = row.birthday || '-';
 
                 tr.innerHTML = `
-                    <td class="col-name"><span style="color:#666;">${row.name}</span></td>
-                    <td class="col-phone"><span style="color:#666;">${row.phone}</span></td>
-                    <td class="col-birthday"><span style="color:#666;">${birthdayDisplay}</span></td>
-                    <td class="col-linename"><span style="color:#666;">${row.lineName || '-'}</span></td>
-                    <td class="col-referrer"><span style="color:#666;">${row.referrer || '-'}</span></td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
-                            <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
-                            <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" style="display:none;" onclick="cancelEditRow()">取消</button>
-                        </div>
+                    <td class="col-name" data-label="會員姓名"><span style="color:#666;">${row.name}</span></td>
+                    <td class="col-phone" data-label="聯絡電話"><span style="color:#666;">${row.phone}</span></td>
+                    <td class="col-birthday" data-label="生日"><span style="color:#666;">${birthdayDisplay}</span></td>
+                    <td class="col-linename" data-label="LINE 暱稱"><span style="color:#666;">${row.lineName || '-'}</span></td>
+                    <td class="col-referrer" data-label="介紹人"><span style="color:#666;">${row.referrer || '-'}</span></td>
+                    <td class="action-btns">
+                        <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
+                        <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
+                        <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" style="display:none;" onclick="cancelEditRow()">取消</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1359,13 +1388,13 @@
 
             dataToRender.forEach(row => {
                 let tr = document.createElement('tr');
-                tr.innerHTML = `                    
-                    <td><span style="color:#666;">${row.date}</span><br><span style="color:#666;">${row.time}</span></td>
-                    <td><span style="color:#666;">${row.type}</span></td>
-                    <td><span style="color:#666;">${row.name}</span></td>
-                    <td><span style="color:#666;">${row.name2 ? row.name2 : '-'}</span></td>
-                    <td><span style="color:#666;">${row.phone}</span></td>
-                    <td><div style="font-size:13px; color:#666; min-width:250px; max-width:350px; white-space:pre-wrap; word-wrap:break-word;">${row.remark || '-'}</div></td>
+                tr.innerHTML = `
+                    <td data-label="預約時間"><span style="color:#666;">${row.date}</span><br><span style="color:#666;">${row.time}</span></td>
+                    <td data-label="身分"><span style="color:#666;">${row.type}</span></td>
+                    <td data-label="預約人姓名"><span style="color:#666;">${row.name}</span></td>
+                    <td data-label="同行者姓名"><span style="color:#666;">${row.name2 ? row.name2 : '-'}</span></td>
+                    <td data-label="聯絡電話"><span style="color:#666;">${row.phone}</span></td>
+                    <td data-label="備註"><div class="remark-cell">${row.remark || '-'}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                     </td>
