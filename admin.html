@@ -2,8 +2,18 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Colorfashion 麻豆店 後台管理</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest-admin.json">
+    <meta name="theme-color" content="#2c2c2c">
+    <link rel="icon" href="icons/admin-icon-192.png">
+    <link rel="apple-touch-icon" href="icons/admin-apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CF 後台">
+
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
@@ -1549,10 +1559,16 @@
                 loadBookingData('auto');
                 
                 // 如果您剛好停在會員清單或歷史紀錄，也順便幫您更新
-                loadMemberData(false); 
+                loadMemberData(false);
                 loadHistoryData(false);
             }
         });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').catch(e => console.log('SW 註冊失敗', e));
+            });
+        }
     </script>
 </body>
 </html>
