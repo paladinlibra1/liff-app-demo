@@ -387,6 +387,9 @@
                     <button class="btn btn-cancel" onclick="saveBlockedTimes()" style="flex:1;">💾 儲存封鎖時段</button>
                     <button class="btn btn-outline" onclick="clearBlockedTimes()" style="flex:1;">🗑️ 清除所有封鎖</button>
                 </div>
+                <div style="margin-top:10px; padding-top:14px; border-top:1px dashed #ffcdd2;">
+                    <button class="btn" onclick="setDayAsClosed()" style="width:100%; background:#c62828; color:#fff;">🔴 將此日設為公休日</button>
+                </div>
             </div>
         </div>
 
@@ -1238,7 +1241,24 @@
             }
         }
 
-        let tempSelectedDates = []; 
+        async function setDayAsClosed() {
+            if (!currentBlockDate || !confirm(`確定要將 ${currentBlockDate} 設為公休日嗎？當天的營業狀態與封鎖時段設定都會被移除。`)) return;
+            try {
+                document.getElementById('loading').style.display = 'block';
+                await db.collection("operatingDays").doc(currentBlockDate).delete();
+                allOperatingDays = allOperatingDays.filter(d => d !== currentBlockDate);
+                delete allBlockedTimes[currentBlockDate];
+                fcOperatingCalendar.refetchEvents();
+                closeBlockPanel();
+                alert(`✅ ${currentBlockDate} 已設為公休日！`);
+            } catch (err) {
+                alert("設定失敗：" + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        let tempSelectedDates = [];
         function initOperatingCalendar() {
             const el = document.getElementById('operatingCalendar');
             fcOperatingCalendar = new FullCalendar.Calendar(el, {
