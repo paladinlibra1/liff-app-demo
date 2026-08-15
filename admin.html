@@ -1097,6 +1097,8 @@
             document.getElementById('memberTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }        
 
+        let editRowGuardianState = null;
+
         function toggleEditRow(index, lineId) {
             const row = document.getElementById(`member-row-${index}`);
             if (!row) return;
@@ -1110,34 +1112,88 @@
             const bdayCell = row.querySelector('.col-birthday');
             const lineNameCell = row.querySelector('.col-linename');
             const referrerCell = row.querySelector('.col-referrer');
-        
+            const guardianCell = row.querySelector('.col-guardian');
+
             const currentName = nameCell.innerText.trim();
             const currentPhone = phoneCell.innerText.trim();
             let currentBday = bdayCell.innerText.trim(); if (currentBday === '-' || currentBday === 'undefined') currentBday = '';
             let currentLineName = lineNameCell.innerText.trim(); if (currentLineName === '-') currentLineName = '';
             let currentReferrer = referrerCell.innerText.trim(); if (currentReferrer === '-' || currentReferrer === '(無)') currentReferrer = '';
-        
+
+            const member = allMembers.find(m => m.lineId === lineId) || {};
+            editRowGuardianState = { lineId: member.guardianLineId || '', name: member.guardianName || '' };
+
             nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:90px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             lineNameCell.innerHTML = `<input type="text" id="edit-linename-${index}" value="${currentLineName}" placeholder="自訂暱稱" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             referrerCell.innerHTML = `<input type="text" id="edit-referrer-${index}" value="${currentReferrer}" placeholder="無" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
-        
+            guardianCell.innerHTML = `
+                <div style="position:relative;">
+                    <input type="text" id="edit-guardian-search-${index}" placeholder="輸入姓名或電話搜尋..." autocomplete="off" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;" oninput="searchGuardianCandidatesForEdit(${index}, this.value)">
+                    <div id="edit-guardian-results-${index}" style="display:none; position:absolute; z-index:20; left:0; top:100%; background:#fff; border:1px solid #eee; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.12); max-height:180px; overflow-y:auto; width:200px;"></div>
+                    <div id="edit-guardian-selected-${index}" style="display:${member.guardianName ? 'flex' : 'none'}; margin-top:4px; align-items:center; gap:4px; font-size:0.78rem; color:#555;">
+                        <span id="edit-guardian-selected-text-${index}">${member.guardianName ? `👨‍👩‍👧 ${member.guardianName}` : ''}</span>
+                        <button type="button" onclick="clearGuardianSelectionForEdit(${index})" style="border:none; background:transparent; color:#999; cursor:pointer;">✕</button>
+                    </div>
+                </div>
+            `;
+
             editBtn.style.display = 'none'; saveBtn.style.display = 'inline-block'; cancelBtn.style.display = 'inline-block';
         }
 
-        function cancelEditRow() { renderMemberTable(); }
-        
+        function cancelEditRow() { editRowGuardianState = null; renderMemberTable(); }
+
+        // 修改會員時重新搜尋／選擇監護人：只列出「已綁定真實 LINE」的會員
+        function searchGuardianCandidatesForEdit(index, val) {
+            val = val.trim().toLowerCase();
+            const resultBox = document.getElementById(`edit-guardian-results-${index}`);
+            if (!val) { resultBox.style.display = 'none'; resultBox.innerHTML = ''; return; }
+
+            const matches = allMembers.filter(m =>
+                !m.isManual &&
+                ((m.name && m.name.toLowerCase().includes(val)) || (m.phone && m.phone.includes(val)))
+            ).slice(0, 8);
+
+            if (matches.length === 0) {
+                resultBox.innerHTML = '<div style="padding:8px 10px; color:#aaa; font-size:0.8rem;">查無已綁定 LINE 的會員</div>';
+                resultBox.style.display = 'block';
+                return;
+            }
+
+            resultBox.innerHTML = matches.map(m => `
+                <div onclick="selectGuardianForEdit(${index}, '${m.lineId}', '${(m.name || '').replace(/'/g, "\\'")}')" style="padding:8px 10px; cursor:pointer; border-bottom:1px solid #f5f5f5; font-size:0.8rem; display:flex; justify-content:space-between; gap:8px;">
+                    <span>${m.name}</span><span style="color:#aaa;">${m.phone || ''}</span>
+                </div>
+            `).join('');
+            resultBox.style.display = 'block';
+        }
+
+        function selectGuardianForEdit(index, lineId, name) {
+            editRowGuardianState = { lineId, name };
+            document.getElementById(`edit-guardian-search-${index}`).value = '';
+            document.getElementById(`edit-guardian-results-${index}`).style.display = 'none';
+            document.getElementById(`edit-guardian-selected-text-${index}`).textContent = `👨‍👩‍👧 ${name}`;
+            document.getElementById(`edit-guardian-selected-${index}`).style.display = 'flex';
+        }
+
+        function clearGuardianSelectionForEdit(index) {
+            editRowGuardianState = { lineId: '', name: '' };
+            document.getElementById(`edit-guardian-selected-${index}`).style.display = 'none';
+        }
+
         async function saveRow(index, lineId) {
             const newName = document.getElementById(`edit-name-${index}`).value.trim();
             const newPhone = document.getElementById(`edit-phone-${index}`).value.trim();
             const newBday = document.getElementById(`edit-birthday-${index}`).value;
             const newLineName = document.getElementById(`edit-linename-${index}`).value.trim();
-            const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim(); 
-        
+            const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim();
+            const newGuardianLineId = editRowGuardianState ? editRowGuardianState.lineId : '';
+            const newGuardianName = editRowGuardianState ? editRowGuardianState.name : '';
+
             if (!newName || !newPhone) { alert("姓名與電話為必填項！"); return; }
             document.getElementById('loading').style.display = 'block';
-        
+
             try {
                 // ⚡ Firebase 瞬間更新
                 await db.collection("members").doc(lineId).update({
@@ -1145,9 +1201,12 @@
                     phone: newPhone,
                     birthday: newBday,
                     lineName: newLineName,
-                    referrer: newReferrer
+                    referrer: newReferrer,
+                    guardianLineId: newGuardianLineId,
+                    guardianName: newGuardianName
                 });
 
+                editRowGuardianState = null;
                 alert("✅ 會員資料更新成功！");
                 await loadMemberData();
             } catch (e) {
