@@ -489,8 +489,10 @@
                 try {
                     const memberSnap = await db.collection("members").where("phone", "==", currentPhone).get();
                     if (!memberSnap.empty) {
-                        currentLineId = memberSnap.docs[0].id; // 成功抓回客人的 LINE ID
-                        document.getElementById('lineId').value = currentLineId; 
+                        const memberData = memberSnap.docs[0].data();
+                        // 未成年會員（手動新增、無自己的 LINE）已綁定監護人時，通知改發給監護人的 LINE
+                        currentLineId = memberData.guardianLineId || memberSnap.docs[0].id;
+                        document.getElementById('lineId').value = currentLineId;
                     }
                 } catch(e) { console.log("尋找客人LINE ID失敗", e); }
             }
@@ -527,8 +529,10 @@
 
                         let existingData = doc.data();
 
-                        // 條件 A：LINE ID 一樣
-                        let isSameLine = (formData.lineId && formData.lineId !== "" && existingData.lineId === formData.lineId);
+                        // 條件 A：LINE ID 一樣，且姓名也一樣（同一個人重複預約）
+                        // 註：未成年會員綁定監護人 LINE 後，formData.lineId 會等於監護人的 LINE ID，
+                        // 但姓名是小孩自己的名字，所以不會跟監護人本人的預約互相卡住。
+                        let isSameLine = (formData.lineId && formData.lineId !== "" && existingData.lineId === formData.lineId && existingData.name === formData.name);
                         // 條件 B：姓名 + 電話 完全一樣
                         let isSamePerson = (existingData.name === formData.name && existingData.phone === formData.phone);
                         if (isSameLine || isSamePerson) alreadyBooked = true;

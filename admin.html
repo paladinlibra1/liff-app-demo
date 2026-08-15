@@ -332,9 +332,12 @@
                 </button>
             </div> -->
             <div class="header">
-                <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">  
+                <div class="top-action-bar" style="display: flex; gap: 10px; width: 100%;">
                     <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="loadMemberData(true)">
                         <i class="fas fa-sync-alt"></i> 重新整理
+                    </button>
+                    <button class="btn btn-spa-outline" style="flex: 1; font-weight: bold; border-radius: 20px; cursor: pointer;" onclick="openAddMemberPanel()">
+                        <i class="fas fa-user-plus"></i> 新增會員
                     </button>
                 </div>
             </div>
@@ -342,6 +345,33 @@
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
                 <div style="color:#888; font-size:14px; margin-left:10px;">總人數：<span id="memberCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 人</div>
             </div>
+
+            <!-- 新增會員面板 -->
+            <div id="addMemberPanel" style="display:none; margin-bottom:16px; background:#fdf2f5; border:1.5px solid #fae1e6; border-radius:14px; padding:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <strong style="color:#d68095;">➕ 新增會員</strong>
+                    <button onclick="closeAddMemberPanel()" style="border:none; background:transparent; font-size:1.2rem; cursor:pointer; color:#999;">✕</button>
+                </div>
+                <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">沒有 LINE 帳號的會員（例如未成年子女）可用此方式手動建檔。之後店家可在「代客預約」畫面用姓名或電話搜尋，幫他/她安排預約。</p>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                    <input type="text" id="newMemberName" placeholder="姓名 *" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="text" id="newMemberPhone" placeholder="電話 *" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="date" id="newMemberBirthday" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="text" id="newMemberLineName" placeholder="LINE 暱稱／備註（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="text" id="newMemberReferrer" placeholder="介紹人（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div style="margin-bottom:14px; padding-top:12px; border-top:1px dashed #fae1e6; position:relative;">
+                    <label style="font-size:0.85rem; color:#d68095; font-weight:bold; display:block; margin-bottom:6px;">👨‍👩‍👧 監護人（未成年無 LINE 時，從既有會員中選一位監護人綁定）</label>
+                    <input type="text" id="newMemberGuardianSearch" placeholder="輸入監護人姓名或電話搜尋..." autocomplete="off" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;" oninput="searchGuardianCandidates(this.value)">
+                    <div id="newMemberGuardianResults" style="display:none; position:absolute; z-index:20; left:0; right:0; background:#fff; border:1px solid #eee; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.12); max-height:200px; overflow-y:auto;"></div>
+                    <div id="newMemberGuardianSelected" style="display:none; margin-top:8px; padding:8px 12px; background:#fff; border:1px solid #d68095; border-radius:8px; font-size:0.85rem; align-items:center; justify-content:space-between;">
+                        <span id="newMemberGuardianSelectedText" style="color:#555;"></span>
+                        <button type="button" onclick="clearGuardianSelection()" style="border:none; background:transparent; color:#999; cursor:pointer; font-size:1rem;">✕</button>
+                    </div>
+                </div>
+                <button class="btn btn-cancel" onclick="saveNewMember()" style="width:100%;">💾 儲存新會員</button>
+            </div>
+
             <div class="box-container" style="overflow-x: auto;">
                 <table id="memberTable">
                     <thead>
@@ -351,7 +381,8 @@
                             <th>生日</th>
                             <th>LINE 暱稱</th>
                             <th>介紹人</th>
-                            <th>操作</th> 
+                            <th>監護人</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="memberTableBody"></tbody>
@@ -892,6 +923,106 @@
             }
         }
 
+        let selectedGuardian = null;
+
+        function openAddMemberPanel() {
+            document.getElementById('newMemberName').value = '';
+            document.getElementById('newMemberPhone').value = '';
+            document.getElementById('newMemberBirthday').value = '';
+            document.getElementById('newMemberLineName').value = '';
+            document.getElementById('newMemberReferrer').value = '';
+            document.getElementById('newMemberGuardianSearch').value = '';
+            document.getElementById('newMemberGuardianResults').style.display = 'none';
+            clearGuardianSelection();
+            document.getElementById('addMemberPanel').style.display = 'block';
+            document.getElementById('addMemberPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeAddMemberPanel() {
+            document.getElementById('addMemberPanel').style.display = 'none';
+        }
+
+        // 監護人搜尋：只列出「已綁定真實 LINE」的會員（手動新增、尚無 LINE 的會員不能當監護人）
+        function searchGuardianCandidates(val) {
+            val = val.trim().toLowerCase();
+            const resultBox = document.getElementById('newMemberGuardianResults');
+            if (!val) { resultBox.style.display = 'none'; resultBox.innerHTML = ''; return; }
+
+            const matches = allMembers.filter(m =>
+                !m.isManual &&
+                ((m.name && m.name.toLowerCase().includes(val)) || (m.phone && m.phone.includes(val)))
+            ).slice(0, 8);
+
+            if (matches.length === 0) {
+                resultBox.innerHTML = '<div style="padding:10px 12px; color:#aaa; font-size:0.85rem;">查無已綁定 LINE 的會員</div>';
+                resultBox.style.display = 'block';
+                return;
+            }
+
+            resultBox.innerHTML = matches.map(m => `
+                <div onclick="selectGuardian('${m.lineId}', '${(m.name || '').replace(/'/g, "\\'")}')" style="padding:10px 12px; cursor:pointer; border-bottom:1px solid #f5f5f5; display:flex; justify-content:space-between; gap:10px;">
+                    <span>${m.name}</span><span style="color:#aaa; font-size:0.85rem;">${m.phone || ''}</span>
+                </div>
+            `).join('');
+            resultBox.style.display = 'block';
+        }
+
+        function selectGuardian(lineId, name) {
+            selectedGuardian = { lineId, name };
+            document.getElementById('newMemberGuardianSearch').value = '';
+            document.getElementById('newMemberGuardianResults').style.display = 'none';
+            document.getElementById('newMemberGuardianSelectedText').textContent = `已選擇監護人：${name}`;
+            const selectedBox = document.getElementById('newMemberGuardianSelected');
+            selectedBox.style.display = 'flex';
+        }
+
+        function clearGuardianSelection() {
+            selectedGuardian = null;
+            document.getElementById('newMemberGuardianSelected').style.display = 'none';
+        }
+
+        async function saveNewMember() {
+            const name = document.getElementById('newMemberName').value.trim();
+            const phone = document.getElementById('newMemberPhone').value.trim();
+            const birthday = document.getElementById('newMemberBirthday').value;
+            const lineName = document.getElementById('newMemberLineName').value.trim();
+            const referrer = document.getElementById('newMemberReferrer').value.trim();
+
+            if (!name || !phone) { alert("姓名與電話為必填項！"); return; }
+
+            try {
+                document.getElementById('loading').style.display = 'block';
+
+                const dupSnap = await db.collection("members").where("phone", "==", phone).get();
+                if (!dupSnap.empty && !confirm(`⚠️ 電話 ${phone} 已經有一筆會員資料（${dupSnap.docs[0].data().name}），確定仍要新增另一筆嗎？`)) {
+                    return;
+                }
+
+                const manualId = "manual_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+                await db.collection("members").doc(manualId).set({
+                    lineId: manualId,
+                    isManual: true,
+                    lineName: lineName,
+                    name: name,
+                    phone: phone,
+                    birthday: birthday,
+                    referrer: referrer,
+                    guardianLineId: selectedGuardian ? selectedGuardian.lineId : "",
+                    guardianName: selectedGuardian ? selectedGuardian.name : "",
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                closeAddMemberPanel();
+                await loadMemberData(true);
+                const guardianMsg = selectedGuardian ? `\n已綁定監護人「${selectedGuardian.name}」，相關通知將發送給監護人的 LINE。` : `\n此帳號沒有 LINE，店家可在「代客預約」畫面用姓名或電話搜尋，幫他/她安排預約。`;
+                alert(`✅ 已新增會員「${name}」！${guardianMsg}`);
+            } catch (err) {
+                alert("新增失敗：" + err.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
         let currentFilteredMembers = [];
         let currentMemberPage = 1; 
         const memberItemsPerPage = 20; 
@@ -912,7 +1043,7 @@
             tbody.innerHTML = '';
             
             if (currentFilteredMembers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
 
@@ -929,15 +1060,17 @@
                 let birthdayDisplay = row.birthday || '-';
 
                 tr.innerHTML = `
-                    <td class="col-name" data-label="會員姓名"><span style="color:#666;">${row.name}</span></td>
+                    <td class="col-name" data-label="會員姓名"><span style="color:#666;">${row.name}${row.isManual ? ' <span style="font-size:11px; color:#d68095; background:#fdf2f5; padding:1px 6px; border-radius:10px;">手動</span>' : ''}</span></td>
                     <td class="col-phone" data-label="聯絡電話"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday" data-label="生日"><span style="color:#666;">${birthdayDisplay}</span></td>
                     <td class="col-linename" data-label="LINE 暱稱"><span style="color:#666;">${row.lineName || '-'}</span></td>
                     <td class="col-referrer" data-label="介紹人"><span style="color:#666;">${row.referrer || '-'}</span></td>
+                    <td class="col-guardian" data-label="監護人"><span style="color:#666;">${row.guardianName ? `👨‍👩‍👧 ${row.guardianName}` : '-'}</span></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
                         <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
                         <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" style="display:none;" onclick="cancelEditRow()">取消</button>
+                        ${row.isManual ? `<button class="btn btn-sm btn-cancel" id="delete-btn-${absIndex}" onclick="deleteManualMember('${row.lineId}', '${(row.name || '').replace(/'/g, "\\'")}')">🗑️ 刪除</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -946,7 +1079,7 @@
             if (totalPages > 1) {
                 let pageRow = document.createElement('tr');
                 pageRow.innerHTML = `
-                    <td colspan="6" style="text-align:center; padding: 15px; background: #fcfcfc;">
+                    <td colspan="7" style="text-align:center; padding: 15px; background: #fcfcfc;">
                         <div style="display:flex; justify-content:center; align-items:center; gap:20px;">
                             <button class="btn btn-outline" style="padding:6px 15px; border-radius:6px;" onclick="changeMemberPage(-1)" ${currentMemberPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>◀ 上一頁</button>
                             <span style="font-size:14px; color:#555; font-weight:bold;">第 ${currentMemberPage} 頁 / 共 ${totalPages} 頁</span>
@@ -1016,9 +1149,27 @@
                 });
 
                 alert("✅ 會員資料更新成功！");
-                await loadMemberData(); 
+                await loadMemberData();
             } catch (e) {
                 alert("發生系統錯誤：" + e.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // 刪除手動新增的會員（例如小孩後來有了自己的 LINE，改用正式綁定後，清掉舊的手動資料）
+        async function deleteManualMember(lineId, name) {
+            if (!confirm(`確定要刪除手動新增的會員「${name}」嗎？\n\n⚠️ 只會刪除會員資料，過去的預約歷史紀錄不會被刪除或變更。\n若他已經改用自己的 LINE 重新綁定會員，請確認新的會員資料已經存在後再刪除這筆舊資料。`)) return;
+
+            try {
+                document.getElementById('loading').style.display = 'block';
+                await db.collection("members").doc(lineId).delete();
+                allMembers = allMembers.filter(m => m.lineId !== lineId);
+                document.getElementById('memberCount').innerText = allMembers.length;
+                filterMemberTable();
+                alert(`✅ 已刪除「${name}」的手動會員資料。`);
+            } catch (e) {
+                alert("刪除失敗：" + e.message);
+            } finally {
                 document.getElementById('loading').style.display = 'none';
             }
         }
