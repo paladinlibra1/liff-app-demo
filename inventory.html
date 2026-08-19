@@ -189,7 +189,6 @@
 <div class="sticky-bar" id="stocktakeBar" style="display:flex;">
     <div class="count-text" id="draftCountText">已列入 0 項商品</div>
     <input type="date" id="stocktakeDate">
-    <input type="text" id="stocktakeStaff" placeholder="盤點人姓名" style="width:110px;">
     <button class="btn btn-primary" onclick="submitStocktake()">送出本次盤點</button>
 </div>
 
@@ -491,8 +490,6 @@
 
     async function submitStocktake() {
         const date = document.getElementById('stocktakeDate').value || new Date().toISOString().slice(0, 10);
-        const staff = document.getElementById('stocktakeStaff').value.trim();
-        if (!staff) { alert('請輸入盤點人姓名'); return; }
 
         const items = buildFullStocktakeItems();
         if (!items.length) { alert('系統目前沒有商品可供盤點'); return; }
@@ -510,10 +507,9 @@
                 }
             }
             await writeBatch.commit();
-            await stocktakesCol.add({ date, staff, itemCount: items.length, totalDiff, items, createdAt: new Date() });
+            await stocktakesCol.add({ date, itemCount: items.length, totalDiff, items, createdAt: new Date() });
 
             draft = {};
-            document.getElementById('stocktakeStaff').value = '';
             updateDraftBar();
             showToast('已送出本次盤點');
             await loadAll();
@@ -712,7 +708,7 @@
                 </tr>`).join('');
             return `<div class="history-item" onclick="toggleHistoryDetail('${r.id}')">
                 <div class="row1">
-                    <span>${r.date} · ${r.staff} · ${r.itemCount} 項</span>
+                    <span>${r.date} · ${r.itemCount} 項</span>
                     <span class="diff-tag" style="color:${r.totalDiff > 0 ? '#10b981' : (r.totalDiff < 0 ? '#d64545' : '#999')}">總差異 ${r.totalDiff > 0 ? '+' + r.totalDiff : r.totalDiff}</span>
                 </div>
                 <div class="history-detail" id="detail-${r.id}">
