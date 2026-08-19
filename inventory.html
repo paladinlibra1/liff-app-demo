@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Colorfashion 庫存盤點</title>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c2c2c;
+            --primary-dark: #000000;
+            --bg-color: #f8f8f9;
+            --card-bg: #ffffff;
+            --text-color: #2b2b2b;
+            --border-color: #e5e5e5;
+            --accent: #f89fa1;
+            --accent-light: #fdf2f5;
+            --blue: #3b82f6;
+            --blue-light: #eaf2ff;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg-color); color: var(--text-color); padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+        .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+        h1 { font-size: 20px; margin: 0 0 16px; }
+
+        .tabs { display: inline-flex; gap: 4px; margin-bottom: 20px; background-color: #eeeeee; padding: 6px; border-radius: 14px; overflow-x: auto; white-space: nowrap; max-width: 100%; }
+        .tab-btn { background: transparent; border: none; font-size: 14px; font-weight: 600; color: #71717a; cursor: pointer; padding: 10px 18px; border-radius: 10px; transition: all .2s; }
+        .tab-btn.active { background-color: white; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .type-toggle { display: flex; gap: 10px; margin-bottom: 18px; }
+        .type-btn { flex: 0 0 auto; padding: 10px 22px; border-radius: 10px; border: 1px solid var(--border-color); background: white; font-size: 15px; font-weight: 600; color: #555; cursor: pointer; }
+        .type-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+
+        .section-label { font-size: 13px; color: #888; margin: 4px 0 8px; }
+
+        .items-list { display: flex; flex-direction: column; gap: 10px; }
+        .series-header { position: sticky; top: 0; background: var(--bg-color); padding: 10px 2px 4px; font-size: 13px; font-weight: 700; color: var(--blue); z-index: 5; }
+        .item-panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; }
+        .item-panel .code { font-weight: 700; font-size: 15px; }
+        .item-panel .name { font-size: 13px; color: #666; margin-top: 2px; margin-bottom: 10px; }
+
+        .batch-row { display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .batch-row .expiry-badge { font-size: 12px; padding: 3px 8px; border-radius: 12px; background: #eee; color: #666; white-space: nowrap; }
+        .batch-row .expiry-badge.warn { background: #fff3cd; color: #946200; }
+        .batch-row .expiry-badge.danger { background: #fde2e2; color: #b02a2a; }
+        .batch-row label { font-size: 12px; color: #888; }
+        .batch-row .qty-field { display: flex; align-items: center; gap: 4px; }
+        .batch-row input[type=number] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; width: 90px; min-height: 40px; }
+        .batch-row input[type=date] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; width: 140px; min-height: 40px; }
+        .batch-row .qty-field input[type=number] { font-weight: 700; }
+        .batch-row .diff { font-weight: 700; font-size: 13px; min-width: 46px; text-align: center; }
+        .batch-row .diff.pos { color: #10b981; }
+        .batch-row .diff.neg { color: #d64545; }
+        .batch-row .diff.zero { color: #999; }
+        .batch-row .remove-batch { margin-left: auto; background: none; border: none; color: #bbb; cursor: pointer; font-size: 20px; padding: 8px; min-width: 40px; min-height: 40px; }
+
+        .btn { border: none; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-outline { background: white; border: 1px solid var(--border-color); color: #555; }
+        .btn-outline:hover { background: #f5f5f5; }
+        .btn-danger { background: #d64545; color: white; }
+        .btn-add-batch { background: var(--accent-light); color: #c76a70; border: 1px dashed var(--accent); font-size: 13px; padding: 8px 14px; }
+
+        .sticky-bar { position: fixed; left: 0; right: 0; bottom: 0; background: white; border-top: 1px solid var(--border-color); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 -4px 12px rgba(0,0,0,.05); z-index: 20; }
+        .sticky-bar input { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; min-height: 40px; }
+        .sticky-bar .count-text { font-size: 13px; color: #666; margin-right: auto; }
+
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13.5px; }
+        th { background: #fafafa; color: #666; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+        .action-btns { display: flex; gap: 6px; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+        .box-container { background: transparent; overflow-x: auto; }
+        .top-action-bar { margin-bottom: 14px; }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; border-radius: 14px; padding: 22px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+        .modal-box h3 { margin: 0 0 16px; font-size: 16px; }
+        .form-row { margin-bottom: 12px; }
+        .form-row label { display: block; font-size: 13px; color: #666; margin-bottom: 4px; }
+        .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+        .history-item { background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer; }
+        .history-item .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .history-item .row1 .diff-tag { font-weight: 700; }
+        .history-detail { margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 10px; display: none; }
+        .history-detail.open { display: block; }
+        .history-detail table { font-size: 12.5px; }
+
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--primary-dark); color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; z-index: 100; opacity: 0; transition: opacity .3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+
+        .empty-hint { color: #aaa; font-size: 14px; padding: 30px 0; text-align: center; }
+
+        @media (max-width: 600px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead { display: none; }
+            tr { border: 1px solid var(--border-color); border-radius: 10px; margin-bottom: 10px; padding: 4px 0; }
+            td { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid #f5f5f5; }
+            td:last-child { border-bottom: none; }
+            td[data-label]::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: #999; }
+
+            .container { padding: 16px 12px; }
+            .type-toggle { gap: 8px; }
+            .type-btn { flex: 1 1 0; text-align: center; padding: 12px 10px; }
+            .items-list { gap: 8px; }
+            .item-panel { padding: 10px; }
+            .batch-row { padding: 10px; gap: 8px; }
+            .batch-row input[type=date] { width: 132px; }
+            .batch-row input[type=number] { width: 78px; }
+
+            .sticky-bar { flex-direction: column; align-items: stretch; }
+            .sticky-bar input, .sticky-bar button { width: 100%; }
+            .sticky-bar .count-text { margin-right: 0; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📦 庫存盤點</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" id="tab-stocktake" onclick="switchTab('stocktake')">盤點作業</button>
+        <button class="tab-btn" id="tab-items" onclick="switchTab('items')">商品管理</button>
+        <button class="tab-btn" id="tab-history" onclick="switchTab('history')">盤點歷史</button>
+    </div>
+
+    <!-- 盤點作業 -->
+    <div class="section active" id="section-stocktake">
+        <div class="type-toggle">
+            <button class="type-btn active" data-type="產品" onclick="selectType('產品')">選產品</button>
+            <button class="type-btn" data-type="護理品" onclick="selectType('護理品')">選護理品</button>
+        </div>
+
+        <div class="section-label">全部品項（依系列、代碼排列，直接輸入實際數量）：</div>
+        <div class="items-list" id="itemsGrid"></div>
+    </div>
+
+    <!-- 商品管理 -->
+    <div class="section" id="section-items">
+        <div class="top-action-bar">
+            <button class="btn btn-primary" onclick="openItemForm()">＋ 新增商品</button>
+        </div>
+        <div class="box-container">
+            <table id="itemsTable">
+                <thead>
+                    <tr><th>代碼</th><th>名稱</th><th>類型</th><th>分類</th><th>單位</th><th>會員價</th><th>PV</th><th>狀態</th><th>操作</th></tr>
+                </thead>
+                <tbody id="itemsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 盤點歷史 -->
+    <div class="section" id="section-history">
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<!-- 盤點作業 底部固定列 -->
+<div class="sticky-bar" id="stocktakeBar" style="display:flex;">
+    <div class="count-text" id="draftCountText">已列入 0 項商品</div>
+    <input type="date" id="stocktakeDate">
+    <input type="text" id="stocktakeStaff" placeholder="盤點人姓名" style="width:110px;">
+    <button class="btn btn-primary" onclick="submitStocktake()">送出本次盤點</button>
+</div>
+
+<!-- 商品新增/編輯 Modal -->
+<div class="modal-overlay" id="itemModal">
+    <div class="modal-box">
+        <h3 id="itemModalTitle">新增商品</h3>
+        <input type="hidden" id="itemFormId">
+        <div class="form-row"><label>代碼</label><input type="text" id="itemFormCode" placeholder="例如 AB90"></div>
+        <div class="form-row"><label>名稱</label><input type="text" id="itemFormName"></div>
+        <div class="form-row"><label>類型</label>
+            <select id="itemFormType"><option value="產品">產品</option><option value="護理品">護理品</option></select>
+        </div>
+        <div class="form-row"><label>分類（肌膚類型，選填）</label><input type="text" id="itemFormCategory" placeholder="例如 輕齡肌膚"></div>
+        <div class="form-row"><label>單位</label><input type="text" id="itemFormUnit" placeholder="例如 瓶、盒"></div>
+        <div class="form-row"><label>會員價</label><input type="number" id="itemFormPrice"></div>
+        <div class="form-row"><label>PV</label><input type="number" id="itemFormPv"></div>
+        <div class="form-row"><label>備註</label><textarea id="itemFormNote" rows="2"></textarea></div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeItemForm()">取消</button>
+            <button class="btn btn-primary" onclick="saveItemForm()">儲存</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    firebase.initializeApp(STORE_CONFIG.firebase);
+    const db = firebase.firestore();
+    const itemsCol = db.collection("inventoryItems");
+    const batchesCol = db.collection("inventoryBatches");
+    const stocktakesCol = db.collection("inventoryStocktakes");
+
+    let allItems = [];
+    let allBatches = [];
+    let batchesByItem = {};
+    let currentType = "產品";
+    // draft: { [itemId]: { batches: { [batchKeyId]: {batchId, expiryDate, bookQty, actualQty, isNewBatch, note} }, edited: bool } }
+    let draft = {};
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(`tab-${name}`).classList.add('active');
+        document.getElementById(`section-${name}`).classList.add('active');
+        document.getElementById('stocktakeBar').style.display = name === 'stocktake' ? 'flex' : 'none';
+        if (name === 'items') renderItemsTable();
+        if (name === 'history') loadHistory();
+    }
+
+    async function loadAll() {
+        const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get()]);
+        allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        batchesByItem = {};
+        allBatches.forEach(b => {
+            if (!batchesByItem[b.itemId]) batchesByItem[b.itemId] = [];
+            batchesByItem[b.itemId].push(b);
+        });
+        Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
+        initDraftForAllItems();
+        renderItemsGrid();
+        updateDraftBar();
+    }
+
+    function selectType(type) {
+        currentType = type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+        renderItemsGrid();
+    }
+
+    function activeItemsForType() {
+        return allItems.filter(it => it.type === currentType && it.active !== false);
+    }
+
+    // 分類（系列）顯示順序：依實際系列名稱排列，未列出的分類排在最後
+    const CATEGORY_ORDER = ['輕齡肌膚', '熟齡肌膚', '斑點肌膚', '乾燥細紋肌膚', '敏感肌膚', '通用肌膚', '痘痘粉刺肌膚', '營養系列', '紅顏系列', '調理系列', '機能系列', '日常生活系列'];
+    function categoryRank(category) {
+        const idx = CATEGORY_ORDER.indexOf(category);
+        return idx === -1 ? CATEGORY_ORDER.length : idx;
+    }
+    function itemSeriesName(item) {
+        return item.category || '未分類';
+    }
+
+    // 讓每項商品一載入就直接可輸入實際數量，不需要先點開
+    function initDraftForAllItems() {
+        allItems.filter(it => it.active !== false).forEach(item => {
+            if (draft[item.id]) return;
+            const existing = batchesByItem[item.id] || [];
+            const batches = {};
+            existing.forEach(b => {
+                batches[b.id] = { batchId: b.id, expiryDate: b.expiryDate || '', bookQty: Number(b.qty) || 0, actualQty: Number(b.qty) || 0, isNewBatch: false, note: b.note || '' };
+            });
+            if (!existing.length) {
+                const key = 'new_' + item.id;
+                batches[key] = { batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, isNewBatch: true, note: '' };
+            }
+            draft[item.id] = { item, batches, edited: false };
+        });
+    }
+
+    function renderItemsGrid() {
+        const grid = document.getElementById('itemsGrid');
+        const items = activeItemsForType()
+            .sort((a, b) => {
+                const rankDiff = categoryRank(a.category) - categoryRank(b.category);
+                if (rankDiff !== 0) return rankDiff;
+                return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
+            });
+
+        if (!items.length) {
+            grid.innerHTML = '<div class="empty-hint">此類型尚無商品</div>';
+            return;
+        }
+
+        let html = '';
+        let lastSeries = null;
+        items.forEach(it => {
+            const series = itemSeriesName(it);
+            if (series !== lastSeries) {
+                html += `<div class="series-header">${series}</div>`;
+                lastSeries = series;
+            }
+            const batches = draft[it.id] ? draft[it.id].batches : {};
+            const batchRowsHtml = Object.keys(batches).map(key => renderBatchRow(it.id, key, batches[key])).join('');
+            html += `<div class="item-panel">
+                <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
+                <div class="name"></div>
+                ${batchRowsHtml}
+                <button class="btn btn-add-batch" onclick="addNewBatchRow('${it.id}')">＋ 新增批次</button>
+            </div>`;
+        });
+        grid.innerHTML = html;
+    }
+
+    function expiryBadgeClass(expiryDate) {
+        if (!expiryDate) return '';
+        const days = (new Date(expiryDate) - new Date()) / 86400000;
+        if (days < 0) return 'danger';
+        if (days <= 90) return 'warn';
+        return '';
+    }
+
+    function renderBatchRow(itemId, batchKey, b) {
+        const cls = expiryBadgeClass(b.expiryDate);
+        const label = cls === 'danger' ? '已過期' : (cls === 'warn' ? '快到期' : '');
+        const diff = (Number(b.actualQty) || 0) - (Number(b.bookQty) || 0);
+        const diffCls = diff > 0 ? 'pos' : (diff < 0 ? 'neg' : 'zero');
+        const diffText = diff > 0 ? `+${diff}` : diff;
+        return `<div class="batch-row" data-item="${itemId}" data-batch="${batchKey}">
+            <div>
+                <input type="date" value="${b.expiryDate || ''}" onchange="updateBatchField('${itemId}','${batchKey}','expiryDate',this.value)">
+                ${label ? `<span class="expiry-badge ${cls}">${label}</span>` : ''}
+            </div>
+            ${b.isNewBatch ? '' : `<div class="qty-field"><label>帳面</label><span>${b.bookQty}</span></div>`}
+            <div class="qty-field">
+                <label>實際</label>
+                <input type="number" value="${b.actualQty}" min="0" onchange="updateBatchField('${itemId}','${batchKey}','actualQty',this.value)">
+            </div>
+            <div class="diff ${diffCls}">${b.isNewBatch ? '新批次' : diffText}</div>
+            <button class="remove-batch" onclick="removeBatchRow('${itemId}','${batchKey}')" title="移除此批次">✕</button>
+        </div>`;
+    }
+
+    function addNewBatchRow(itemId) {
+        const key = 'new_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        draft[itemId].batches[key] = { batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, isNewBatch: true, note: '' };
+        renderItemsGrid();
+    }
+
+    function removeBatchRow(itemId, batchKey) {
+        delete draft[itemId].batches[batchKey];
+        if (!Object.keys(draft[itemId].batches).length) {
+            const newKey = 'new_' + itemId;
+            draft[itemId].batches[newKey] = { batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, isNewBatch: true, note: '' };
+        }
+        draft[itemId].edited = true;
+        renderItemsGrid();
+        updateDraftBar();
+    }
+
+    function updateBatchField(itemId, batchKey, field, value) {
+        const b = draft[itemId].batches[batchKey];
+        if (field === 'actualQty') b.actualQty = Number(value) || 0;
+        else b[field] = value;
+        draft[itemId].edited = true;
+        renderItemsGrid();
+        updateDraftBar();
+    }
+
+    function updateDraftBar() {
+        const editedCount = Object.values(draft).filter(d => d.edited).length;
+        const totalCount = allItems.filter(it => it.active !== false).length;
+        document.getElementById('draftCountText').textContent = `本次盤點涵蓋全部 ${totalCount} 項商品（已編輯 ${editedCount} 項）`;
+    }
+
+    // 送出時涵蓋系統中所有啟用商品：已展開編輯過的用輸入值，其餘用目前帳面數量（視為無差異）
+    function buildFullStocktakeItems() {
+        const items = [];
+        allItems.filter(it => it.active !== false).forEach(item => {
+            const itemDraft = draft[item.id];
+            if (itemDraft) {
+                Object.values(itemDraft.batches).forEach(b => {
+                    items.push({
+                        itemId: item.id, itemCode: item.code || '', itemName: item.name || '',
+                        batchId: b.batchId, expiryDate: b.expiryDate, bookQty: b.bookQty, actualQty: b.actualQty,
+                        diff: (Number(b.actualQty) || 0) - (Number(b.bookQty) || 0), isNewBatch: b.isNewBatch
+                    });
+                });
+            } else {
+                const existing = batchesByItem[item.id] || [];
+                if (existing.length) {
+                    existing.forEach(b => {
+                        const qty = Number(b.qty) || 0;
+                        items.push({
+                            itemId: item.id, itemCode: item.code || '', itemName: item.name || '',
+                            batchId: b.id, expiryDate: b.expiryDate || '', bookQty: qty, actualQty: qty,
+                            diff: 0, isNewBatch: false
+                        });
+                    });
+                } else {
+                    items.push({
+                        itemId: item.id, itemCode: item.code || '', itemName: item.name || '',
+                        batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, diff: 0, isNewBatch: false
+                    });
+                }
+            }
+        });
+        return items;
+    }
+
+    async function submitStocktake() {
+        const date = document.getElementById('stocktakeDate').value || new Date().toISOString().slice(0, 10);
+        const staff = document.getElementById('stocktakeStaff').value.trim();
+        if (!staff) { alert('請輸入盤點人姓名'); return; }
+
+        const items = buildFullStocktakeItems();
+        if (!items.length) { alert('系統目前沒有商品可供盤點'); return; }
+        const totalDiff = items.reduce((s, it) => s + it.diff, 0);
+
+        try {
+            const writeBatch = db.batch();
+            for (const it of items) {
+                if (it.isNewBatch) {
+                    const ref = batchesCol.doc();
+                    writeBatch.set(ref, { itemId: it.itemId, expiryDate: it.expiryDate, qty: it.actualQty, note: '', createdAt: new Date(), updatedAt: new Date() });
+                    it.batchId = ref.id;
+                } else if (it.batchId) {
+                    writeBatch.update(batchesCol.doc(it.batchId), { qty: it.actualQty, updatedAt: new Date() });
+                }
+            }
+            await writeBatch.commit();
+            await stocktakesCol.add({ date, staff, itemCount: items.length, totalDiff, items, createdAt: new Date() });
+
+            draft = {};
+            document.getElementById('stocktakeStaff').value = '';
+            updateDraftBar();
+            showToast('已送出本次盤點');
+            await loadAll();
+        } catch (err) {
+            alert('送出失敗：' + err.message);
+        }
+    }
+
+    // ── 商品管理 ──────────────────────────────
+
+    function renderItemsTable() {
+        const tbody = document.getElementById('itemsTableBody');
+        const sorted = [...allItems].sort((a, b) => {
+            const rankDiff = categoryRank(a.category) - categoryRank(b.category);
+            if (rankDiff !== 0) return rankDiff;
+            return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
+        });
+        if (!sorted.length) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#aaa;">尚無商品</td></tr>';
+            return;
+        }
+        tbody.innerHTML = sorted.map(it => `
+            <tr>
+                <td data-label="代碼">${it.code || ''}</td>
+                <td data-label="名稱">${it.name || ''}</td>
+                <td data-label="類型">${it.type || ''}</td>
+                <td data-label="分類">${it.category || '-'}</td>
+                <td data-label="單位">${it.unit || '-'}</td>
+                <td data-label="會員價">${it.memberPrice || 0}</td>
+                <td data-label="PV">${it.pv || 0}</td>
+                <td data-label="狀態">${it.active !== false ? '啟用' : '停用'}</td>
+                <td data-label="操作"><div class="action-btns">
+                    <button class="btn btn-outline btn-sm" onclick="openItemForm('${it.id}')">編輯</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteItemRow('${it.id}')">刪除</button>
+                </div></td>
+            </tr>
+        `).join('');
+    }
+
+    function openItemForm(id) {
+        const modal = document.getElementById('itemModal');
+        document.getElementById('itemFormId').value = id || '';
+        if (id) {
+            const it = allItems.find(i => i.id === id);
+            document.getElementById('itemModalTitle').textContent = '編輯商品';
+            document.getElementById('itemFormCode').value = it.code || '';
+            document.getElementById('itemFormName').value = it.name || '';
+            document.getElementById('itemFormType').value = it.type || '產品';
+            document.getElementById('itemFormCategory').value = it.category || '';
+            document.getElementById('itemFormUnit').value = it.unit || '';
+            document.getElementById('itemFormPrice').value = it.memberPrice || 0;
+            document.getElementById('itemFormPv').value = it.pv || 0;
+            document.getElementById('itemFormNote').value = it.note || '';
+        } else {
+            document.getElementById('itemModalTitle').textContent = '新增商品';
+            ['itemFormCode', 'itemFormName', 'itemFormCategory', 'itemFormUnit', 'itemFormNote'].forEach(id2 => document.getElementById(id2).value = '');
+            document.getElementById('itemFormType').value = '產品';
+            document.getElementById('itemFormPrice').value = 0;
+            document.getElementById('itemFormPv').value = 0;
+        }
+        modal.classList.add('active');
+    }
+
+    function closeItemForm() {
+        document.getElementById('itemModal').classList.remove('active');
+    }
+
+    async function saveItemForm() {
+        const id = document.getElementById('itemFormId').value;
+        const name = document.getElementById('itemFormName').value.trim();
+        if (!name) { alert('請輸入商品名稱'); return; }
+        const data = {
+            code: document.getElementById('itemFormCode').value.trim(),
+            name,
+            type: document.getElementById('itemFormType').value,
+            category: document.getElementById('itemFormCategory').value.trim(),
+            unit: document.getElementById('itemFormUnit').value.trim(),
+            memberPrice: Number(document.getElementById('itemFormPrice').value) || 0,
+            pv: Number(document.getElementById('itemFormPv').value) || 0,
+            note: document.getElementById('itemFormNote').value.trim(),
+            active: true,
+            updatedAt: new Date()
+        };
+        if (id) {
+            await itemsCol.doc(id).update(data);
+        } else {
+            await itemsCol.add(data);
+        }
+        closeItemForm();
+        await loadAll();
+        renderItemsTable();
+        showToast('已儲存商品');
+    }
+
+    async function deleteItemRow(id) {
+        if (!confirm('刪除此商品會連同其批次庫存一併刪除，確定要刪除嗎？')) return;
+        const batch = db.batch();
+        batch.delete(itemsCol.doc(id));
+        (batchesByItem[id] || []).forEach(b => batch.delete(batchesCol.doc(b.id)));
+        await batch.commit();
+        await loadAll();
+        renderItemsTable();
+        showToast('已刪除商品');
+    }
+
+    // ── 盤點歷史 ──────────────────────────────
+
+    async function loadHistory() {
+        const snap = await stocktakesCol.get();
+        const records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const container = document.getElementById('historyList');
+        if (!records.length) {
+            container.innerHTML = '<div class="empty-hint">尚無盤點紀錄</div>';
+            return;
+        }
+        container.innerHTML = records.map(r => {
+            const diffCls = r.totalDiff > 0 ? 'pos' : (r.totalDiff < 0 ? 'neg' : 'zero');
+            const detailRows = (r.items || []).map(it => `
+                <tr>
+                    <td data-label="商品">${it.itemCode || ''} ${it.itemName || ''}</td>
+                    <td data-label="到期日">${it.expiryDate || '-'}</td>
+                    <td data-label="帳面">${it.bookQty}</td>
+                    <td data-label="實際">${it.actualQty}</td>
+                    <td data-label="差異" style="color:${it.diff > 0 ? '#10b981' : (it.diff < 0 ? '#d64545' : '#999')}">${it.diff > 0 ? '+' + it.diff : it.diff}</td>
+                </tr>`).join('');
+            return `<div class="history-item" onclick="toggleHistoryDetail('${r.id}')">
+                <div class="row1">
+                    <span>${r.date} · ${r.staff} · ${r.itemCount} 項</span>
+                    <span class="diff-tag" style="color:${r.totalDiff > 0 ? '#10b981' : (r.totalDiff < 0 ? '#d64545' : '#999')}">總差異 ${r.totalDiff > 0 ? '+' + r.totalDiff : r.totalDiff}</span>
+                </div>
+                <div class="history-detail" id="detail-${r.id}">
+                    <table><thead><tr><th>商品</th><th>到期日</th><th>帳面</th><th>實際</th><th>差異</th></tr></thead>
+                    <tbody>${detailRows}</tbody></table>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleHistoryDetail(id) {
+        document.getElementById(`detail-${id}`).classList.toggle('open');
+    }
+
+    // ── init ──────────────────────────────
+    document.getElementById('stocktakeDate').value = new Date().toISOString().slice(0, 10);
+    loadAll();
+</script>
+</body>
+</html>
