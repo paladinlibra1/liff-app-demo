@@ -39,6 +39,16 @@
 
         .section-label { font-size: 14px; color: #888; margin: 4px 0 8px; }
 
+        .category-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .chip-btn { flex: 0 0 auto; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: white; font-size: 13.5px; font-weight: 600; color: #555; cursor: pointer; }
+        .chip-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+
+        .manage-panel { cursor: pointer; }
+        .manage-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .manage-row .expand-arrow { font-size: 20px; color: #bbb; transform: rotate(90deg); flex: 0 0 auto; }
+        .manage-edit .modal-actions { flex-wrap: wrap; }
+        .manage-edit .modal-actions .btn-danger { margin-right: auto; }
+
         .items-list { display: flex; flex-direction: column; gap: 10px; }
         .series-header { position: sticky; top: 0; background: var(--bg-color); padding: 10px 2px 4px; font-size: 15px; font-weight: 700; color: var(--blue); z-index: 5; }
         .item-panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; }
@@ -74,9 +84,7 @@
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
         th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
         th { background: #fafafa; color: #666; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
-        .action-btns { display: flex; gap: 6px; }
         .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 6px; }
-        .box-container { background: transparent; overflow-x: auto; }
         .top-action-bar { margin-bottom: 14px; }
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
@@ -158,17 +166,12 @@
 
     <!-- 商品管理 -->
     <div class="section" id="section-items">
+        <div class="section-label">選擇系列：</div>
+        <div class="category-tabs" id="itemsCategoryTabs"></div>
         <div class="top-action-bar">
-            <button class="btn btn-primary" onclick="openItemForm()">＋ 新增商品</button>
+            <button class="btn btn-primary" onclick="startAddManageItem()">＋ 新增商品</button>
         </div>
-        <div class="box-container">
-            <table id="itemsTable">
-                <thead>
-                    <tr><th>代碼</th><th>名稱</th><th>類型</th><th>分類</th><th>單位</th><th>會員價</th><th>PV</th><th>狀態</th><th>操作</th></tr>
-                </thead>
-                <tbody id="itemsTableBody"></tbody>
-            </table>
-        </div>
+        <div class="items-list" id="itemsManageList"></div>
     </div>
 
     <!-- 盤點歷史 -->
@@ -185,27 +188,6 @@
     <button class="btn btn-primary" onclick="submitStocktake()">送出本次盤點</button>
 </div>
 
-<!-- 商品新增/編輯 Modal -->
-<div class="modal-overlay" id="itemModal">
-    <div class="modal-box">
-        <h3 id="itemModalTitle">新增商品</h3>
-        <input type="hidden" id="itemFormId">
-        <div class="form-row"><label>代碼</label><input type="text" id="itemFormCode" placeholder="例如 AB90"></div>
-        <div class="form-row"><label>名稱</label><input type="text" id="itemFormName"></div>
-        <div class="form-row"><label>類型</label>
-            <select id="itemFormType"><option value="產品">產品</option><option value="護理品">護理品</option></select>
-        </div>
-        <div class="form-row"><label>分類（肌膚類型，選填）</label><input type="text" id="itemFormCategory" placeholder="例如 輕齡肌膚"></div>
-        <div class="form-row"><label>單位</label><input type="text" id="itemFormUnit" placeholder="例如 瓶、盒"></div>
-        <div class="form-row"><label>會員價</label><input type="number" id="itemFormPrice"></div>
-        <div class="form-row"><label>PV</label><input type="number" id="itemFormPv"></div>
-        <div class="form-row"><label>備註</label><textarea id="itemFormNote" rows="2"></textarea></div>
-        <div class="modal-actions">
-            <button class="btn btn-outline" onclick="closeItemForm()">取消</button>
-            <button class="btn btn-primary" onclick="saveItemForm()">儲存</button>
-        </div>
-    </div>
-</div>
 
 <!-- 實際數量九宮格鍵盤 -->
 <div class="keypad-overlay" id="qtyKeypad" onclick="if(event.target===this) keypadConfirm()">
@@ -261,7 +243,7 @@
         document.getElementById(`tab-${name}`).classList.add('active');
         document.getElementById(`section-${name}`).classList.add('active');
         document.getElementById('stocktakeBar').style.display = name === 'stocktake' ? 'flex' : 'none';
-        if (name === 'items') renderItemsTable();
+        if (name === 'items') renderItemsManage();
         if (name === 'history') loadHistory();
     }
 
@@ -540,98 +522,168 @@
 
     // ── 商品管理 ──────────────────────────────
 
-    function renderItemsTable() {
-        const tbody = document.getElementById('itemsTableBody');
-        const sorted = [...allItems].sort((a, b) => {
+    // manage 分頁狀態：選取的系列（null = 全部）、目前展開編輯中的商品 id、是否正在新增
+    let manageCategory = null;
+    let expandedItemId = null;
+    let addingNewItem = false;
+
+    function manageCategoryList() {
+        const known = new Set(CATEGORY_ORDER);
+        const extra = [];
+        allItems.forEach(it => {
+            const c = it.category || '未分類';
+            if (!known.has(c) && !extra.includes(c)) extra.push(c);
+        });
+        return [...CATEGORY_ORDER, ...extra];
+    }
+
+    function renderItemsManage() {
+        renderManageCategoryTabs();
+        renderManageList();
+    }
+
+    function renderManageCategoryTabs() {
+        const wrap = document.getElementById('itemsCategoryTabs');
+        const counts = {};
+        allItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
+        let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${allItems.length}）</button>`;
+        html += manageCategoryList().filter(c => counts[c]).map(c =>
+            `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
+        ).join('');
+        wrap.innerHTML = html;
+    }
+
+    function selectManageCategory(cat) {
+        manageCategory = cat;
+        expandedItemId = null;
+        addingNewItem = false;
+        renderItemsManage();
+    }
+
+    function filteredManageItems() {
+        let items = [...allItems];
+        if (manageCategory !== null) {
+            items = items.filter(it => (it.category || '未分類') === manageCategory);
+        }
+        return items.sort((a, b) => {
             const rankDiff = categoryRank(a.category) - categoryRank(b.category);
             if (rankDiff !== 0) return rankDiff;
             return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
         });
-        if (!sorted.length) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#aaa;">尚無商品</td></tr>';
-            return;
+    }
+
+    function renderManageList() {
+        const wrap = document.getElementById('itemsManageList');
+        const items = filteredManageItems();
+        let html = '';
+        if (addingNewItem) html += renderManageEditPanel(null);
+        if (!items.length && !addingNewItem) {
+            html += '<div class="empty-hint">此系列尚無商品</div>';
         }
-        tbody.innerHTML = sorted.map(it => `
-            <tr>
-                <td data-label="代碼">${it.code || ''}</td>
-                <td data-label="名稱">${it.name || ''}</td>
-                <td data-label="類型">${it.type || ''}</td>
-                <td data-label="分類">${it.category || '-'}</td>
-                <td data-label="單位">${it.unit || '-'}</td>
-                <td data-label="會員價">${it.memberPrice || 0}</td>
-                <td data-label="PV">${it.pv || 0}</td>
-                <td data-label="狀態">${it.active !== false ? '啟用' : '停用'}</td>
-                <td data-label="操作"><div class="action-btns">
-                    <button class="btn btn-outline btn-sm" onclick="openItemForm('${it.id}')">編輯</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteItemRow('${it.id}')">刪除</button>
-                </div></td>
-            </tr>
-        `).join('');
+        items.forEach(it => {
+            html += expandedItemId === it.id ? renderManageEditPanel(it) : renderManageSummaryPanel(it);
+        });
+        wrap.innerHTML = html;
     }
 
-    function openItemForm(id) {
-        const modal = document.getElementById('itemModal');
-        document.getElementById('itemFormId').value = id || '';
-        if (id) {
-            const it = allItems.find(i => i.id === id);
-            document.getElementById('itemModalTitle').textContent = '編輯商品';
-            document.getElementById('itemFormCode').value = it.code || '';
-            document.getElementById('itemFormName').value = it.name || '';
-            document.getElementById('itemFormType').value = it.type || '產品';
-            document.getElementById('itemFormCategory').value = it.category || '';
-            document.getElementById('itemFormUnit').value = it.unit || '';
-            document.getElementById('itemFormPrice').value = it.memberPrice || 0;
-            document.getElementById('itemFormPv').value = it.pv || 0;
-            document.getElementById('itemFormNote').value = it.note || '';
-        } else {
-            document.getElementById('itemModalTitle').textContent = '新增商品';
-            ['itemFormCode', 'itemFormName', 'itemFormCategory', 'itemFormUnit', 'itemFormNote'].forEach(id2 => document.getElementById(id2).value = '');
-            document.getElementById('itemFormType').value = '產品';
-            document.getElementById('itemFormPrice').value = 0;
-            document.getElementById('itemFormPv').value = 0;
-        }
-        modal.classList.add('active');
+    function renderManageSummaryPanel(it) {
+        return `<div class="item-panel manage-panel" onclick="toggleExpandItem('${it.id}')">
+            <div class="manage-row">
+                <div>
+                    <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:14px;">${it.name || ''}</span></div>
+                    <div class="name">${it.type || ''} · ${it.category || '未分類'} · ${it.unit || '-'}${it.active === false ? ' · 已停用' : ''}</div>
+                </div>
+                <span class="expand-arrow">›</span>
+            </div>
+        </div>`;
     }
 
-    function closeItemForm() {
-        document.getElementById('itemModal').classList.remove('active');
+    function renderManageEditPanel(it) {
+        const key = it ? it.id : 'new';
+        const defaultCategory = it ? (it.category || '') : (manageCategory || '');
+        return `<div class="item-panel manage-edit" onclick="event.stopPropagation()">
+            <div class="form-row"><label>代碼</label><input type="text" id="mf_code_${key}" value="${it ? (it.code || '') : ''}" placeholder="例如 AB90"></div>
+            <div class="form-row"><label>名稱</label><input type="text" id="mf_name_${key}" value="${it ? (it.name || '') : ''}"></div>
+            <div class="form-row"><label>類型</label>
+                <select id="mf_type_${key}">
+                    <option value="產品" ${(!it || it.type === '產品') ? 'selected' : ''}>產品</option>
+                    <option value="護理品" ${it && it.type === '護理品' ? 'selected' : ''}>護理品</option>
+                </select>
+            </div>
+            <div class="form-row"><label>分類（系列）</label>
+                <select id="mf_category_${key}">
+                    ${CATEGORY_ORDER.map(c => `<option value="${c}" ${defaultCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-row"><label>單位</label><input type="text" id="mf_unit_${key}" value="${it ? (it.unit || '') : ''}" placeholder="例如 瓶、盒"></div>
+            <div class="form-row"><label>會員價</label><input type="number" id="mf_price_${key}" value="${it ? (it.memberPrice || 0) : 0}"></div>
+            <div class="form-row"><label>PV</label><input type="number" id="mf_pv_${key}" value="${it ? (it.pv || 0) : 0}"></div>
+            <div class="form-row"><label>備註</label><textarea id="mf_note_${key}" rows="2">${it ? (it.note || '') : ''}</textarea></div>
+            ${it ? `<div class="form-row"><label><input type="checkbox" id="mf_active_${key}" ${it.active !== false ? 'checked' : ''} style="width:auto;margin-right:6px;">啟用</label></div>` : ''}
+            <div class="modal-actions">
+                ${it ? `<button class="btn btn-danger btn-sm" onclick="deleteManageItem('${it.id}')">刪除</button>` : ''}
+                <button class="btn btn-outline" onclick="cancelManageEdit()">取消</button>
+                <button class="btn btn-primary" onclick="saveManageItem('${it ? it.id : ''}')">儲存</button>
+            </div>
+        </div>`;
     }
 
-    async function saveItemForm() {
-        const id = document.getElementById('itemFormId').value;
-        const name = document.getElementById('itemFormName').value.trim();
+    function toggleExpandItem(id) {
+        addingNewItem = false;
+        expandedItemId = expandedItemId === id ? null : id;
+        renderManageList();
+    }
+
+    function startAddManageItem() {
+        expandedItemId = null;
+        addingNewItem = true;
+        renderManageList();
+    }
+
+    function cancelManageEdit() {
+        expandedItemId = null;
+        addingNewItem = false;
+        renderManageList();
+    }
+
+    async function saveManageItem(id) {
+        const key = id || 'new';
+        const name = document.getElementById(`mf_name_${key}`).value.trim();
         if (!name) { alert('請輸入商品名稱'); return; }
         const data = {
-            code: document.getElementById('itemFormCode').value.trim(),
+            code: document.getElementById(`mf_code_${key}`).value.trim(),
             name,
-            type: document.getElementById('itemFormType').value,
-            category: document.getElementById('itemFormCategory').value.trim(),
-            unit: document.getElementById('itemFormUnit').value.trim(),
-            memberPrice: Number(document.getElementById('itemFormPrice').value) || 0,
-            pv: Number(document.getElementById('itemFormPv').value) || 0,
-            note: document.getElementById('itemFormNote').value.trim(),
-            active: true,
+            type: document.getElementById(`mf_type_${key}`).value,
+            category: document.getElementById(`mf_category_${key}`).value,
+            unit: document.getElementById(`mf_unit_${key}`).value.trim(),
+            memberPrice: Number(document.getElementById(`mf_price_${key}`).value) || 0,
+            pv: Number(document.getElementById(`mf_pv_${key}`).value) || 0,
+            note: document.getElementById(`mf_note_${key}`).value.trim(),
             updatedAt: new Date()
         };
         if (id) {
+            data.active = document.getElementById(`mf_active_${key}`).checked;
             await itemsCol.doc(id).update(data);
         } else {
+            data.active = true;
             await itemsCol.add(data);
         }
-        closeItemForm();
+        expandedItemId = null;
+        addingNewItem = false;
         await loadAll();
-        renderItemsTable();
+        renderItemsManage();
         showToast('已儲存商品');
     }
 
-    async function deleteItemRow(id) {
+    async function deleteManageItem(id) {
         if (!confirm('刪除此商品會連同其批次庫存一併刪除，確定要刪除嗎？')) return;
         const batch = db.batch();
         batch.delete(itemsCol.doc(id));
         (batchesByItem[id] || []).forEach(b => batch.delete(batchesCol.doc(b.id)));
         await batch.commit();
+        expandedItemId = null;
         await loadAll();
-        renderItemsTable();
+        renderItemsManage();
         showToast('已刪除商品');
     }
 
