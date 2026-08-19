@@ -252,18 +252,24 @@
     }
 
     async function loadAll() {
-        const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get()]);
-        allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        batchesByItem = {};
-        allBatches.forEach(b => {
-            if (!batchesByItem[b.itemId]) batchesByItem[b.itemId] = [];
-            batchesByItem[b.itemId].push(b);
-        });
-        Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
-        initDraftForAllItems();
-        renderItemsGrid();
-        updateDraftBar();
+        document.getElementById('itemsGrid').innerHTML = '<div class="empty-hint">載入中…</div>';
+        try {
+            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get()]);
+            allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            batchesByItem = {};
+            allBatches.forEach(b => {
+                if (!batchesByItem[b.itemId]) batchesByItem[b.itemId] = [];
+                batchesByItem[b.itemId].push(b);
+            });
+            Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
+            initDraftForAllItems();
+            renderItemsGrid();
+            updateDraftBar();
+        } catch (err) {
+            console.error('loadAll failed', err);
+            document.getElementById('itemsGrid').innerHTML = `<div class="empty-hint">載入失敗，請重新整理再試一次<br>${err.message || err}</div>`;
+        }
     }
 
     function selectType(type) {

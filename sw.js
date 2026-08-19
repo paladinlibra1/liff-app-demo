@@ -1,4 +1,4 @@
-const CACHE_NAME = "cf-shell-v2";
+const CACHE_NAME = "cf-shell-v3";
 const SHELL_FILES = [
   "./index.html",
   "./my-bookings.html",
