@@ -56,6 +56,8 @@
         .item-panel .name { font-size: 14px; color: #666; margin-top: 2px; margin-bottom: 10px; }
 
         .batch-row { display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .batch-date-row { display: flex; align-items: center; gap: 8px; }
+        .batch-qty-row { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; flex-wrap: wrap; }
         .batch-row .expiry-badge { font-size: 13px; padding: 3px 8px; border-radius: 12px; background: #eee; color: #666; white-space: nowrap; }
         .batch-row .expiry-badge.warn { background: #fff3cd; color: #946200; }
         .batch-row .expiry-badge.danger { background: #fde2e2; color: #b02a2a; }
@@ -133,7 +135,9 @@
             .type-btn { flex: 1 1 0; text-align: center; padding: 12px 10px; }
             .items-list { gap: 8px; }
             .item-panel { padding: 10px; }
-            .batch-row { padding: 10px; gap: 8px; }
+            .batch-row { padding: 10px; gap: 8px; flex-direction: column; align-items: stretch; }
+            .batch-date-row { justify-content: space-between; }
+            .batch-qty-row { width: 100%; justify-content: space-between; }
             .batch-row input[type=date] { width: 152px; }
             .batch-row .qty-input { width: 78px; }
 
@@ -348,17 +352,19 @@
         const diffCls = diff > 0 ? 'pos' : (diff < 0 ? 'neg' : 'zero');
         const diffText = diff > 0 ? `+${diff}` : diff;
         return `<div class="batch-row" data-item="${itemId}" data-batch="${batchKey}">
-            <div>
+            <div class="batch-date-row">
                 <input type="date" value="${b.expiryDate || ''}" onchange="updateBatchField('${itemId}','${batchKey}','expiryDate',this.value)">
                 ${label ? `<span class="expiry-badge ${cls}">${label}</span>` : ''}
             </div>
-            ${b.isNewBatch ? '' : `<div class="qty-field"><label>帳面</label><span>${b.bookQty}</span></div>`}
-            <div class="qty-field">
-                <label>實際</label>
-                <input type="text" class="qty-input" inputmode="none" readonly value="${b.actualQty}" onclick="openQtyKeypad('${itemId}','${batchKey}')">
+            <div class="batch-qty-row">
+                ${b.isNewBatch ? '' : `<div class="qty-field"><label>帳面</label><span>${b.bookQty}</span></div>`}
+                <div class="qty-field">
+                    <label>實際</label>
+                    <input type="text" class="qty-input" inputmode="none" readonly value="${b.actualQty}" onclick="openQtyKeypad('${itemId}','${batchKey}')">
+                </div>
+                <div class="diff ${diffCls}">${b.isNewBatch ? '新批次' : diffText}</div>
+                <button class="remove-batch" onclick="removeBatchRow('${itemId}','${batchKey}')" title="移除此批次">✕</button>
             </div>
-            <div class="diff ${diffCls}">${b.isNewBatch ? '新批次' : diffText}</div>
-            <button class="remove-batch" onclick="removeBatchRow('${itemId}','${batchKey}')" title="移除此批次">✕</button>
         </div>`;
     }
 
