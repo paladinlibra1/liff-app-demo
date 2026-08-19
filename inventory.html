@@ -51,9 +51,8 @@
         .batch-row .expiry-badge.danger { background: #fde2e2; color: #b02a2a; }
         .batch-row label { font-size: 13px; color: #888; }
         .batch-row .qty-field { display: flex; align-items: center; gap: 4px; }
-        .batch-row input[type=number] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 18px; width: 90px; min-height: 40px; }
+        .batch-row .qty-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 18px; width: 90px; min-height: 40px; font-weight: 700; background: #fafbff; text-align: center; caret-color: transparent; cursor: pointer; }
         .batch-row input[type=date] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 17px; width: 140px; min-height: 40px; }
-        .batch-row .qty-field input[type=number] { font-weight: 700; }
         .batch-row .diff { font-weight: 700; font-size: 15px; min-width: 46px; text-align: center; }
         .batch-row .diff.pos { color: #10b981; }
         .batch-row .diff.neg { color: #d64545; }
@@ -89,6 +88,17 @@
         .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
+        .keypad-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: flex-end; justify-content: center; z-index: 60; }
+        .keypad-overlay.active { display: flex; }
+        .keypad-sheet { background: white; width: 100%; max-width: 420px; border-radius: 18px 18px 0 0; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(0,0,0,.12); }
+        .keypad-header { text-align: center; margin-bottom: 14px; }
+        .keypad-label { font-size: 14px; color: #888; margin-bottom: 4px; }
+        .keypad-display { font-size: 38px; font-weight: 700; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+        .keypad-grid button { padding: 18px 0; font-size: 22px; font-weight: 600; border: 1px solid var(--border-color); border-radius: 10px; background: #f7f7f8; color: var(--text-color); cursor: pointer; }
+        .keypad-grid button.keypad-fn { background: #eee; color: #555; font-size: 18px; }
+        .keypad-confirm { width: 100%; padding: 14px; font-size: 17px; }
+
         .history-item { background: white; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer; }
         .history-item .row1 { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
         .history-item .row1 .diff-tag { font-weight: 700; }
@@ -116,7 +126,7 @@
             .item-panel { padding: 10px; }
             .batch-row { padding: 10px; gap: 8px; }
             .batch-row input[type=date] { width: 132px; }
-            .batch-row input[type=number] { width: 78px; }
+            .batch-row .qty-input { width: 78px; }
 
             .sticky-bar { flex-direction: column; align-items: stretch; }
             .sticky-bar input, .sticky-bar button { width: 100%; }
@@ -194,6 +204,31 @@
             <button class="btn btn-outline" onclick="closeItemForm()">取消</button>
             <button class="btn btn-primary" onclick="saveItemForm()">儲存</button>
         </div>
+    </div>
+</div>
+
+<!-- 實際數量九宮格鍵盤 -->
+<div class="keypad-overlay" id="qtyKeypad" onclick="if(event.target===this) keypadConfirm()">
+    <div class="keypad-sheet">
+        <div class="keypad-header">
+            <div class="keypad-label" id="keypadDisplayLabel"></div>
+            <div class="keypad-display" id="keypadDisplayValue">0</div>
+        </div>
+        <div class="keypad-grid">
+            <button type="button" onclick="keypadPressDigit('1')">1</button>
+            <button type="button" onclick="keypadPressDigit('2')">2</button>
+            <button type="button" onclick="keypadPressDigit('3')">3</button>
+            <button type="button" onclick="keypadPressDigit('4')">4</button>
+            <button type="button" onclick="keypadPressDigit('5')">5</button>
+            <button type="button" onclick="keypadPressDigit('6')">6</button>
+            <button type="button" onclick="keypadPressDigit('7')">7</button>
+            <button type="button" onclick="keypadPressDigit('8')">8</button>
+            <button type="button" onclick="keypadPressDigit('9')">9</button>
+            <button type="button" class="keypad-fn" onclick="keypadClear()">C</button>
+            <button type="button" onclick="keypadPressDigit('0')">0</button>
+            <button type="button" class="keypad-fn" onclick="keypadBackspace()">⌫</button>
+        </div>
+        <button type="button" class="btn btn-primary keypad-confirm" onclick="keypadConfirm()">完成</button>
     </div>
 </div>
 
@@ -338,7 +373,7 @@
             ${b.isNewBatch ? '' : `<div class="qty-field"><label>帳面</label><span>${b.bookQty}</span></div>`}
             <div class="qty-field">
                 <label>實際</label>
-                <input type="number" value="${b.actualQty}" min="0" onchange="updateBatchField('${itemId}','${batchKey}','actualQty',this.value)">
+                <input type="text" class="qty-input" inputmode="none" readonly value="${b.actualQty}" onclick="openQtyKeypad('${itemId}','${batchKey}')">
             </div>
             <div class="diff ${diffCls}">${b.isNewBatch ? '新批次' : diffText}</div>
             <button class="remove-batch" onclick="removeBatchRow('${itemId}','${batchKey}')" title="移除此批次">✕</button>
@@ -369,6 +404,64 @@
         draft[itemId].edited = true;
         renderItemsGrid();
         updateDraftBar();
+    }
+
+    // ── 實際數量九宮格數字鍵盤 ──────────────────────────────
+    let keypadTarget = null;
+    let keypadValue = '0';
+    let keypadFresh = true;
+
+    function openQtyKeypad(itemId, batchKey) {
+        const b = draft[itemId].batches[batchKey];
+        keypadTarget = { itemId, batchKey };
+        keypadValue = String(b ? b.actualQty : 0);
+        keypadFresh = true;
+        renderKeypadDisplay();
+        document.getElementById('qtyKeypad').classList.add('active');
+    }
+
+    function closeQtyKeypad() {
+        document.getElementById('qtyKeypad').classList.remove('active');
+        keypadTarget = null;
+    }
+
+    function keypadPressDigit(d) {
+        if (keypadFresh) {
+            keypadValue = d === '0' ? '0' : d;
+        } else if (keypadValue === '0') {
+            keypadValue = d;
+        } else if (keypadValue.length < 6) {
+            keypadValue += d;
+        }
+        keypadFresh = false;
+        renderKeypadDisplay();
+    }
+
+    function keypadBackspace() {
+        keypadValue = keypadValue.slice(0, -1) || '0';
+        keypadFresh = false;
+        renderKeypadDisplay();
+    }
+
+    function keypadClear() {
+        keypadValue = '0';
+        keypadFresh = true;
+        renderKeypadDisplay();
+    }
+
+    function renderKeypadDisplay() {
+        document.getElementById('keypadDisplayValue').textContent = keypadValue;
+        if (keypadTarget) {
+            const it = draft[keypadTarget.itemId].item;
+            document.getElementById('keypadDisplayLabel').textContent = `${it.code || ''} ${it.name || ''}`;
+        }
+    }
+
+    function keypadConfirm() {
+        if (keypadTarget) {
+            updateBatchField(keypadTarget.itemId, keypadTarget.batchKey, 'actualQty', keypadValue);
+        }
+        closeQtyKeypad();
     }
 
     function updateDraftBar() {
