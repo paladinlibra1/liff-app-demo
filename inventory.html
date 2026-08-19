@@ -62,7 +62,8 @@
         .batch-row label { font-size: 13px; color: #888; }
         .batch-row .qty-field { display: flex; align-items: center; gap: 4px; }
         .batch-row .qty-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 18px; width: 90px; min-height: 40px; font-weight: 700; background: #fafbff; text-align: center; caret-color: transparent; cursor: pointer; }
-        .batch-row input[type=date] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 17px; width: 140px; min-height: 40px; }
+        .batch-row input[type=date] { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 17px; width: 168px; min-height: 40px; }
+        .empty-batch-hint { color: #999; font-size: 14px; background: #fafafa; border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 8px; }
         .batch-row .diff { font-weight: 700; font-size: 15px; min-width: 46px; text-align: center; }
         .batch-row .diff.pos { color: #10b981; }
         .batch-row .diff.neg { color: #d64545; }
@@ -133,7 +134,7 @@
             .items-list { gap: 8px; }
             .item-panel { padding: 10px; }
             .batch-row { padding: 10px; gap: 8px; }
-            .batch-row input[type=date] { width: 132px; }
+            .batch-row input[type=date] { width: 152px; }
             .batch-row .qty-input { width: 78px; }
 
             .sticky-bar { flex-direction: column; align-items: stretch; }
@@ -291,10 +292,6 @@
             existing.forEach(b => {
                 batches[b.id] = { batchId: b.id, expiryDate: b.expiryDate || '', bookQty: Number(b.qty) || 0, actualQty: Number(b.qty) || 0, isNewBatch: false, note: b.note || '' };
             });
-            if (!existing.length) {
-                const key = 'new_' + item.id;
-                batches[key] = { batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, isNewBatch: true, note: '' };
-            }
             draft[item.id] = { item, batches, edited: false };
         });
     }
@@ -322,7 +319,10 @@
                 lastSeries = series;
             }
             const batches = draft[it.id] ? draft[it.id].batches : {};
-            const batchRowsHtml = Object.keys(batches).map(key => renderBatchRow(it.id, key, batches[key])).join('');
+            const batchKeys = Object.keys(batches);
+            const batchRowsHtml = batchKeys.length
+                ? batchKeys.map(key => renderBatchRow(it.id, key, batches[key])).join('')
+                : '<div class="empty-batch-hint">庫存 0 · 尚無批次，等待新增批次</div>';
             html += `<div class="item-panel">
                 <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
                 <div class="name"></div>
@@ -370,10 +370,6 @@
 
     function removeBatchRow(itemId, batchKey) {
         delete draft[itemId].batches[batchKey];
-        if (!Object.keys(draft[itemId].batches).length) {
-            const newKey = 'new_' + itemId;
-            draft[itemId].batches[newKey] = { batchId: null, expiryDate: '', bookQty: 0, actualQty: 0, isNewBatch: true, note: '' };
-        }
         draft[itemId].edited = true;
         renderItemsGrid();
         updateDraftBar();
