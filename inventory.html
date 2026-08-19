@@ -165,7 +165,8 @@
             <button class="type-btn" data-type="護理品" onclick="selectType('護理品')">選護理品</button>
         </div>
 
-        <div class="section-label">全部品項（依系列、代碼排列，直接輸入實際數量）：</div>
+        <div class="section-label">選擇系列（選「全部」依系列順序盤點全部品項，選特定系列只更新該系列）：</div>
+        <div class="category-tabs" id="stocktakeCategoryTabs"></div>
         <div class="items-list" id="itemsGrid"></div>
     </div>
 
@@ -231,6 +232,7 @@
     let allBatches = [];
     let batchesByItem = {};
     let currentType = "產品";
+    let stocktakeCategory = null; // null = 全部（依系列順序盤點全部品項），否則只顯示該系列
     // draft: { [itemId]: { batches: { [batchKeyId]: {batchId, expiryDate, bookQty, actualQty, isNewBatch, note} }, edited: bool } }
     let draft = {};
 
@@ -264,6 +266,7 @@
             });
             Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
             initDraftForAllItems();
+            renderStocktakeCategoryTabs();
             renderItemsGrid();
             updateDraftBar();
         } catch (err) {
@@ -274,12 +277,42 @@
 
     function selectType(type) {
         currentType = type;
+        stocktakeCategory = null;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+        renderStocktakeCategoryTabs();
         renderItemsGrid();
     }
 
     function activeItemsForType() {
         return allItems.filter(it => it.type === currentType && it.active !== false);
+    }
+
+    function categoryListFor(items) {
+        const known = new Set(CATEGORY_ORDER);
+        const extra = [];
+        items.forEach(it => {
+            const c = it.category || '未分類';
+            if (!known.has(c) && !extra.includes(c)) extra.push(c);
+        });
+        return [...CATEGORY_ORDER, ...extra];
+    }
+
+    function renderStocktakeCategoryTabs() {
+        const wrap = document.getElementById('stocktakeCategoryTabs');
+        const items = activeItemsForType();
+        const counts = {};
+        items.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
+        let html = `<button class="chip-btn ${stocktakeCategory === null ? 'active' : ''}" onclick="selectStocktakeCategory(null)">全部（${items.length}）</button>`;
+        html += categoryListFor(items).filter(c => counts[c]).map(c =>
+            `<button class="chip-btn ${stocktakeCategory === c ? 'active' : ''}" onclick="selectStocktakeCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
+        ).join('');
+        wrap.innerHTML = html;
+    }
+
+    function selectStocktakeCategory(cat) {
+        stocktakeCategory = cat;
+        renderStocktakeCategoryTabs();
+        renderItemsGrid();
     }
 
     // 分類（系列）顯示順序：依實際系列名稱排列，未列出的分類排在最後
@@ -307,15 +340,18 @@
 
     function renderItemsGrid() {
         const grid = document.getElementById('itemsGrid');
-        const items = activeItemsForType()
-            .sort((a, b) => {
-                const rankDiff = categoryRank(a.category) - categoryRank(b.category);
-                if (rankDiff !== 0) return rankDiff;
-                return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
-            });
+        let items = activeItemsForType();
+        if (stocktakeCategory !== null) {
+            items = items.filter(it => (it.category || '未分類') === stocktakeCategory);
+        }
+        items = items.sort((a, b) => {
+            const rankDiff = categoryRank(a.category) - categoryRank(b.category);
+            if (rankDiff !== 0) return rankDiff;
+            return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
+        });
 
         if (!items.length) {
-            grid.innerHTML = '<div class="empty-hint">此類型尚無商品</div>';
+            grid.innerHTML = '<div class="empty-hint">此系列尚無商品</div>';
             return;
         }
 
@@ -531,16 +567,6 @@
     let expandedItemId = null;
     let addingNewItem = false;
 
-    function manageCategoryList() {
-        const known = new Set(CATEGORY_ORDER);
-        const extra = [];
-        allItems.forEach(it => {
-            const c = it.category || '未分類';
-            if (!known.has(c) && !extra.includes(c)) extra.push(c);
-        });
-        return [...CATEGORY_ORDER, ...extra];
-    }
-
     function renderItemsManage() {
         renderManageCategoryTabs();
         renderManageList();
@@ -551,7 +577,7 @@
         const counts = {};
         allItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
         let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${allItems.length}）</button>`;
-        html += manageCategoryList().filter(c => counts[c]).map(c =>
+        html += categoryListFor(allItems).filter(c => counts[c]).map(c =>
             `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
         ).join('');
         wrap.innerHTML = html;
