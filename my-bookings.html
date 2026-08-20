@@ -520,6 +520,12 @@ function escapeHtml(str) {
 }
 
 if ('serviceWorker' in navigator) {
+  let swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload();
+  });
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('sw.js').catch(e => console.log('SW 註冊失敗', e));
   });

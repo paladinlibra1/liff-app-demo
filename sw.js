@@ -1,4 +1,4 @@
-const CACHE_NAME = "cf-shell-v3";
+const CACHE_NAME = "cf-shell-v4";
 const SHELL_FILES = [
   "./index.html",
   "./my-bookings.html",
@@ -39,7 +39,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    fetch(request)
+    // cache: 'no-store' 強制略過瀏覽器自己的 HTTP 快取，確保每次都真的問到伺服器最新版本，
+    // 不然「加入主畫面」後開啟常會停在舊版（fetch() 預設仍可能吃到 HTTP 層快取，不會真的發網路請求）
+    fetch(request, { cache: 'no-store' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
