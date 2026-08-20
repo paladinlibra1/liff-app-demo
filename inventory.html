@@ -47,6 +47,7 @@
         .manage-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .manage-row .expand-arrow { font-size: 20px; color: #bbb; transform: rotate(90deg); flex: 0 0 auto; }
         .qty-total { font-size: 28px; font-weight: 700; color: var(--primary-dark); min-width: 40px; text-align: right; }
+        .qty-total.expired { color: #d64545; }
         .manage-edit .modal-actions { flex-wrap: wrap; }
         .manage-edit .modal-actions .btn-danger { margin-right: auto; }
 
@@ -377,10 +378,16 @@
         return Object.values(batches).reduce((s, b) => s + (Number(b.actualQty) || 0), 0);
     }
 
+    function itemHasExpiredBatch(itemId) {
+        const batches = draft[itemId] ? draft[itemId].batches : {};
+        return Object.values(batches).some(b => expiryBadgeClass(b.expiryDate) === 'danger');
+    }
+
     function renderStocktakeSummaryPanel(it) {
         const batches = draft[it.id] ? draft[it.id].batches : {};
         const batchCount = Object.keys(batches).length;
         const totalQty = itemTotalQty(it.id);
+        const expired = itemHasExpiredBatch(it.id);
         const editedTag = draft[it.id] && draft[it.id].edited ? ' <span style="color:var(--blue);font-weight:600;">已調整</span>' : '';
         return `<div class="item-panel manage-panel" onclick="toggleStocktakeExpand('${it.id}')">
             <div class="manage-row">
@@ -389,7 +396,7 @@
                     <div class="name">${batchCount ? `${batchCount} 批次` : '尚無批次'}${editedTag}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div class="qty-total">${totalQty}</div>
+                    <div class="qty-total${expired ? ' expired' : ''}">${totalQty}</div>
                     <span class="expand-arrow">›</span>
                 </div>
             </div>
@@ -400,6 +407,7 @@
         const batches = draft[it.id] ? draft[it.id].batches : {};
         const batchKeys = Object.keys(batches);
         const totalQty = itemTotalQty(it.id);
+        const expired = itemHasExpiredBatch(it.id);
         const batchRowsHtml = batchKeys.length
             ? batchKeys.map(key => renderBatchRow(it.id, key, batches[key])).join('')
             : '<div class="empty-batch-hint">庫存 0 · 尚無批次，等待新增批次</div>';
@@ -410,7 +418,7 @@
                     <div class="name" style="margin-bottom:0;"></div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div class="qty-total">${totalQty}</div>
+                    <div class="qty-total${expired ? ' expired' : ''}">${totalQty}</div>
                     <span class="expand-arrow" style="transform:rotate(270deg);">›</span>
                 </div>
             </div>
