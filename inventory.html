@@ -254,7 +254,17 @@
         document.getElementById('stocktakeBar').style.display = name === 'stocktake' ? 'flex' : 'none';
         if (name === 'items') renderItemsManage();
         if (name === 'history') loadHistory();
+        syncStickyBarPadding();
     }
+
+    // 底部固定列高度在手機版會換行變高（例如已編輯文字換行），
+    // 動態量測實際高度來預留頁面底部空間，避免最後一筆商品被蓋住
+    function syncStickyBarPadding() {
+        const bar = document.getElementById('stocktakeBar');
+        const visible = bar.style.display !== 'none';
+        document.body.style.paddingBottom = visible ? (bar.offsetHeight + 16) + 'px' : '20px';
+    }
+    window.addEventListener('resize', syncStickyBarPadding);
 
     async function loadAll() {
         document.getElementById('itemsGrid').innerHTML = '<div class="empty-hint">載入中…</div>';
@@ -547,6 +557,7 @@
         const editedCount = Object.values(draft).filter(d => d.edited).length;
         const totalCount = allItems.filter(it => it.active !== false).length;
         document.getElementById('draftCountText').textContent = `本次盤點涵蓋全部 ${totalCount} 項商品（已編輯 ${editedCount} 項）`;
+        syncStickyBarPadding();
     }
 
     // 送出時涵蓋系統中所有啟用商品：已展開編輯過的用輸入值，其餘用目前帳面數量（視為無差異）
