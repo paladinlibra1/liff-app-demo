@@ -233,6 +233,7 @@
     let batchesByItem = {};
     let currentType = "產品";
     let stocktakeCategory = null; // null = 全部（依系列順序盤點全部品項），否則只顯示該系列
+    let stocktakeExpandedId = null; // 目前展開編輯中的商品 id（像商品管理一樣，先顯示總數量，點擊才展開）
     // draft: { [itemId]: { batches: { [batchKeyId]: {batchId, expiryDate, bookQty, actualQty, isNewBatch, note} }, edited: bool } }
     let draft = {};
 
@@ -278,6 +279,7 @@
     function selectType(type) {
         currentType = type;
         stocktakeCategory = null;
+        stocktakeExpandedId = null;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
         renderStocktakeCategoryTabs();
         renderItemsGrid();
@@ -311,6 +313,7 @@
 
     function selectStocktakeCategory(cat) {
         stocktakeCategory = cat;
+        stocktakeExpandedId = null;
         renderStocktakeCategoryTabs();
         renderItemsGrid();
     }
@@ -363,19 +366,55 @@
                 html += `<div class="series-header">${series}</div>`;
                 lastSeries = series;
             }
-            const batches = draft[it.id] ? draft[it.id].batches : {};
-            const batchKeys = Object.keys(batches);
-            const batchRowsHtml = batchKeys.length
-                ? batchKeys.map(key => renderBatchRow(it.id, key, batches[key])).join('')
-                : '<div class="empty-batch-hint">庫存 0 · 尚無批次，等待新增批次</div>';
-            html += `<div class="item-panel">
-                <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
-                <div class="name"></div>
-                ${batchRowsHtml}
-                <button class="btn btn-add-batch" onclick="addNewBatchRow('${it.id}')">＋ 新增批次</button>
-            </div>`;
+            html += stocktakeExpandedId === it.id ? renderStocktakeExpandPanel(it) : renderStocktakeSummaryPanel(it);
         });
         grid.innerHTML = html;
+    }
+
+    function itemTotalQty(itemId) {
+        const batches = draft[itemId] ? draft[itemId].batches : {};
+        return Object.values(batches).reduce((s, b) => s + (Number(b.actualQty) || 0), 0);
+    }
+
+    function renderStocktakeSummaryPanel(it) {
+        const batches = draft[it.id] ? draft[it.id].batches : {};
+        const batchCount = Object.keys(batches).length;
+        const totalQty = itemTotalQty(it.id);
+        const editedTag = draft[it.id] && draft[it.id].edited ? ' <span style="color:var(--blue);font-weight:600;">已調整</span>' : '';
+        return `<div class="item-panel manage-panel" onclick="toggleStocktakeExpand('${it.id}')">
+            <div class="manage-row">
+                <div>
+                    <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
+                    <div class="name">總數量 ${totalQty}${batchCount ? ` · ${batchCount} 批次` : ' · 尚無批次'}${editedTag}</div>
+                </div>
+                <span class="expand-arrow">›</span>
+            </div>
+        </div>`;
+    }
+
+    function renderStocktakeExpandPanel(it) {
+        const batches = draft[it.id] ? draft[it.id].batches : {};
+        const batchKeys = Object.keys(batches);
+        const totalQty = itemTotalQty(it.id);
+        const batchRowsHtml = batchKeys.length
+            ? batchKeys.map(key => renderBatchRow(it.id, key, batches[key])).join('')
+            : '<div class="empty-batch-hint">庫存 0 · 尚無批次，等待新增批次</div>';
+        return `<div class="item-panel">
+            <div class="manage-row" style="cursor:pointer;margin-bottom:10px;" onclick="toggleStocktakeExpand('${it.id}')">
+                <div>
+                    <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
+                    <div class="name" style="margin-bottom:0;">總數量 ${totalQty}</div>
+                </div>
+                <span class="expand-arrow" style="transform:rotate(270deg);">›</span>
+            </div>
+            ${batchRowsHtml}
+            <button class="btn btn-add-batch" onclick="addNewBatchRow('${it.id}')">＋ 新增批次</button>
+        </div>`;
+    }
+
+    function toggleStocktakeExpand(id) {
+        stocktakeExpandedId = stocktakeExpandedId === id ? null : id;
+        renderItemsGrid();
     }
 
     function expiryBadgeClass(expiryDate) {
