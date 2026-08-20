@@ -27,7 +27,9 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-        .btn-refresh { flex: 0 0 auto; font-size: 14px; padding: 8px 14px; }
+        .btn-refresh { flex: 0 0 auto; font-size: 20px; line-height: 1; padding: 8px 12px; }
+        .btn-refresh.spinning { animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .btn-refresh:disabled { opacity: .5; cursor: default; }
 
         .tabs { display: inline-flex; gap: 4px; margin-bottom: 20px; background-color: #eeeeee; padding: 6px; border-radius: 14px; overflow-x: auto; white-space: nowrap; max-width: 100%; }
@@ -157,7 +159,7 @@
 <div class="container">
     <div class="page-header">
         <h1>📦 庫存盤點</h1>
-        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()">⟳ 重新整理</button>
+        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理">⟳</button>
     </div>
 
     <div class="tabs">
@@ -300,7 +302,7 @@
 
         const btn = document.getElementById('refreshBtn');
         btn.disabled = true;
-        btn.textContent = '⟳ 重新整理中…';
+        btn.classList.add('spinning');
         draft = {};
         stocktakeExpandedId = null;
         expandedItemId = null;
@@ -309,7 +311,7 @@
         if (document.getElementById('section-items').classList.contains('active')) renderItemsManage();
         if (document.getElementById('section-history').classList.contains('active')) await loadHistory();
         btn.disabled = false;
-        btn.textContent = '⟳ 重新整理';
+        btn.classList.remove('spinning');
         showToast('已重新整理');
     }
 
