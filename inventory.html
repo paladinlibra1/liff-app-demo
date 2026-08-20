@@ -27,8 +27,10 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-        .btn-refresh { flex: 0 0 auto; font-size: 30px; line-height: 1; padding: 8px 14px; }
-        .btn-refresh.spinning { animation: spin .8s linear infinite; }
+        .btn-refresh { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
+        .btn-refresh .refresh-icon { font-size: 30px; line-height: 1; display: inline-block; }
+        .btn-refresh .refresh-text { font-size: 15px; font-weight: 600; }
+        .btn-refresh .refresh-icon.spinning { animation: spin .8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .btn-refresh:disabled { opacity: .5; cursor: default; }
 
@@ -138,6 +140,8 @@
             td[data-label]::before { content: attr(data-label); font-size: 13px; font-weight: 600; color: #999; }
 
             .container { padding: 16px 12px; }
+            .btn-refresh .refresh-text { display: none; }
+            .btn-refresh { padding: 8px 10px; }
             .type-toggle { gap: 8px; }
             .type-btn { flex: 1 1 0; text-align: center; padding: 12px 10px; }
             .items-list { gap: 8px; }
@@ -159,7 +163,7 @@
 <div class="container">
     <div class="page-header">
         <h1>📦 庫存盤點</h1>
-        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理">⟳</button>
+        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
     <div class="tabs">
@@ -301,8 +305,9 @@
         if (hasEdits && !confirm('目前有尚未送出的盤點修改，重新整理會清除這些修改，確定要繼續嗎？')) return;
 
         const btn = document.getElementById('refreshBtn');
+        const icon = btn.querySelector('.refresh-icon');
         btn.disabled = true;
-        btn.classList.add('spinning');
+        icon.classList.add('spinning');
         draft = {};
         stocktakeExpandedId = null;
         expandedItemId = null;
@@ -311,7 +316,7 @@
         if (document.getElementById('section-items').classList.contains('active')) renderItemsManage();
         if (document.getElementById('section-history').classList.contains('active')) await loadHistory();
         btn.disabled = false;
-        btn.classList.remove('spinning');
+        icon.classList.remove('spinning');
         showToast('已重新整理');
     }
 
