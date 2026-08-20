@@ -46,6 +46,7 @@
         .manage-panel { cursor: pointer; }
         .manage-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .manage-row .expand-arrow { font-size: 20px; color: #bbb; transform: rotate(90deg); flex: 0 0 auto; }
+        .qty-total { font-size: 28px; font-weight: 700; color: var(--primary-dark); min-width: 40px; text-align: right; }
         .manage-edit .modal-actions { flex-wrap: wrap; }
         .manage-edit .modal-actions .btn-danger { margin-right: auto; }
 
@@ -385,9 +386,12 @@
             <div class="manage-row">
                 <div>
                     <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
-                    <div class="name">總數量 ${totalQty}${batchCount ? ` · ${batchCount} 批次` : ' · 尚無批次'}${editedTag}</div>
+                    <div class="name">${batchCount ? `${batchCount} 批次` : '尚無批次'}${editedTag}</div>
                 </div>
-                <span class="expand-arrow">›</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="qty-total">${totalQty}</div>
+                    <span class="expand-arrow">›</span>
+                </div>
             </div>
         </div>`;
     }
@@ -403,9 +407,12 @@
             <div class="manage-row" style="cursor:pointer;margin-bottom:10px;" onclick="toggleStocktakeExpand('${it.id}')">
                 <div>
                     <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:13px;">${it.name || ''}</span></div>
-                    <div class="name" style="margin-bottom:0;">總數量 ${totalQty}</div>
+                    <div class="name" style="margin-bottom:0;"></div>
                 </div>
-                <span class="expand-arrow" style="transform:rotate(270deg);">›</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="qty-total">${totalQty}</div>
+                    <span class="expand-arrow" style="transform:rotate(270deg);">›</span>
+                </div>
             </div>
             ${batchRowsHtml}
             <button class="btn btn-add-batch" onclick="addNewBatchRow('${it.id}')">＋ 新增批次</button>
