@@ -97,7 +97,12 @@
         th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
         th { background: #fafafa; color: #666; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
         .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 6px; }
-        .top-action-bar { margin-bottom: 14px; }
+        .top-action-bar { margin-bottom: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .sort-row { display: flex; align-items: center; gap: 10px; }
+        .sort-row .sort-name { flex: 1; font-weight: 600; font-size: 15px; }
+        .sort-row .sort-sub { font-weight: 400; color: #888; font-size: 13px; }
+        .sort-btn { border: 1px solid var(--border-color); background: white; border-radius: 8px; min-width: 44px; min-height: 40px; font-size: 18px; color: #555; cursor: pointer; }
+        .sort-btn:disabled { opacity: .3; cursor: default; }
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
         .modal-overlay.active { display: flex; }
@@ -189,7 +194,8 @@
         <div class="section-label">選擇系列：</div>
         <div class="category-tabs" id="itemsCategoryTabs"></div>
         <div class="top-action-bar">
-            <button class="btn btn-primary" onclick="startAddManageItem()">＋ 新增商品</button>
+            <button class="btn btn-primary" id="addItemBtn" onclick="startAddManageItem()">＋ 新增商品</button>
+            <button class="btn btn-outline" id="sortModeBtn" onclick="toggleSortMode()">⇅ 排序</button>
         </div>
         <div class="items-list" id="itemsManageList"></div>
     </div>
@@ -241,6 +247,7 @@
     const itemsCol = db.collection("inventoryItems");
     const batchesCol = db.collection("inventoryBatches");
     const stocktakesCol = db.collection("inventoryStocktakes");
+    const settingsCol = db.collection("inventorySettings");
 
     let allItems = [];
     let allBatches = [];
@@ -281,7 +288,7 @@
     async function loadAll() {
         document.getElementById('itemsGrid').innerHTML = '<div class="empty-hint">載入中…</div>';
         try {
-            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get()]);
+            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get(), loadCategoryOrder()]);
             allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             batchesByItem = {};
@@ -363,11 +370,34 @@
     }
 
     // 分類（系列）顯示順序：依實際系列名稱排列，未列出的分類排在最後
-    const CATEGORY_ORDER = ['輕齡肌膚', '熟齡肌膚', '斑點肌膚', '乾燥細紋肌膚', '敏感肌膚', '通用肌膚', '痘痘粉刺肌膚', '營養系列', '紅顏系列', '調理系列', '機能系列', '日常生活系列'];
+    const DEFAULT_CATEGORY_ORDER = ['輕齡肌膚', '熟齡肌膚', '斑點肌膚', '乾燥細紋肌膚', '敏感肌膚', '通用肌膚', '痘痘粉刺肌膚', '營養系列', '紅顏系列', '調理系列', '機能系列', '日常生活系列'];
+    // 實際使用的系列順序：從 inventorySettings/categoryOrder 讀取，讀不到就用預設順序
+    let CATEGORY_ORDER = [...DEFAULT_CATEGORY_ORDER];
     function categoryRank(category) {
         const idx = CATEGORY_ORDER.indexOf(category);
         return idx === -1 ? CATEGORY_ORDER.length : idx;
     }
+
+    async function loadCategoryOrder() {
+        try {
+            const doc = await settingsCol.doc('categoryOrder').get();
+            const saved = doc.exists && Array.isArray(doc.data().order) ? doc.data().order : [];
+            // 以儲存的順序為主，預設清單中未被收錄的系列補在後面
+            CATEGORY_ORDER = [...saved, ...DEFAULT_CATEGORY_ORDER.filter(c => !saved.includes(c))];
+        } catch (err) {
+            console.error('loadCategoryOrder failed', err);
+        }
+    }
+    // 商品排序：先系列順序，再手動排序（sortOrder），沒設定過的排在後面並沿用代碼順序
+    function compareItems(a, b) {
+        const rankDiff = categoryRank(a.category) - categoryRank(b.category);
+        if (rankDiff !== 0) return rankDiff;
+        const sa = typeof a.sortOrder === 'number' ? a.sortOrder : Infinity;
+        const sb = typeof b.sortOrder === 'number' ? b.sortOrder : Infinity;
+        if (sa !== sb) return sa - sb;
+        return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
+    }
+
     function itemSeriesName(item) {
         return item.category || '未分類';
     }
@@ -391,11 +421,7 @@
         if (stocktakeCategory !== null) {
             items = items.filter(it => (it.category || '未分類') === stocktakeCategory);
         }
-        items = items.sort((a, b) => {
-            const rankDiff = categoryRank(a.category) - categoryRank(b.category);
-            if (rankDiff !== 0) return rankDiff;
-            return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
-        });
+        items = items.sort(compareItems);
 
         if (!items.length) {
             grid.innerHTML = '<div class="empty-hint">此系列尚無商品</div>';
@@ -678,10 +704,102 @@
     let manageCategory = null;
     let expandedItemId = null;
     let addingNewItem = false;
+    let sortMode = false; // 排序模式：改用 ↑↓ 調整系列與商品順序
+
+    // 重繪後回到原本的捲動位置，避免按 ↑↓ 時畫面跳回最上方
+    function preserveScroll(fn) {
+        const y = window.scrollY;
+        fn();
+        window.scrollTo(0, y);
+    }
 
     function renderItemsManage() {
         renderManageCategoryTabs();
-        renderManageList();
+        document.getElementById('sortModeBtn').textContent = sortMode ? '✓ 完成排序' : '⇅ 排序';
+        document.getElementById('addItemBtn').style.display = sortMode ? 'none' : '';
+        if (sortMode) renderSortList(); else renderManageList();
+    }
+
+    function toggleSortMode() {
+        sortMode = !sortMode;
+        expandedItemId = null;
+        addingNewItem = false;
+        renderItemsManage();
+        if (!sortMode) showToast('排序已儲存');
+    }
+
+    // 目前有商品的系列，依現行順序排列
+    function sortableCategories() {
+        const counts = {};
+        allItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
+        return categoryListFor(allItems).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
+    }
+
+    function renderSortList() {
+        const wrap = document.getElementById('itemsManageList');
+        const cats = sortableCategories();
+        let html = '<div class="section-label">系列順序（用 ↑ ↓ 調整，每次移動會立即儲存）：</div>';
+        html += cats.map((c, i) => `<div class="item-panel sort-row">
+            <div class="sort-name">${c.name} <span class="sort-sub">（${c.count}）</span></div>
+            <button class="sort-btn" ${i === 0 ? 'disabled' : ''} onclick="moveCategory(${i},-1)">↑</button>
+            <button class="sort-btn" ${i === cats.length - 1 ? 'disabled' : ''} onclick="moveCategory(${i},1)">↓</button>
+        </div>`).join('');
+
+        html += '<div class="section-label" style="margin-top:20px;">商品順序（用 ↑ ↓ 調整，每次移動會立即儲存）：</div>';
+        cats.forEach(c => {
+            if (manageCategory !== null && c.name !== manageCategory) return;
+            const group = seriesGroupItems(c.name);
+            html += `<div class="series-header">${c.name}</div>`;
+            html += group.map((it, i) => `<div class="item-panel sort-row">
+                <div class="sort-name">${it.code || ''} <span class="sort-sub">${it.name || ''}${it.active === false ? ' · 已停用' : ''}</span></div>
+                <button class="sort-btn" ${i === 0 ? 'disabled' : ''} onclick="moveItem('${it.id}',-1)">↑</button>
+                <button class="sort-btn" ${i === group.length - 1 ? 'disabled' : ''} onclick="moveItem('${it.id}',1)">↓</button>
+            </div>`).join('');
+        });
+        wrap.innerHTML = html;
+    }
+
+    // 同一系列的商品，依目前順序排列
+    function seriesGroupItems(category) {
+        return allItems.filter(it => (it.category || '未分類') === category).sort(compareItems);
+    }
+
+    async function moveItem(itemId, delta) {
+        const item = allItems.find(it => it.id === itemId);
+        if (!item) return;
+        const group = seriesGroupItems(item.category || '未分類');
+        const index = group.findIndex(it => it.id === itemId);
+        const target = index + delta;
+        if (target < 0 || target >= group.length) return;
+        [group[index], group[target]] = [group[target], group[index]];
+        // 重新編號整個系列，讓順序不會有空隙或重複
+        group.forEach((it, i) => { it.sortOrder = i; });
+        preserveScroll(renderItemsManage);
+        renderItemsGrid(); // 盤點作業的商品順序同步更新
+        try {
+            const writeBatch = db.batch();
+            group.forEach((it, i) => writeBatch.update(itemsCol.doc(it.id), { sortOrder: i, updatedAt: new Date() }));
+            await writeBatch.commit();
+        } catch (err) {
+            alert('商品順序儲存失敗：' + err.message);
+        }
+    }
+
+    async function moveCategory(index, delta) {
+        const names = sortableCategories().map(c => c.name);
+        const target = index + delta;
+        if (target < 0 || target >= names.length) return;
+        [names[index], names[target]] = [names[target], names[index]];
+        // 有商品的系列用新順序，目前沒有商品的系列維持在後面
+        CATEGORY_ORDER = [...names, ...CATEGORY_ORDER.filter(c => !names.includes(c))];
+        preserveScroll(renderItemsManage);
+        renderStocktakeCategoryTabs(); // 盤點作業的系列順序同步更新
+        renderItemsGrid();
+        try {
+            await settingsCol.doc('categoryOrder').set({ order: CATEGORY_ORDER, updatedAt: new Date() });
+        } catch (err) {
+            alert('系列順序儲存失敗：' + err.message);
+        }
     }
 
     function renderManageCategoryTabs() {
@@ -707,11 +825,7 @@
         if (manageCategory !== null) {
             items = items.filter(it => (it.category || '未分類') === manageCategory);
         }
-        return items.sort((a, b) => {
-            const rankDiff = categoryRank(a.category) - categoryRank(b.category);
-            if (rankDiff !== 0) return rankDiff;
-            return (a.code || '').localeCompare(b.code || '', 'zh-Hant', { numeric: true, sensitivity: 'base' });
-        });
+        return items.sort(compareItems);
     }
 
     function renderManageList() {
