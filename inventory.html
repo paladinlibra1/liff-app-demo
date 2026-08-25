@@ -381,7 +381,7 @@
             existing.forEach(b => {
                 batches[b.id] = { batchId: b.id, expiryDate: b.expiryDate || '', bookQty: Number(b.qty) || 0, actualQty: Number(b.qty) || 0, isNewBatch: false, note: b.note || '' };
             });
-            draft[item.id] = { item, batches, edited: false };
+            draft[item.id] = { item, batches, edited: false, removedBatches: [] };
         });
     }
 
@@ -512,6 +512,12 @@
     }
 
     function removeBatchRow(itemId, batchKey) {
+        const b = draft[itemId].batches[batchKey];
+        // 已存在於資料庫的批次要記下來，送出盤點時一併刪除（新增中的批次直接丟掉即可）
+        if (b && b.batchId) {
+            if (!draft[itemId].removedBatches) draft[itemId].removedBatches = [];
+            draft[itemId].removedBatches.push({ batchId: b.batchId, expiryDate: b.expiryDate || '', bookQty: Number(b.bookQty) || 0 });
+        }
         delete draft[itemId].batches[batchKey];
         draft[itemId].edited = true;
         renderItemsGrid();
@@ -605,6 +611,13 @@
                         diff: (Number(b.actualQty) || 0) - (Number(b.bookQty) || 0), isNewBatch: b.isNewBatch
                     });
                 });
+                (itemDraft.removedBatches || []).forEach(r => {
+                    items.push({
+                        itemId: item.id, itemCode: item.code || '', itemName: item.name || '',
+                        batchId: r.batchId, expiryDate: r.expiryDate, bookQty: r.bookQty, actualQty: 0,
+                        diff: -r.bookQty, isNewBatch: false, removed: true
+                    });
+                });
             } else {
                 const existing = batchesByItem[item.id] || [];
                 if (existing.length) {
@@ -637,7 +650,9 @@
         try {
             const writeBatch = db.batch();
             for (const it of items) {
-                if (it.isNewBatch) {
+                if (it.removed) {
+                    if (it.batchId) writeBatch.delete(batchesCol.doc(it.batchId));
+                } else if (it.isNewBatch) {
                     const ref = batchesCol.doc();
                     writeBatch.set(ref, { itemId: it.itemId, expiryDate: it.expiryDate, qty: it.actualQty, note: '', createdAt: new Date(), updatedAt: new Date() });
                     it.batchId = ref.id;
