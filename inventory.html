@@ -709,9 +709,9 @@
     let manageCategory = null;
     let expandedItemId = null;
     let addingNewItem = false;
-    let sortMode = false; // 排序模式：改用 ↑↓ 調整系列與商品順序
+    let sortMode = false; // 排序模式：改用拖曳調整系列與商品順序
 
-    // 重繪後回到原本的捲動位置，避免按 ↑↓ 時畫面跳回最上方
+    // 重繪後回到原本的捲動位置，避免排序後畫面跳回最上方
     function preserveScroll(fn) {
         const y = window.scrollY;
         fn();
