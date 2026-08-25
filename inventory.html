@@ -204,6 +204,7 @@
         <div class="top-action-bar">
             <button class="btn btn-primary" id="addItemBtn" onclick="startAddManageItem()">＋ 新增商品</button>
             <button class="btn btn-outline" id="sortModeBtn" onclick="toggleSortMode()">⇅ 排序</button>
+            <button class="btn btn-outline" id="sheetSyncBtn" onclick="syncToSheet(false)">⇪ 同步試算表</button>
         </div>
         <div class="items-list" id="itemsManageList"></div>
     </div>
@@ -265,6 +266,7 @@
     let stocktakeExpandedId = null; // 目前展開編輯中的商品 id（像商品管理一樣，先顯示總數量，點擊才展開）
     // draft: { [itemId]: { batches: { [batchKeyId]: {batchId, expiryDate, bookQty, actualQty, isNewBatch, note} }, edited: bool } }
     let draft = {};
+    let latestStocktakeDate = ''; // 最近一次盤點日，寫進試算表的「最近盤點日」欄
 
     function showToast(msg) {
         const t = document.getElementById('toast');
@@ -296,7 +298,7 @@
     async function loadAll() {
         document.getElementById('itemsGrid').innerHTML = '<div class="empty-hint">載入中…</div>';
         try {
-            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get(), loadCategoryOrder()]);
+            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get(), loadCategoryOrder(), loadLatestStocktakeDate()]);
             allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             batchesByItem = {};
@@ -384,6 +386,15 @@
     function categoryRank(category) {
         const idx = CATEGORY_ORDER.indexOf(category);
         return idx === -1 ? CATEGORY_ORDER.length : idx;
+    }
+
+    async function loadLatestStocktakeDate() {
+        try {
+            const snap = await stocktakesCol.orderBy('date', 'desc').limit(1).get();
+            latestStocktakeDate = snap.empty ? '' : (snap.docs[0].data().date || '');
+        } catch (err) {
+            console.error('loadLatestStocktakeDate failed', err);
+        }
     }
 
     async function loadCategoryOrder() {
@@ -701,6 +712,7 @@
             updateDraftBar();
             showToast('已送出本次盤點');
             await loadAll();
+            syncToSheet(true); // 同步試算表失敗不影響盤點結果，僅背景嘗試
         } catch (err) {
             alert('送出失敗：' + err.message);
         }
@@ -1033,6 +1045,61 @@
     }
 
     // ── 盤點歷史 ──────────────────────────────
+
+    // ── 同步到 Google 試算表 ──────────────────────
+    // 格式比照原本手工維護的表：產品每項一列，各到期日批次成對往右排；護理品另一張分頁
+    function buildSheetSyncPayload() {
+        const active = allItems.filter(it => it.active !== false).sort(compareItems);
+        const displayName = it => `${it.code || ''} ${it.name || ''}`.trim();
+        const batchesOf = it => (batchesByItem[it.id] || []).map(b => ({ expiryDate: b.expiryDate || '', qty: Number(b.qty) || 0 }));
+
+        const products = active.filter(it => it.type !== '護理品').map(it => ({
+            series: it.category || '未分類',
+            name: displayName(it),
+            memberPrice: Number(it.memberPrice) || 0,
+            pv: Number(it.pv) || 0,
+            batches: batchesOf(it)
+        }));
+
+        const care = active.filter(it => it.type === '護理品').map(it => ({
+            name: displayName(it),
+            qty: batchesOf(it).reduce((sum, b) => sum + b.qty, 0),
+            unit: it.unit || '',
+            note: it.note || ''
+        }));
+
+        const maxBatches = products.reduce((m, p) => Math.max(m, p.batches.length), 0);
+        return {
+            syncedAt: new Date().toLocaleString('zh-TW'),
+            lastStocktakeDate: latestStocktakeDate,
+            maxBatches, products, care
+        };
+    }
+
+    async function syncToSheet(silent) {
+        const url = STORE_CONFIG.inventoryGasUrl;
+        if (!url) {
+            if (!silent) alert('尚未設定同步網址：請先部署 gas/inventory-sync.gs，並把 /exec 網址填進 config.js 的 inventoryGasUrl');
+            return;
+        }
+        const btn = document.getElementById('sheetSyncBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '同步中…'; }
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' }, // 用 text/plain 避開 CORS preflight，與既有 GAS 呼叫一致
+                body: JSON.stringify({ action: 'syncInventory', payload: buildSheetSyncPayload() })
+            });
+            const data = await res.json().catch(() => null);
+            if (data && data.ok === false) throw new Error(data.error || '試算表端回報失敗');
+            showToast('已同步到 Google 試算表');
+        } catch (err) {
+            console.error('sheet sync failed', err);
+            if (!silent) alert('同步失敗：' + (err.message || err) + '｜請確認 GAS 已部署為「任何人」可存取');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '⇪ 同步試算表'; }
+        }
+    }
 
     async function loadHistory() {
         const snap = await stocktakesCol.get();

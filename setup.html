@@ -461,6 +461,11 @@
       <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
       <div class="hint">GAS 部署後取得的 Web App URL</div>
     </div>
+    <div class="field">
+      <label>庫存同步 GAS URL（選填）</label>
+      <input type="text" id="inventoryGasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <div class="hint">綁在庫存試算表內的 Apps Script（gas/inventory-sync.gs）部署後的網址，留空則不啟用庫存同步</div>
+    </div>
 
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="goStep(2)">← 上一步</button>
@@ -633,6 +638,9 @@ const STORE_CONFIG = {
 
   // ── GAS Webhook URL ────────────────────────────
   gasUrl: "${document.getElementById('gasUrl').value.trim()}",
+
+  // ── 庫存同步用 GAS（選填）──────────────────────
+  inventoryGasUrl: "${document.getElementById('inventoryGasUrl').value.trim()}",
 
   // ── 店家資訊 ───────────────────────────────────
   storeName: "${document.getElementById('storeName').value.trim()}",

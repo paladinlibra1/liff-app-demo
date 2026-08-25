@@ -24,6 +24,11 @@ const STORE_CONFIG = {
   // ── GAS Webhook URL ────────────────────────────
   gasUrl: "https://script.google.com/macros/s/AKfycbzpxsB2MFz5_3O-PH763lkOXDsBVhqXNMYm9cZVciP3Gba4N_DirAgPLyg1Aphmqf_b/exec",
 
+  // ── 庫存同步用 GAS（綁在庫存試算表內的獨立專案，與上面的預約通知分開）──
+  // 試算表：https://docs.google.com/spreadsheets/d/1K8gtCzSpFMOcKtCFjhDJcq7Da4iPxUMMYYe6ppWs6iw/edit
+  // 程式碼：gas/inventory-sync.gs（貼進該試算表的 Apps Script 後部署，把 /exec 網址填在這裡）
+  inventoryGasUrl: "",
+
   // ── 店家資訊 ───────────────────────────────────
   storeName: "Color Fashion",
 
