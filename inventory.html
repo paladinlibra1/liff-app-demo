@@ -101,8 +101,13 @@
         .sort-row { display: flex; align-items: center; gap: 10px; }
         .sort-row .sort-name { flex: 1; font-weight: 600; font-size: 15px; }
         .sort-row .sort-sub { font-weight: 400; color: #888; font-size: 13px; }
-        .sort-btn { border: 1px solid var(--border-color); background: white; border-radius: 8px; min-width: 44px; min-height: 40px; font-size: 18px; color: #555; cursor: pointer; }
-        .sort-btn:disabled { opacity: .3; cursor: default; }
+        /* 拖曳握把：只有這塊關閉瀏覽器的觸控捲動，讓手指按住就能拖動整列 */
+        .drag-handle { touch-action: none; user-select: none; -webkit-user-select: none; display: flex; align-items: center; justify-content: center; min-width: 46px; min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; background: white; color: #bbb; font-size: 20px; cursor: grab; }
+        .sort-group { display: flex; flex-direction: column; gap: 10px; }
+        .sort-row { transition: box-shadow .15s, border-color .15s; }
+        .sort-row.dragging { position: relative; z-index: 30; border-color: var(--blue); background: var(--card-bg); box-shadow: 0 10px 24px rgba(0,0,0,.22); transition: none; }
+        .sort-row.dragging .drag-handle { color: var(--blue); cursor: grabbing; }
+        body.dragging-active { user-select: none; -webkit-user-select: none; }
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
         .modal-overlay.active { display: flex; }
@@ -738,25 +743,31 @@
     function renderSortList() {
         const wrap = document.getElementById('itemsManageList');
         const cats = sortableCategories();
-        let html = '<div class="section-label">系列順序（用 ↑ ↓ 調整，每次移動會立即儲存）：</div>';
-        html += cats.map((c, i) => `<div class="item-panel sort-row">
+        let html = '<div class="section-label">系列順序（按住右側 ⠿ 拖曳調整，放開即儲存）：</div>';
+        html += '<div class="sort-group" data-group="cat">';
+        html += cats.map(c => `<div class="item-panel sort-row" data-group="cat" data-id="${escAttr(c.name)}">
             <div class="sort-name">${c.name} <span class="sort-sub">（${c.count}）</span></div>
-            <button class="sort-btn" ${i === 0 ? 'disabled' : ''} onclick="moveCategory(${i},-1)">↑</button>
-            <button class="sort-btn" ${i === cats.length - 1 ? 'disabled' : ''} onclick="moveCategory(${i},1)">↓</button>
+            <div class="drag-handle" onpointerdown="startRowDrag(event,'cat')">⠿</div>
         </div>`).join('');
+        html += '</div>';
 
-        html += '<div class="section-label" style="margin-top:20px;">商品順序（用 ↑ ↓ 調整，每次移動會立即儲存）：</div>';
-        cats.forEach(c => {
+        html += '<div class="section-label" style="margin-top:20px;">商品順序（按住右側 ⠿ 拖曳調整，只能在同一系列內移動）：</div>';
+        cats.forEach((c, ci) => {
             if (manageCategory !== null && c.name !== manageCategory) return;
-            const group = seriesGroupItems(c.name);
+            const groupKey = 'g' + ci;
             html += `<div class="series-header">${c.name}</div>`;
-            html += group.map((it, i) => `<div class="item-panel sort-row">
+            html += `<div class="sort-group" data-group="${groupKey}">`;
+            html += seriesGroupItems(c.name).map(it => `<div class="item-panel sort-row" data-group="${groupKey}" data-id="${it.id}">
                 <div class="sort-name">${it.code || ''} <span class="sort-sub">${it.name || ''}${it.active === false ? ' · 已停用' : ''}</span></div>
-                <button class="sort-btn" ${i === 0 ? 'disabled' : ''} onclick="moveItem('${it.id}',-1)">↑</button>
-                <button class="sort-btn" ${i === group.length - 1 ? 'disabled' : ''} onclick="moveItem('${it.id}',1)">↓</button>
+                <div class="drag-handle" onpointerdown="startRowDrag(event,'${groupKey}')">⠿</div>
             </div>`).join('');
+            html += '</div>';
         });
         wrap.innerHTML = html;
+    }
+
+    function escAttr(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     }
 
     // 同一系列的商品，依目前順序排列
@@ -764,32 +775,90 @@
         return allItems.filter(it => (it.category || '未分類') === category).sort(compareItems);
     }
 
-    async function moveItem(itemId, delta) {
-        const item = allItems.find(it => it.id === itemId);
-        if (!item) return;
-        const group = seriesGroupItems(item.category || '未分類');
-        const index = group.findIndex(it => it.id === itemId);
-        const target = index + delta;
-        if (target < 0 || target >= group.length) return;
-        [group[index], group[target]] = [group[target], group[index]];
-        // 重新編號整個系列，讓順序不會有空隙或重複
-        group.forEach((it, i) => { it.sortOrder = i; });
-        preserveScroll(renderItemsManage);
-        renderItemsGrid(); // 盤點作業的商品順序同步更新
-        try {
-            const writeBatch = db.batch();
-            group.forEach((it, i) => writeBatch.update(itemsCol.doc(it.id), { sortOrder: i, updatedAt: new Date() }));
-            await writeBatch.commit();
-        } catch (err) {
-            alert('商品順序儲存失敗：' + err.message);
-        }
+    // ── 拖曳排序 ────────────────────────────────
+    // 只有握把（.drag-handle）會啟動拖曳，拖動時直接在 DOM 內即時換位，放開才寫入 Firestore
+    let dragState = null;
+
+    function startRowDrag(e, groupKey) {
+        if (e.button != null && e.button > 0) return;
+        const handle = e.currentTarget;
+        const row = handle.closest('.sort-row');
+        if (!row) return;
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        const rect = row.getBoundingClientRect();
+        dragState = { row, groupKey, handle, pointerId: e.pointerId, lastY: e.clientY, moved: false,
+                      grabOffset: e.clientY - rect.top, translate: 0 };
+        row.classList.add('dragging');
+        row.style.transform = 'translateY(0px) scale(1.02)';
+        document.body.classList.add('dragging-active');
+        handle.addEventListener('pointermove', onRowDragMove);
+        handle.addEventListener('pointerup', endRowDrag);
+        handle.addEventListener('pointercancel', endRowDrag);
+        dragState.scrollTimer = setInterval(autoScrollWhileDragging, 60);
     }
 
-    async function moveCategory(index, delta) {
-        const names = sortableCategories().map(c => c.name);
-        const target = index + delta;
-        if (target < 0 || target >= names.length) return;
-        [names[index], names[target]] = [names[target], names[index]];
+    function onRowDragMove(e) {
+        if (!dragState) return;
+        e.preventDefault();
+        dragState.lastY = e.clientY;
+        applyDragReorder(e.clientY);
+    }
+
+    function applyDragReorder(clientY) {
+        const rows = [...document.querySelectorAll(`.sort-row[data-group="${dragState.groupKey}"]`)];
+        for (const other of rows) {
+            if (other === dragState.row) continue;
+            const r = other.getBoundingClientRect();
+            if (clientY >= r.top && clientY <= r.bottom) {
+                const before = clientY < r.top + r.height / 2;
+                other.parentNode.insertBefore(dragState.row, before ? other : other.nextSibling);
+                dragState.moved = true;
+                break;
+            }
+        }
+        updateDragVisual(clientY);
+    }
+
+    // 讓拖曳中的那一列浮在原位之上並跟著手指走（換位後重新校正位移量）
+    function updateDragVisual(clientY) {
+        const rect = dragState.row.getBoundingClientRect();
+        const naturalTop = rect.top - dragState.translate;
+        dragState.translate = clientY - dragState.grabOffset - naturalTop;
+        dragState.row.style.transform = `translateY(${dragState.translate}px) scale(1.02)`;
+    }
+
+    // 拖到畫面上下緣時自動捲動，長清單才能一路拖到底
+    function autoScrollWhileDragging() {
+        if (!dragState) return;
+        const edge = 90;
+        const y = dragState.lastY;
+        if (y < edge) window.scrollBy(0, -Math.ceil((edge - y) / 4));
+        else if (y > window.innerHeight - edge) window.scrollBy(0, Math.ceil((y - (window.innerHeight - edge)) / 4));
+        else return;
+        applyDragReorder(y);
+    }
+
+    async function endRowDrag(e) {
+        if (!dragState) return;
+        const { row, groupKey, handle, moved } = dragState;
+        clearInterval(dragState.scrollTimer);
+        handle.removeEventListener('pointermove', onRowDragMove);
+        handle.removeEventListener('pointerup', endRowDrag);
+        handle.removeEventListener('pointercancel', endRowDrag);
+        try { handle.releasePointerCapture(dragState.pointerId); } catch (err) { /* 已自動釋放 */ }
+        row.classList.remove('dragging');
+        row.style.transform = '';
+        document.body.classList.remove('dragging-active');
+        dragState = null;
+        if (!moved) return;
+
+        const ids = [...document.querySelectorAll(`.sort-row[data-group="${groupKey}"]`)].map(r => r.dataset.id);
+        if (groupKey === 'cat') await saveCategoryOrder(ids);
+        else await saveItemOrder(ids);
+    }
+
+    async function saveCategoryOrder(names) {
         // 有商品的系列用新順序，目前沒有商品的系列維持在後面
         CATEGORY_ORDER = [...names, ...CATEGORY_ORDER.filter(c => !names.includes(c))];
         preserveScroll(renderItemsManage);
@@ -797,8 +866,25 @@
         renderItemsGrid();
         try {
             await settingsCol.doc('categoryOrder').set({ order: CATEGORY_ORDER, updatedAt: new Date() });
+            showToast('系列順序已儲存');
         } catch (err) {
             alert('系列順序儲存失敗：' + err.message);
+        }
+    }
+
+    async function saveItemOrder(ids) {
+        // 重新編號整個系列，讓順序不會有空隙或重複
+        const items = ids.map(id => allItems.find(it => it.id === id)).filter(Boolean);
+        items.forEach((it, i) => { it.sortOrder = i; });
+        preserveScroll(renderItemsManage);
+        renderItemsGrid(); // 盤點作業的商品順序同步更新
+        try {
+            const writeBatch = db.batch();
+            items.forEach((it, i) => writeBatch.update(itemsCol.doc(it.id), { sortOrder: i, updatedAt: new Date() }));
+            await writeBatch.commit();
+            showToast('商品順序已儲存');
+        } catch (err) {
+            alert('商品順序儲存失敗：' + err.message);
         }
     }
 
