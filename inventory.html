@@ -108,8 +108,10 @@
         .batch-row .remove-batch { margin-left: auto; background: none; border: none; color: #bbb; cursor: pointer; font-size: 20px; padding: 8px; min-width: 40px; min-height: 40px; }
 
         .btn { border: none; border-radius: 8px; padding: 10px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
-        .btn-primary { background: var(--primary-color); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
+        .btn { transition: background .2s, box-shadow .2s, transform .1s; }
+        .btn-primary { background: linear-gradient(135deg, #f8a7ab, #ec8a94); color: white; box-shadow: 0 4px 12px rgba(236,138,148,.28); }
+        .btn-primary:hover { background: linear-gradient(135deg, #f6969c, #e37a86); box-shadow: 0 6px 16px rgba(236,138,148,.34); }
+        .btn-primary:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(236,138,148,.28); }
         .btn-outline { background: white; border: 1px solid var(--border-color); color: #555; }
         .btn-outline:hover { background: #f5f5f5; }
         .btn-danger { background: #d64545; color: white; }
