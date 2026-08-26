@@ -27,6 +27,9 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+        .page-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .back-link { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: #eeeeee; color: #555; font-size: 20px; font-weight: 700; text-decoration: none; }
+        .back-link:hover { background: #e0e0e0; color: var(--primary-dark); }
         .btn-refresh { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
         .btn-refresh .refresh-icon { font-size: 30px; line-height: 1; display: inline-block; }
         .btn-refresh .refresh-text { font-size: 15px; font-weight: 600; }
@@ -175,7 +178,7 @@
 
 <div class="container">
     <div class="page-header">
-        <h1>📦 庫存盤點</h1>
+        <div class="page-title"><a class="back-link" href="admin.html" title="回後台管理">←</a><h1>📦 庫存盤點</h1></div>
         <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 

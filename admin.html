@@ -67,6 +67,7 @@
         .tab-btn { background: transparent; border: none; font-size: 15px; font-weight: 600; color: #71717a; cursor: pointer; padding: 10px 24px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.5px; }
         .tab-btn:hover { color: var(--primary-dark); }
         .tab-btn.active { background-color: white; color: var(--primary-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04); }
+        .tab-btn.tab-link { display: inline-block; text-decoration: none; line-height: normal; }
 
         .section { display: none; }
         .section.active { display: block; animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -239,6 +240,7 @@
             <button class="tab-btn" id="tab-gcal" onclick="switchTab('gcal')">📆 Google 日曆</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">⏰ 營業日設定</button>
+            <a class="tab-btn tab-link" href="inventory.html">📦 庫存盤點</a>
             <!-- <button class="tab-btn" id="tab-history" style="display: none;" onclick="switchTab('history')">📜 歷史預約</button> -->
         </div>
 
@@ -255,6 +257,7 @@
                 <!-- <option value="gcal">📆 Google 日曆</option> -->
                 <option value="member">👥 會員清單</option>
                 <option value="operating">⏰ 營業日設定</option>
+                <option value="inventory">📦 庫存盤點</option>
                 <!-- <option value="history" style="display: none;">📜 歷史預約</option> -->
             </select>
             <div id="currentTabTitle" class="current-tab-title">📝 預約管理</div>
@@ -547,6 +550,13 @@
 
         function switchTab(tabName) {
             const selectEl = document.getElementById('mainTabSelect');
+
+            // 📦 庫存盤點是獨立頁面，直接轉址過去
+            if (tabName === 'inventory') {
+                location.href = 'inventory.html';
+                return;
+            }
+
             selectEl.value = tabName;
 
             // 🔥 防呆機制：如果選項被隱藏了 (selectedIndex 為 -1)，我們就手動給它標題，不讓程式當機！
