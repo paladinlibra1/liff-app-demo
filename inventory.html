@@ -19,8 +19,9 @@
             --border-color: #e5e5e5;
             --accent: #f89fa1;
             --accent-light: #fdf2f5;
-            --blue: #3b82f6;
-            --blue-light: #eaf2ff;
+            --accent-strong: #d1737f;
+            --accent-soft: #fdeff2;
+            --accent-border: #f3c7cd;
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg-color); color: var(--text-color); padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
@@ -67,13 +68,13 @@
 
         .type-toggle { display: flex; gap: 10px; margin-bottom: 18px; }
         .type-btn { flex: 0 0 auto; padding: 10px 22px; border-radius: 10px; border: 1px solid var(--border-color); background: white; font-size: 16px; font-weight: 600; color: #555; cursor: pointer; }
-        .type-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+        .type-btn.active { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-strong); }
 
         .section-label { font-size: 14px; color: #888; margin: 4px 0 8px; }
 
         .category-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
         .chip-btn { flex: 0 0 auto; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: white; font-size: 13.5px; font-weight: 600; color: #555; cursor: pointer; }
-        .chip-btn.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+        .chip-btn.active { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-strong); }
 
         .manage-panel { cursor: pointer; }
         .manage-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -84,7 +85,7 @@
         .manage-edit .modal-actions .btn-danger { margin-right: auto; }
 
         .items-list { display: flex; flex-direction: column; gap: 10px; }
-        .series-header { position: sticky; top: 0; background: var(--bg-color); padding: 10px 2px 4px; font-size: 15px; font-weight: 700; color: var(--blue); z-index: 5; }
+        .series-header { position: sticky; top: 0; background: var(--bg-color); padding: 10px 2px 4px; font-size: 15px; font-weight: 700; color: var(--accent-strong); z-index: 5; }
         .item-panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; }
         .item-panel .code { font-weight: 700; font-size: 17px; }
         .item-panel .name { font-size: 14px; color: #666; margin-top: 2px; margin-bottom: 10px; }
@@ -130,8 +131,8 @@
         .drag-handle { touch-action: none; user-select: none; -webkit-user-select: none; display: flex; align-items: center; justify-content: center; min-width: 46px; min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; background: white; color: #bbb; font-size: 20px; cursor: grab; }
         .sort-group { display: flex; flex-direction: column; gap: 10px; }
         .sort-row { transition: box-shadow .15s, border-color .15s; }
-        .sort-row.dragging { position: relative; z-index: 30; border-color: var(--blue); background: var(--card-bg); box-shadow: 0 10px 24px rgba(0,0,0,.22); transition: none; }
-        .sort-row.dragging .drag-handle { color: var(--blue); cursor: grabbing; }
+        .sort-row.dragging { position: relative; z-index: 30; border-color: var(--accent); background: var(--card-bg); box-shadow: 0 10px 24px rgba(0,0,0,.22); transition: none; }
+        .sort-row.dragging .drag-handle { color: var(--accent-strong); cursor: grabbing; }
         body.dragging-active { user-select: none; -webkit-user-select: none; }
 
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; padding: 16px; }
@@ -521,7 +522,7 @@
         const batchCount = Object.keys(batches).length;
         const totalQty = itemTotalQty(it.id);
         const expired = itemHasExpiredBatch(it.id);
-        const editedTag = draft[it.id] && draft[it.id].edited ? ' <span style="color:var(--blue);font-weight:600;">已調整</span>' : '';
+        const editedTag = draft[it.id] && draft[it.id].edited ? ' <span style="color:var(--accent-strong);font-weight:600;">已調整</span>' : '';
         return `<div class="item-panel manage-panel" onclick="toggleStocktakeExpand('${it.id}')">
             <div class="manage-row">
                 <div>
