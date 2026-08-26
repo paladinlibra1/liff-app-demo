@@ -27,9 +27,11 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; padding-top: calc(20px + env(safe-area-inset-top)); }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-        .page-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .back-link { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: #eeeeee; color: #555; font-size: 20px; font-weight: 700; text-decoration: none; }
-        .back-link:hover { background: #e0e0e0; color: var(--primary-dark); }
+        /* 漢堡選單（與 admin.html 相同樣式，用來切換後台各頁） */
+        .tab-select-container { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 46px; min-width: 0; }
+        .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
+        .tab-select { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; opacity: 0; cursor: pointer; appearance: none; -webkit-appearance: none; z-index: 10; }
+        .current-tab-title { font-size: 18px; font-weight: 700; color: var(--text-color); letter-spacing: 1px; margin: 0; pointer-events: none; white-space: nowrap; }
         .btn-refresh { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
         .btn-refresh .refresh-icon { font-size: 30px; line-height: 1; display: inline-block; }
         .btn-refresh .refresh-text { font-size: 15px; font-weight: 600; }
@@ -178,7 +180,22 @@
 
 <div class="container">
     <div class="page-header">
-        <div class="page-title"><a class="back-link" href="admin.html" title="回後台管理">←</a><h1>📦 庫存盤點</h1></div>
+        <div class="tab-select-container">
+            <div class="hamburger-btn">
+                <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </div>
+            <select id="mainNavSelect" class="tab-select" onchange="goAdminTab(this.value)">
+                <option value="inventory" selected>📦 庫存盤點</option>
+                <option value="booking">📝 預約管理</option>
+                <option value="member">👥 會員清單</option>
+                <option value="operating">⏰ 營業日設定</option>
+            </select>
+            <div class="current-tab-title">📦 庫存盤點</div>
+        </div>
         <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
@@ -274,6 +291,12 @@
         t.textContent = msg;
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // 漢堡選單：切到後台其他頁面（庫存盤點本身就是目前這頁）
+    function goAdminTab(tabName) {
+        if (tabName === 'inventory') return;
+        location.href = `admin.html?tab=${tabName}`;
     }
 
     function switchTab(name) {

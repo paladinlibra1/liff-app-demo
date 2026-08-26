@@ -538,8 +538,10 @@
         let fcHistoryCalendar = null;
 
         window.onload = function() {
-            // 1. 不管手機或電腦，預設都打開「預約管理」
-            switchTab('booking');
+            // 1. 預設打開「預約管理」；若網址帶 ?tab=xxx（例如從庫存盤點頁跳回來）就打開該分頁
+            const wantedTab = new URLSearchParams(location.search).get('tab');
+            const validTabs = ['booking', 'gcal', 'member', 'operating'];
+            switchTab(validTabs.includes(wantedTab) ? wantedTab : 'booking');
             
             // 2. 隱藏載入中的轉圈圈動畫
             document.getElementById('loading').style.display = 'none';
