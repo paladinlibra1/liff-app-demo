@@ -24,7 +24,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg-color); color: var(--text-color); padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
-        .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+        .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; padding-top: calc(20px + env(safe-area-inset-top)); }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
         .page-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -155,7 +155,7 @@
             td:last-child { border-bottom: none; }
             td[data-label]::before { content: attr(data-label); font-size: 13px; font-weight: 600; color: #999; }
 
-            .container { padding: 16px 12px; }
+            .container { padding: 16px 12px; padding-top: calc(24px + env(safe-area-inset-top)); }
             .btn-refresh .refresh-text { display: none; }
             .btn-refresh { padding: 8px 10px; }
             .type-toggle { gap: 8px; }
