@@ -27,8 +27,15 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; padding-top: calc(20px + env(safe-area-inset-top)); }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+        /* 電腦版外框與 admin.html 對齊，切換分頁時位置不會位移 */
+        @media (min-width: 769px) {
+            body { padding: 20px; padding-top: max(20px, env(safe-area-inset-top)); }
+            .container { max-width: 95%; padding: 0; }
+        }
+
         /* 後台頁面導覽：電腦版一整排分頁鈕，手機版漢堡選單 */
-        .page-tabs { margin-bottom: 0; }
+        .page-tabs { margin-bottom: 30px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .page-tabs .tab-btn { padding: 10px 24px; letter-spacing: 0.5px; }
         .tab-btn.tab-link { display: inline-block; text-decoration: none; line-height: normal; }
         .mobile-tabs { display: none !important; }
         @media (max-width: 768px) {
@@ -188,15 +195,15 @@
 <body>
 
 <div class="container">
-    <div class="page-header">
-        <div class="tabs page-tabs pc-tabs">
-            <a class="tab-btn tab-link" href="admin.html?tab=booking">📝 預約管理</a>
-            <a class="tab-btn tab-link" href="admin.html?tab=gcal">📆 Google 日曆</a>
-            <a class="tab-btn tab-link" href="admin.html?tab=member">👥 會員清單</a>
-            <a class="tab-btn tab-link" href="admin.html?tab=operating">⏰ 營業日設定</a>
-            <span class="tab-btn tab-link active">📦 庫存盤點</span>
-        </div>
+    <div class="tabs page-tabs pc-tabs">
+        <a class="tab-btn tab-link" href="admin.html?tab=booking">📝 預約管理</a>
+        <a class="tab-btn tab-link" href="admin.html?tab=gcal">📆 Google 日曆</a>
+        <a class="tab-btn tab-link" href="admin.html?tab=member">👥 會員清單</a>
+        <a class="tab-btn tab-link" href="admin.html?tab=operating">⏰ 營業日設定</a>
+        <span class="tab-btn tab-link active">📦 庫存盤點</span>
+    </div>
 
+    <div class="page-header">
         <div class="tab-select-container mobile-tabs">
             <div class="hamburger-btn">
                 <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
