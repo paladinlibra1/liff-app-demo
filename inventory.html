@@ -33,7 +33,7 @@
             .container { max-width: 95%; padding: 0; }
             /* 分頁列、選擇系列那幾排滿版；商品清單維持 960px 並置中 */
             .sub-tab-bar { justify-content: flex-start; }
-            .items-list, .top-action-bar, #historyList { max-width: 960px; margin-left: auto; margin-right: auto; }
+            .items-list, .top-action-bar, #historyNote, #historyList { max-width: 960px; margin-left: auto; margin-right: auto; }
             .page-header { display: none; }
         }
 
@@ -262,6 +262,7 @@
 
     <!-- 盤點歷史 -->
     <div class="section" id="section-history">
+        <div class="section-label" id="historyNote"></div>
         <div id="historyList"></div>
     </div>
 </div>
@@ -307,6 +308,8 @@
     const itemsCol = db.collection("inventoryItems");
     const batchesCol = db.collection("inventoryBatches");
     const stocktakesCol = db.collection("inventoryStocktakes");
+
+    const HISTORY_KEEP = 30; // 盤點紀錄只保留最新 30 筆，超過的在送出盤點後自動刪除
     const settingsCol = db.collection("inventorySettings");
 
     let allItems = [];
@@ -754,6 +757,8 @@
             }
             await writeBatch.commit();
             await stocktakesCol.add({ date, itemCount: items.length, totalDiff, items, createdAt: new Date() });
+            // 清理失敗不影響這次盤點結果，只記在 console
+            try { await pruneStocktakes(); } catch (e) { console.warn('清理舊盤點紀錄失敗', e); }
 
             draft = {};
             updateDraftBar();
@@ -1092,11 +1097,35 @@
 
     // ── 盤點歷史 ──────────────────────────────
 
+    // 盤點紀錄由新到舊：先比盤點日期，同一天再比寫入時間
+    function stocktakeTime(v) {
+        const t = v && v.createdAt;
+        return t && typeof t.toMillis === 'function' ? t.toMillis() : 0;
+    }
+    function compareStocktakeDesc(a, b) {
+        return (b.date || '').localeCompare(a.date || '') || (stocktakeTime(b) - stocktakeTime(a));
+    }
+
+    // 只保留最新 HISTORY_KEEP 筆，其餘刪除
+    async function pruneStocktakes() {
+        const snap = await stocktakesCol.get();
+        if (snap.size <= HISTORY_KEEP) return;
+        const docs = snap.docs.slice().sort((a, b) => compareStocktakeDesc(a.data(), b.data()));
+        const extras = docs.slice(HISTORY_KEEP);
+        for (let i = 0; i < extras.length; i += 400) {
+            const writeBatch = db.batch();
+            extras.slice(i, i + 400).forEach(d => writeBatch.delete(d.ref));
+            await writeBatch.commit();
+        }
+    }
+
     async function loadHistory() {
         const snap = await stocktakesCol.get();
         const records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+            .sort(compareStocktakeDesc)
+            .slice(0, HISTORY_KEEP);
         const container = document.getElementById('historyList');
+        document.getElementById('historyNote').textContent = `僅保留最新 ${HISTORY_KEEP} 筆盤點紀錄`;
         if (!records.length) {
             container.innerHTML = '<div class="empty-hint">尚無盤點紀錄</div>';
             return;
