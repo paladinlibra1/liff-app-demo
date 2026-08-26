@@ -31,8 +31,9 @@
         @media (min-width: 769px) {
             body { padding: 20px; padding-top: max(20px, env(safe-area-inset-top)); }
             .container { max-width: 95%; padding: 0; }
-            /* 分頁列跟 admin 一樣滿版，內容維持易讀寬度，總數量才不會被推到螢幕最右邊 */
-            .sub-tab-bar, .section { max-width: 960px; }
+            /* 分頁列、選擇系列那幾排滿版；商品清單維持 960px 並置中 */
+            .sub-tab-bar { justify-content: flex-start; }
+            .items-list, .top-action-bar, #historyList { max-width: 960px; margin-left: auto; margin-right: auto; }
             .page-header { display: none; }
         }
 
