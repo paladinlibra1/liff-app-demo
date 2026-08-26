@@ -188,6 +188,9 @@
             td[data-label]::before { content: attr(data-label); font-size: 13px; font-weight: 600; color: #999; }
 
             .container { padding: 16px 12px; padding-top: calc(24px + env(safe-area-inset-top)); }
+            /* 子分頁加了圖示後在手機上會超出畫面，改成三等分滿版並縮小內距 */
+            #subTabs { display: flex; width: 100%; overflow-x: visible; }
+            #subTabs .tab-btn { flex: 1 1 0; padding: 10px 4px; font-size: 14px; text-align: center; }
             .btn-refresh .refresh-text { display: none; }
             .btn-refresh { padding: 8px 10px; }
             .type-toggle { gap: 8px; }
