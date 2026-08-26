@@ -27,6 +27,15 @@
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; padding-top: calc(20px + env(safe-area-inset-top)); }
         h1 { font-size: 22px; margin: 0; }
         .page-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+        /* 後台頁面導覽：電腦版一整排分頁鈕，手機版漢堡選單 */
+        .page-tabs { margin-bottom: 0; }
+        .tab-btn.tab-link { display: inline-block; text-decoration: none; line-height: normal; }
+        .mobile-tabs { display: none !important; }
+        @media (max-width: 768px) {
+            .pc-tabs { display: none !important; }
+            .mobile-tabs { display: flex !important; }
+        }
+
         /* 漢堡選單（與 admin.html 相同樣式，用來切換後台各頁） */
         .tab-select-container { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 46px; min-width: 0; }
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
@@ -180,7 +189,15 @@
 
 <div class="container">
     <div class="page-header">
-        <div class="tab-select-container">
+        <div class="tabs page-tabs pc-tabs">
+            <a class="tab-btn tab-link" href="admin.html?tab=booking">📝 預約管理</a>
+            <a class="tab-btn tab-link" href="admin.html?tab=gcal">📆 Google 日曆</a>
+            <a class="tab-btn tab-link" href="admin.html?tab=member">👥 會員清單</a>
+            <a class="tab-btn tab-link" href="admin.html?tab=operating">⏰ 營業日設定</a>
+            <span class="tab-btn tab-link active">📦 庫存盤點</span>
+        </div>
+
+        <div class="tab-select-container mobile-tabs">
             <div class="hamburger-btn">
                 <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -199,7 +216,7 @@
         <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
-    <div class="tabs">
+    <div class="tabs" id="subTabs">
         <button class="tab-btn active" id="tab-stocktake" onclick="switchTab('stocktake')">盤點作業</button>
         <button class="tab-btn" id="tab-items" onclick="switchTab('items')">商品管理</button>
         <button class="tab-btn" id="tab-history" onclick="switchTab('history')">盤點歷史</button>
@@ -300,7 +317,7 @@
     }
 
     function switchTab(name) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#subTabs .tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById(`tab-${name}`).classList.add('active');
         document.getElementById(`section-${name}`).classList.add('active');
