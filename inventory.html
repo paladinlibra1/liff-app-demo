@@ -31,6 +31,9 @@
         @media (min-width: 769px) {
             body { padding: 20px; padding-top: max(20px, env(safe-area-inset-top)); }
             .container { max-width: 95%; padding: 0; }
+            /* 分頁列跟 admin 一樣滿版，內容維持易讀寬度，總數量才不會被推到螢幕最右邊 */
+            .sub-tab-bar, .section { max-width: 1000px; }
+            .page-header { display: none; }
         }
 
         /* 後台頁面導覽：電腦版一整排分頁鈕，手機版漢堡選單 */
@@ -55,6 +58,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .btn-refresh:disabled { opacity: .5; cursor: default; }
 
+        .sub-tab-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+        .sub-tab-bar .tabs { margin-bottom: 0; min-width: 0; }
         .tabs { display: inline-flex; gap: 4px; margin-bottom: 20px; background-color: #eeeeee; padding: 6px; border-radius: 14px; overflow-x: auto; white-space: nowrap; max-width: 100%; }
         .tab-btn { background: transparent; border: none; font-size: 15px; font-weight: 600; color: #71717a; cursor: pointer; padding: 10px 18px; border-radius: 10px; transition: all .2s; }
         .tab-btn.active { background-color: white; color: var(--primary-dark); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
@@ -220,13 +225,15 @@
             </select>
             <div class="current-tab-title">📦 庫存盤點</div>
         </div>
-        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
-    <div class="tabs" id="subTabs">
-        <button class="tab-btn active" id="tab-stocktake" onclick="switchTab('stocktake')">盤點作業</button>
-        <button class="tab-btn" id="tab-items" onclick="switchTab('items')">商品管理</button>
-        <button class="tab-btn" id="tab-history" onclick="switchTab('history')">盤點歷史</button>
+    <div class="sub-tab-bar">
+        <div class="tabs" id="subTabs">
+            <button class="tab-btn active" id="tab-stocktake" onclick="switchTab('stocktake')">盤點作業</button>
+            <button class="tab-btn" id="tab-items" onclick="switchTab('items')">商品管理</button>
+            <button class="tab-btn" id="tab-history" onclick="switchTab('history')">盤點歷史</button>
+        </div>
+        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
     <!-- 盤點作業 -->
