@@ -1153,10 +1153,11 @@
     }
 
     async function loadHistory() {
-        const snap = await stocktakesCol.get();
+        // 只向 Firestore 要最新 HISTORY_KEEP 筆（每筆都含全商品快照，整包抓會很慢）；
+        // 撈回來後仍用 compareStocktakeDesc 依盤點日期排一次
+        const snap = await stocktakesCol.orderBy('createdAt', 'desc').limit(HISTORY_KEEP).get();
         const records = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-            .sort(compareStocktakeDesc)
-            .slice(0, HISTORY_KEEP);
+            .sort(compareStocktakeDesc);
         const container = document.getElementById('historyList');
         document.getElementById('historyNote').textContent = `僅保留最新 ${HISTORY_KEEP} 筆盤點紀錄`;
         if (!records.length) {
