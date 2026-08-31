@@ -280,7 +280,7 @@
 <div class="sticky-bar" id="stocktakeBar" style="display:flex;">
     <div class="count-text" id="draftCountText">已列入 0 項商品</div>
     <input type="date" id="stocktakeDate">
-    <button class="btn btn-primary" onclick="submitStocktake()">送出本次盤點</button>
+    <button class="btn btn-primary" id="submitStocktakeBtn" onclick="submitStocktake()">送出本次盤點</button>
 </div>
 
 
@@ -744,12 +744,22 @@
         return items;
     }
 
+    // 防連點：送出過程中鎖住按鈕，避免重複建立批次造成庫存翻倍
+    let stocktakeSubmitting = false;
+
     async function submitStocktake() {
+        if (stocktakeSubmitting) return;
         const date = document.getElementById('stocktakeDate').value || new Date().toISOString().slice(0, 10);
 
         const items = buildFullStocktakeItems();
         if (!items.length) { alert('系統目前沒有商品可供盤點'); return; }
         const totalDiff = items.reduce((s, it) => s + it.diff, 0);
+
+        stocktakeSubmitting = true;
+        const submitBtn = document.getElementById('submitStocktakeBtn');
+        const submitBtnText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '送出中…';
 
         try {
             const writeBatch = db.batch();
@@ -775,6 +785,10 @@
             await loadAll();
         } catch (err) {
             alert('送出失敗：' + err.message);
+        } finally {
+            stocktakeSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = submitBtnText;
         }
     }
 
