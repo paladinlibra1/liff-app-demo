@@ -1130,6 +1130,9 @@
 
     // ── 盤點歷史 ──────────────────────────────
 
+    // 目前畫面上的盤點紀錄，供明細延後 render 時取用
+    let historyRecords = {};
+
     // 盤點紀錄由新到舊：先比盤點日期，同一天再比寫入時間
     function stocktakeTime(v) {
         const t = v && v.createdAt;
@@ -1166,46 +1169,57 @@
             container.innerHTML = '<div class="empty-hint">尚無盤點紀錄</div>';
             return;
         }
+        historyRecords = {};
+        records.forEach(r => { historyRecords[r.id] = r; });
+        // 卡片只先產生摘要列，明細（異動表＋盤點後庫存）等點開才 render，
+        // 避免一次把每筆的全商品表格都塞進 DOM
         container.innerHTML = records.map(r => {
-            const changed = (r.items || []).filter(it => (Number(it.diff) || 0) !== 0);
-            const changedItemCount = new Set(changed.map(it => it.itemId)).size;
-            const stock = stocktakeStockList(r);
-            const diffColor = v => v > 0 ? '#10b981' : (v < 0 ? '#d64545' : '#999');
-
-            const changedRows = changed.map(it => `
-                <tr>
-                    <td data-label="商品">${it.itemCode || ''} ${it.itemName || ''}</td>
-                    <td data-label="到期日">${it.isNewBatch ? '新批次' : (it.expiryDate || '-')}</td>
-                    <td data-label="帳面">${it.bookQty}</td>
-                    <td data-label="實際">${it.actualQty}</td>
-                    <td data-label="差異" style="color:${diffColor(it.diff)}">${it.diff > 0 ? '+' + it.diff : it.diff}</td>
-                </tr>`).join('');
-
-            const stockRows = stock.map(x => `
-                <tr>
-                    <td data-label="商品">${x.code} ${x.name}</td>
-                    <td data-label="數量" style="${x.qty === 0 ? 'color:#bbb;' : ''}">${x.qty}</td>
-                </tr>`).join('');
-
+            const changedItemCount = new Set((r.items || [])
+                .filter(it => (Number(it.diff) || 0) !== 0).map(it => it.itemId)).size;
             return `<div class="history-item" onclick="toggleHistoryDetail('${r.id}')">
                 <div class="row1">
                     <span>${r.date} · 異動 ${changedItemCount} 項</span>
-                    <span class="diff-tag" style="color:${diffColor(r.totalDiff)}">總差異 ${r.totalDiff > 0 ? '+' + r.totalDiff : r.totalDiff}</span>
+                    <span class="diff-tag" style="color:${historyDiffColor(r.totalDiff)}">總差異 ${r.totalDiff > 0 ? '+' + r.totalDiff : r.totalDiff}</span>
                 </div>
-                <div class="history-detail" id="detail-${r.id}">
-                    <div class="detail-title">本次異動（${changedItemCount} 項商品）</div>
-                    ${changed.length
-                        ? `<table><thead><tr><th>商品</th><th>到期日</th><th>帳面</th><th>實際</th><th>差異</th></tr></thead>
-                           <tbody>${changedRows}</tbody></table>`
-                        : '<div class="empty-hint" style="text-align:left;padding:6px 0;">本次盤點沒有任何差異</div>'}
-                    <button class="btn btn-outline btn-sm" style="margin-top:12px;" data-count="${stock.length}" onclick="event.stopPropagation(); toggleHistoryStock('${r.id}', this)">顯示盤點後庫存（${stock.length} 項）</button>
-                    <div class="history-stock" id="stock-${r.id}">
-                        <table><thead><tr><th>商品</th><th>數量</th></tr></thead>
-                        <tbody>${stockRows}</tbody></table>
-                    </div>
-                </div>
+                <div class="history-detail" id="detail-${r.id}"></div>
             </div>`;
         }).join('');
+    }
+
+    function historyDiffColor(v) {
+        return v > 0 ? '#10b981' : (v < 0 ? '#d64545' : '#999');
+    }
+
+    function renderHistoryDetail(r) {
+        const changed = (r.items || []).filter(it => (Number(it.diff) || 0) !== 0);
+        const changedItemCount = new Set(changed.map(it => it.itemId)).size;
+        const stock = stocktakeStockList(r);
+
+        const changedRows = changed.map(it => `
+            <tr>
+                <td data-label="商品">${it.itemCode || ''} ${it.itemName || ''}</td>
+                <td data-label="到期日">${it.isNewBatch ? '新批次' : (it.expiryDate || '-')}</td>
+                <td data-label="帳面">${it.bookQty}</td>
+                <td data-label="實際">${it.actualQty}</td>
+                <td data-label="差異" style="color:${historyDiffColor(it.diff)}">${it.diff > 0 ? '+' + it.diff : it.diff}</td>
+            </tr>`).join('');
+
+        const stockRows = stock.map(x => `
+            <tr>
+                <td data-label="商品">${x.code} ${x.name}</td>
+                <td data-label="數量" style="${x.qty === 0 ? 'color:#bbb;' : ''}">${x.qty}</td>
+            </tr>`).join('');
+
+        return `<div class="detail-title">本次異動（${changedItemCount} 項商品）</div>
+            ${changed.length
+                ? `<table><thead><tr><th>商品</th><th>到期日</th><th>帳面</th><th>實際</th><th>差異</th></tr></thead>
+                   <tbody>${changedRows}</tbody></table>`
+                : '<div class="empty-hint" style="text-align:left;padding:6px 0;">本次盤點沒有任何差異</div>'}
+            <button class="btn btn-outline btn-sm" style="margin-top:12px;" data-count="${stock.length}" onclick="event.stopPropagation(); toggleHistoryStock('${r.id}', this)">顯示盤點後庫存（${stock.length} 項）</button>
+            <div class="history-stock" id="stock-${r.id}">
+                <table><thead><tr><th>商品</th><th>數量</th></tr></thead>
+                <tbody>${stockRows}</tbody></table>
+            </div>`;
     }
 
     // 把同一商品的各到期日批次合併成一列總數
@@ -1220,7 +1234,10 @@
     }
 
     function toggleHistoryDetail(id) {
-        document.getElementById(`detail-${id}`).classList.toggle('open');
+        const box = document.getElementById(`detail-${id}`);
+        // 第一次點開才產生明細內容
+        if (!box.innerHTML && historyRecords[id]) box.innerHTML = renderHistoryDetail(historyRecords[id]);
+        box.classList.toggle('open');
     }
 
     function toggleHistoryStock(id, btn) {
