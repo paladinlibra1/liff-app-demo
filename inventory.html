@@ -766,6 +766,27 @@
         rebuildBatchIndex();
     }
 
+    // 送出後在背景靜靜跟 Firestore 對齊一次（例如另一台裝置同時盤點造成的差異）。
+    // 不擋住送出流程；若使用者已經開始新的編輯就放棄套用，免得蓋掉他手上的資料。
+    async function resyncInBackground() {
+        try {
+            const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get(), loadCategoryOrder()]);
+            if (stocktakeSubmitting) return;
+            if (Object.values(draft).some(d => d.edited)) return;
+            allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            rebuildBatchIndex();
+            draft = {};
+            initDraftForAllItems();
+            renderStocktakeCategoryTabs();
+            renderItemsGrid();
+            updateDraftBar();
+            if (document.getElementById('section-items').classList.contains('active')) renderItemsManage();
+        } catch (e) {
+            console.warn('背景同步失敗', e);
+        }
+    }
+
     // 防連點：送出過程中鎖住按鈕，避免重複建立批次造成庫存翻倍
     let stocktakeSubmitting = false;
 
@@ -818,6 +839,8 @@
             pruneStocktakes().catch(e => console.warn('清理舊盤點紀錄失敗', e));
 
             showToast('已送出本次盤點');
+            // 畫面已就地更新，這裡只是在背景補一次對齊，不讓使用者等
+            resyncInBackground();
         } catch (err) {
             if (stockCommitted) {
                 alert('庫存已更新，但盤點紀錄寫入失敗：' + err.message + ' 請勿重複送出，稍後到「盤點歷史」確認這筆紀錄。');
