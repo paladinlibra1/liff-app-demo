@@ -318,7 +318,7 @@
     const batchesCol = db.collection("inventoryBatches");
     const stocktakesCol = db.collection("inventoryStocktakes");
 
-    const HISTORY_KEEP = 30; // 盤點紀錄只保留最新 30 筆，超過的在送出盤點後自動刪除
+    const HISTORY_KEEP = 5; // 盤點紀錄只保留最新 5 筆，超過的在送出盤點後自動刪除
     const settingsCol = db.collection("inventorySettings");
 
     let allItems = [];
