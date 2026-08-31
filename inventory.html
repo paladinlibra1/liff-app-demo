@@ -26,6 +26,9 @@
             --tiffany-soft: #eefaf8;
         }
         * { box-sizing: border-box; }
+        /* 手機瀏覽器的 input[type=date] 會有一個由內容撐出來的最小寬度，
+           在 flex 裡不會縮，容易超出畫面；這裡統一解掉 */
+        input[type=date] { min-width: 0; max-width: 100%; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg-color); color: var(--text-color); padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
         .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; padding-top: calc(20px + env(safe-area-inset-top)); }
         h1 { font-size: 22px; margin: 0; }
@@ -98,7 +101,7 @@
         .item-panel .name { font-size: 14px; color: #666; margin-top: 2px; margin-bottom: 10px; }
 
         .batch-row { display: flex; align-items: center; gap: 10px; background: #fcfbfb; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; flex-wrap: wrap; }
-        .batch-date-row { display: flex; align-items: center; gap: 8px; }
+        .batch-date-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .batch-qty-row { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; flex-wrap: wrap; }
         .batch-row .expiry-badge { font-size: 13px; padding: 3px 8px; border-radius: 12px; background: #eee; color: #666; white-space: nowrap; }
         .batch-row .expiry-badge.warn { background: #fff3cd; color: #946200; }
@@ -125,7 +128,7 @@
         .btn-add-batch { background: var(--accent-light); color: #c76a70; border: 1px dashed var(--accent); font-size: 14px; padding: 8px 14px; }
 
         .sticky-bar { position: fixed; left: 0; right: 0; bottom: 0; background: white; border-top: 1px solid var(--border-color); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: 0 -4px 12px rgba(0,0,0,.05); z-index: 20; }
-        .sticky-bar input { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; min-height: 40px; }
+        .sticky-bar input { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 16px; min-height: 40px; flex: 1 1 140px; min-width: 0; }
         .sticky-bar .count-text { font-size: 14px; color: #666; margin-right: auto; }
 
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
@@ -200,11 +203,12 @@
             .batch-row { padding: 10px; gap: 8px; flex-direction: column; align-items: stretch; }
             .batch-date-row { justify-content: space-between; }
             .batch-qty-row { width: 100%; justify-content: space-between; }
-            .batch-row input[type=date] { width: 152px; }
+            .batch-row input[type=date] { width: 152px; flex: 0 1 152px; }
             .batch-row .qty-input { width: 78px; }
 
             .sticky-bar { flex-direction: column; align-items: stretch; }
-            .sticky-bar input, .sticky-bar button { width: 100%; }
+            /* 直排時 flex-basis 會變成套在高度上，要還原成自動 */
+            .sticky-bar input, .sticky-bar button { width: 100%; flex: 0 0 auto; }
             .sticky-bar .count-text { margin-right: 0; text-align: center; }
         }
     </style>
