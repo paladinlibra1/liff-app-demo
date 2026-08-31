@@ -761,6 +761,9 @@
         submitBtn.disabled = true;
         submitBtn.textContent = '送出中…';
 
+        // 庫存是否已經寫進 Firestore：後面步驟失敗時用來判斷能不能重送
+        let stockCommitted = false;
+
         try {
             const writeBatch = db.batch();
             for (const it of items) {
@@ -775,20 +778,27 @@
                 }
             }
             await writeBatch.commit();
+            // 庫存已經寫入，立刻清掉 draft：後面步驟就算失敗，也不會因為使用者再按一次而重複建立批次
+            stockCommitted = true;
+            draft = {};
+            updateDraftBar();
+
             await stocktakesCol.add({ date, itemCount: items.length, totalDiff, items, createdAt: new Date() });
             // 清理失敗不影響這次盤點結果，只記在 console
             try { await pruneStocktakes(); } catch (e) { console.warn('清理舊盤點紀錄失敗', e); }
 
-            draft = {};
-            updateDraftBar();
             showToast('已送出本次盤點');
-            await loadAll();
         } catch (err) {
-            alert('送出失敗：' + err.message);
+            if (stockCommitted) {
+                alert('庫存已更新，但盤點紀錄寫入失敗：' + err.message + ' 請勿重複送出，稍後到「盤點歷史」確認這筆紀錄。');
+            } else {
+                alert('送出失敗：' + err.message);
+            }
         } finally {
             stocktakeSubmitting = false;
             submitBtn.disabled = false;
             submitBtn.textContent = submitBtnText;
+            if (stockCommitted) await loadAll();
         }
     }
 
