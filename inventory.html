@@ -1141,10 +1141,12 @@
 
     // 只保留最新 HISTORY_KEEP 筆，其餘刪除
     async function pruneStocktakes() {
-        const snap = await stocktakesCol.get();
-        if (snap.size <= HISTORY_KEEP) return;
-        const docs = snap.docs.slice().sort((a, b) => compareStocktakeDesc(a.data(), b.data()));
-        const extras = docs.slice(HISTORY_KEEP);
+        // 先取最新 HISTORY_KEEP 筆，用最後一筆當游標往後撈要刪的，
+        // 避免像以前那樣把整個 collection（每筆都含全商品快照）抓下來
+        const keepSnap = await stocktakesCol.orderBy('createdAt', 'desc').limit(HISTORY_KEEP).get();
+        if (keepSnap.size < HISTORY_KEEP) return;
+        const cursor = keepSnap.docs[keepSnap.docs.length - 1];
+        const extras = (await stocktakesCol.orderBy('createdAt', 'desc').startAfter(cursor).get()).docs;
         for (let i = 0; i < extras.length; i += 400) {
             const writeBatch = db.batch();
             extras.slice(i, i + 400).forEach(d => writeBatch.delete(d.ref));
