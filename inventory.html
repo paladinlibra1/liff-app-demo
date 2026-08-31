@@ -363,18 +363,23 @@
     }
     window.addEventListener('resize', syncStickyBarPadding);
 
+    // 由 allBatches 重建 itemId -> 批次陣列的索引（依效期排序）
+    function rebuildBatchIndex() {
+        batchesByItem = {};
+        allBatches.forEach(b => {
+            if (!batchesByItem[b.itemId]) batchesByItem[b.itemId] = [];
+            batchesByItem[b.itemId].push(b);
+        });
+        Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
+    }
+
     async function loadAll() {
         document.getElementById('itemsGrid').innerHTML = '<div class="empty-hint">載入中…</div>';
         try {
             const [itemsSnap, batchesSnap] = await Promise.all([itemsCol.get(), batchesCol.get(), loadCategoryOrder()]);
             allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             allBatches = batchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            batchesByItem = {};
-            allBatches.forEach(b => {
-                if (!batchesByItem[b.itemId]) batchesByItem[b.itemId] = [];
-                batchesByItem[b.itemId].push(b);
-            });
-            Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
+            rebuildBatchIndex();
             initDraftForAllItems();
             renderStocktakeCategoryTabs();
             renderItemsGrid();
@@ -744,6 +749,23 @@
         return items;
     }
 
+    // 送出成功後把結果直接套回本機的 allBatches，不必再向 Firestore 整包重抓一次
+    function applyStocktakeLocally(items) {
+        const byId = {};
+        allBatches.forEach(b => { byId[b.id] = b; });
+        const removedIds = new Set();
+        items.forEach(it => {
+            if (!it.batchId) return;
+            if (it.removed) { removedIds.add(it.batchId); return; }
+            const qty = Number(it.actualQty) || 0;
+            const existing = byId[it.batchId];
+            if (existing) existing.qty = qty;
+            else allBatches.push({ id: it.batchId, itemId: it.itemId, expiryDate: it.expiryDate || '', qty, note: '' });
+        });
+        if (removedIds.size) allBatches = allBatches.filter(b => !removedIds.has(b.id));
+        rebuildBatchIndex();
+    }
+
     // 防連點：送出過程中鎖住按鈕，避免重複建立批次造成庫存翻倍
     let stocktakeSubmitting = false;
 
@@ -765,27 +787,35 @@
         let stockCommitted = false;
 
         try {
+            // 只寫真的有變動的批次：沒差異的批次維持原樣，不必送 update
+            // （盤點紀錄仍然涵蓋全部商品，只是庫存那邊不做無謂的寫入）
             const writeBatch = db.batch();
+            let writeCount = 0;
             for (const it of items) {
                 if (it.removed) {
-                    if (it.batchId) writeBatch.delete(batchesCol.doc(it.batchId));
+                    if (it.batchId) { writeBatch.delete(batchesCol.doc(it.batchId)); writeCount++; }
                 } else if (it.isNewBatch) {
                     const ref = batchesCol.doc();
                     writeBatch.set(ref, { itemId: it.itemId, expiryDate: it.expiryDate, qty: it.actualQty, note: '', createdAt: new Date(), updatedAt: new Date() });
                     it.batchId = ref.id;
-                } else if (it.batchId) {
+                    writeCount++;
+                } else if (it.batchId && it.diff !== 0) {
                     writeBatch.update(batchesCol.doc(it.batchId), { qty: it.actualQty, updatedAt: new Date() });
+                    writeCount++;
                 }
             }
-            await writeBatch.commit();
+            if (writeCount) await writeBatch.commit();
             // 庫存已經寫入，立刻清掉 draft：後面步驟就算失敗，也不會因為使用者再按一次而重複建立批次
             stockCommitted = true;
+            applyStocktakeLocally(items);
             draft = {};
+            initDraftForAllItems();
+            renderItemsGrid();
             updateDraftBar();
 
             await stocktakesCol.add({ date, itemCount: items.length, totalDiff, items, createdAt: new Date() });
-            // 清理失敗不影響這次盤點結果，只記在 console
-            try { await pruneStocktakes(); } catch (e) { console.warn('清理舊盤點紀錄失敗', e); }
+            // 清理舊紀錄不影響這次盤點結果，丟到背景跑，不佔用送出時間
+            pruneStocktakes().catch(e => console.warn('清理舊盤點紀錄失敗', e));
 
             showToast('已送出本次盤點');
         } catch (err) {
@@ -798,7 +828,7 @@
             stocktakeSubmitting = false;
             submitBtn.disabled = false;
             submitBtn.textContent = submitBtnText;
-            if (stockCommitted) await loadAll();
+            // 畫面在 commit 後已就地更新，這裡不再整包重抓
         }
     }
 
