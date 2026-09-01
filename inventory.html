@@ -210,6 +210,8 @@
             /* 直排時 flex-basis 會變成套在高度上，要還原成自動 */
             .sticky-bar input, .sticky-bar button { width: 100%; flex: 0 0 auto; }
             .sticky-bar .count-text { margin-right: 0; text-align: center; }
+            /* iOS 的 date 原生外觀會撐出最小寬度，width:100% 壓不下去，關掉外觀才收得回畫面內 */
+            .sticky-bar input[type=date] { -webkit-appearance: none; appearance: none; width: 100%; max-width: 100%; }
         }
     </style>
 </head>
