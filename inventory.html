@@ -1098,18 +1098,21 @@
 
     function renderManageEditPanel(it) {
         const key = it ? it.id : 'new';
-        const defaultCategory = it ? (it.category || '') : (manageCategory || '');
+        const isCare = it ? it.type === '護理品' : false;
+        // 護理品不分系列，預設帶第一個系列只用在產品
+        const defaultCategory = it ? (it.category || '') : (manageCategory || CATEGORY_ORDER[0] || '');
         return `<div class="item-panel manage-edit" onclick="event.stopPropagation()">
             <div class="form-row"><label>代碼</label><input type="text" id="mf_code_${key}" value="${it ? (it.code || '') : ''}" placeholder="例如 AB90"></div>
             <div class="form-row"><label>名稱</label><input type="text" id="mf_name_${key}" value="${it ? (it.name || '') : ''}"></div>
             <div class="form-row"><label>類型</label>
-                <select id="mf_type_${key}">
+                <select id="mf_type_${key}" onchange="onManageTypeChange('${key}')">
                     <option value="產品" ${(!it || it.type === '產品') ? 'selected' : ''}>產品</option>
                     <option value="護理品" ${it && it.type === '護理品' ? 'selected' : ''}>護理品</option>
                 </select>
             </div>
-            <div class="form-row"><label>分類（系列）</label>
+            <div class="form-row" id="mf_categoryRow_${key}" ${isCare ? 'style="display:none;"' : ''}><label>分類（系列）</label>
                 <select id="mf_category_${key}">
+                    <option value="" ${!defaultCategory ? 'selected' : ''}>（不分系列）</option>
                     ${CATEGORY_ORDER.map(c => `<option value="${c}" ${defaultCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
             </div>
@@ -1124,6 +1127,13 @@
                 <button class="btn btn-primary" onclick="saveManageItem('${it ? it.id : ''}')">儲存</button>
             </div>
         </div>`;
+    }
+
+    // 護理品不需要填系列，切到護理品就把分類欄收起來
+    function onManageTypeChange(key) {
+        const row = document.getElementById(`mf_categoryRow_${key}`);
+        if (!row) return;
+        row.style.display = document.getElementById(`mf_type_${key}`).value === '護理品' ? 'none' : '';
     }
 
     function toggleExpandItem(id) {
@@ -1148,11 +1158,13 @@
         const key = id || 'new';
         const name = document.getElementById(`mf_name_${key}`).value.trim();
         if (!name) { alert('請輸入商品名稱'); return; }
+        const type = document.getElementById(`mf_type_${key}`).value;
         const data = {
             code: document.getElementById(`mf_code_${key}`).value.trim(),
             name,
-            type: document.getElementById(`mf_type_${key}`).value,
-            category: document.getElementById(`mf_category_${key}`).value,
+            type,
+            // 護理品不分系列
+            category: type === '護理品' ? '' : document.getElementById(`mf_category_${key}`).value,
             unit: document.getElementById(`mf_unit_${key}`).value.trim(),
             memberPrice: Number(document.getElementById(`mf_price_${key}`).value) || 0,
             pv: Number(document.getElementById(`mf_pv_${key}`).value) || 0,
