@@ -1131,8 +1131,8 @@
         const counts = {};
         typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
         let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${typeItems.length}）</button>`;
-        html += categoryListFor(typeItems, manageType).filter(c => counts[c]).map(c =>
-            `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
+        html += categoryListFor(typeItems, manageType).filter(c => counts[c] || categoryOrderOf(manageType).includes(c)).map(c =>
+            `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${escJs(c)}')">${c}（${counts[c] || 0}）</button>`
         ).join('');
         wrap.innerHTML = html;
     }
