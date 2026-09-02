@@ -266,6 +266,10 @@
 
     <!-- 商品管理 -->
     <div class="section" id="section-items">
+        <div class="type-toggle">
+            <button class="type-btn active" data-type="產品" onclick="selectManageType('產品')">產品</button>
+            <button class="type-btn" data-type="護理品" onclick="selectManageType('護理品')">護理品</button>
+        </div>
         <div class="section-label">選擇系列：</div>
         <div class="category-tabs" id="itemsCategoryTabs"></div>
         <div class="top-action-bar">
@@ -420,7 +424,7 @@
         currentType = type;
         stocktakeCategory = null;
         stocktakeExpandedId = null;
-        document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+        document.querySelectorAll('#section-stocktake .type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
         renderStocktakeCategoryTabs();
         renderItemsGrid();
     }
@@ -868,6 +872,21 @@
     let expandedItemId = null;
     let addingNewItem = false;
     let sortMode = false; // 排序模式：改用拖曳調整系列與商品順序
+    let manageType = '產品'; // 商品管理分頁目前管理的類型（產品／護理品各自有系列）
+
+    // 商品管理只顯示目前類型的商品
+    function manageItemsOfType() {
+        return allItems.filter(it => it.type === manageType);
+    }
+
+    function selectManageType(type) {
+        manageType = type;
+        manageCategory = null;
+        expandedItemId = null;
+        addingNewItem = false;
+        document.querySelectorAll('#section-items .type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+        renderItemsManage();
+    }
 
     // 重繪後回到原本的捲動位置，避免排序後畫面跳回最上方
     function preserveScroll(fn) {
@@ -894,8 +913,9 @@
     // 目前有商品的系列，依現行順序排列
     function sortableCategories() {
         const counts = {};
-        allItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
-        return categoryListFor(allItems).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
+        const typeItems = manageItemsOfType();
+        typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
+        return categoryListFor(typeItems).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
     }
 
     function renderSortList() {
@@ -930,7 +950,7 @@
 
     // 同一系列的商品，依目前順序排列
     function seriesGroupItems(category) {
-        return allItems.filter(it => (it.category || '未分類') === category).sort(compareItems);
+        return manageItemsOfType().filter(it => (it.category || '未分類') === category).sort(compareItems);
     }
 
     // ── 拖曳排序 ────────────────────────────────
@@ -1048,10 +1068,11 @@
 
     function renderManageCategoryTabs() {
         const wrap = document.getElementById('itemsCategoryTabs');
+        const typeItems = manageItemsOfType();
         const counts = {};
-        allItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
-        let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${allItems.length}）</button>`;
-        html += categoryListFor(allItems).filter(c => counts[c]).map(c =>
+        typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
+        let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${typeItems.length}）</button>`;
+        html += categoryListFor(typeItems).filter(c => counts[c]).map(c =>
             `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
         ).join('');
         wrap.innerHTML = html;
@@ -1065,7 +1086,7 @@
     }
 
     function filteredManageItems() {
-        let items = [...allItems];
+        let items = manageItemsOfType();
         if (manageCategory !== null) {
             items = items.filter(it => (it.category || '未分類') === manageCategory);
         }
