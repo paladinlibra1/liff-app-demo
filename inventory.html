@@ -433,14 +433,15 @@
         return allItems.filter(it => it.type === currentType && it.active !== false);
     }
 
-    function categoryListFor(items) {
-        const known = new Set(CATEGORY_ORDER);
+    function categoryListFor(items, type) {
+        const order = categoryOrderOf(type || (items[0] && items[0].type) || '產品');
+        const known = new Set(order);
         const extra = [];
         items.forEach(it => {
             const c = it.category || '未分類';
             if (!known.has(c) && !extra.includes(c)) extra.push(c);
         });
-        return [...CATEGORY_ORDER, ...extra];
+        return [...order, ...extra];
     }
 
     function renderStocktakeCategoryTabs() {
@@ -449,7 +450,7 @@
         const counts = {};
         items.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
         let html = `<button class="chip-btn ${stocktakeCategory === null ? 'active' : ''}" onclick="selectStocktakeCategory(null)">全部（${items.length}）</button>`;
-        html += categoryListFor(items).filter(c => counts[c]).map(c =>
+        html += categoryListFor(items, currentType).filter(c => counts[c]).map(c =>
             `<button class="chip-btn ${stocktakeCategory === c ? 'active' : ''}" onclick="selectStocktakeCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
         ).join('');
         wrap.innerHTML = html;
@@ -464,26 +465,33 @@
 
     // 分類（系列）顯示順序：依實際系列名稱排列，未列出的分類排在最後
     const DEFAULT_CATEGORY_ORDER = ['輕齡肌膚', '熟齡肌膚', '斑點肌膚', '乾燥細紋肌膚', '敏感肌膚', '通用肌膚', '痘痘粉刺肌膚', '營養系列', '紅顏系列', '調理系列', '機能系列', '日常生活系列'];
-    // 實際使用的系列順序：從 inventorySettings/categoryOrder 讀取，讀不到就用預設順序
-    let CATEGORY_ORDER = [...DEFAULT_CATEGORY_ORDER];
-    function categoryRank(category) {
-        const idx = CATEGORY_ORDER.indexOf(category);
-        return idx === -1 ? CATEGORY_ORDER.length : idx;
+    // 實際使用的系列順序：產品、護理品各自一份，從 inventorySettings/categoryOrder 讀取
+    let CATEGORY_ORDERS = { '產品': [...DEFAULT_CATEGORY_ORDER], '護理品': [] };
+    function categoryOrderOf(type) {
+        if (!CATEGORY_ORDERS[type]) CATEGORY_ORDERS[type] = [];
+        return CATEGORY_ORDERS[type];
+    }
+    function categoryRank(category, type) {
+        const order = categoryOrderOf(type);
+        const idx = order.indexOf(category);
+        return idx === -1 ? order.length : idx;
     }
 
     async function loadCategoryOrder() {
         try {
             const doc = await settingsCol.doc('categoryOrder').get();
-            const saved = doc.exists && Array.isArray(doc.data().order) ? doc.data().order : [];
+            const data = doc.exists ? doc.data() : {};
+            const saved = Array.isArray(data.order) ? data.order : [];
             // 以儲存的順序為主，預設清單中未被收錄的系列補在後面
-            CATEGORY_ORDER = [...saved, ...DEFAULT_CATEGORY_ORDER.filter(c => !saved.includes(c))];
+            CATEGORY_ORDERS['產品'] = [...saved, ...DEFAULT_CATEGORY_ORDER.filter(c => !saved.includes(c))];
+            CATEGORY_ORDERS['護理品'] = Array.isArray(data.careOrder) ? data.careOrder : [];
         } catch (err) {
             console.error('loadCategoryOrder failed', err);
         }
     }
     // 商品排序：先系列順序，再手動排序（sortOrder），沒設定過的排在後面並沿用代碼順序
     function compareItems(a, b) {
-        const rankDiff = categoryRank(a.category) - categoryRank(b.category);
+        const rankDiff = categoryRank(a.category, a.type) - categoryRank(b.category, b.type);
         if (rankDiff !== 0) return rankDiff;
         const sa = typeof a.sortOrder === 'number' ? a.sortOrder : Infinity;
         const sb = typeof b.sortOrder === 'number' ? b.sortOrder : Infinity;
@@ -915,7 +923,7 @@
         const counts = {};
         const typeItems = manageItemsOfType();
         typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
-        return categoryListFor(typeItems).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
+        return categoryListFor(typeItems, manageType).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
     }
 
     function renderSortList() {
@@ -1038,12 +1046,12 @@
 
     async function saveCategoryOrder(names) {
         // 有商品的系列用新順序，目前沒有商品的系列維持在後面
-        CATEGORY_ORDER = [...names, ...CATEGORY_ORDER.filter(c => !names.includes(c))];
+        CATEGORY_ORDERS[manageType] = [...names, ...categoryOrderOf(manageType).filter(c => !names.includes(c))];
         preserveScroll(renderItemsManage);
         renderStocktakeCategoryTabs(); // 盤點作業的系列順序同步更新
         renderItemsGrid();
         try {
-            await settingsCol.doc('categoryOrder').set({ order: CATEGORY_ORDER, updatedAt: new Date() });
+            await settingsCol.doc('categoryOrder').set({ order: categoryOrderOf('產品'), careOrder: categoryOrderOf('護理品'), updatedAt: new Date() });
             showToast('系列順序已儲存');
         } catch (err) {
             alert('系列順序儲存失敗：' + err.message);
@@ -1072,7 +1080,7 @@
         const counts = {};
         typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
         let html = `<button class="chip-btn ${manageCategory === null ? 'active' : ''}" onclick="selectManageCategory(null)">全部（${typeItems.length}）</button>`;
-        html += categoryListFor(typeItems).filter(c => counts[c]).map(c =>
+        html += categoryListFor(typeItems, manageType).filter(c => counts[c]).map(c =>
             `<button class="chip-btn ${manageCategory === c ? 'active' : ''}" onclick="selectManageCategory('${c.replace(/'/g, "\\'")}')">${c}（${counts[c]}）</button>`
         ).join('');
         wrap.innerHTML = html;
@@ -1121,23 +1129,19 @@
 
     function renderManageEditPanel(it) {
         const key = it ? it.id : 'new';
-        const isCare = it ? it.type === '護理品' : false;
-        // 護理品不分系列，預設帶第一個系列只用在產品
-        const defaultCategory = it ? (it.category || '') : (manageCategory || CATEGORY_ORDER[0] || '');
+        const type = it ? (it.type || '產品') : manageType;
+        const defaultCategory = it ? (it.category || '') : (manageCategory || categoryOrderOf(type)[0] || '');
         return `<div class="item-panel manage-edit" onclick="event.stopPropagation()">
             <div class="form-row"><label>代碼</label><input type="text" id="mf_code_${key}" value="${it ? (it.code || '') : ''}" placeholder="例如 AB90"></div>
             <div class="form-row"><label>名稱</label><input type="text" id="mf_name_${key}" value="${it ? (it.name || '') : ''}"></div>
             <div class="form-row"><label>類型</label>
                 <select id="mf_type_${key}" onchange="onManageTypeChange('${key}')">
-                    <option value="產品" ${(!it || it.type === '產品') ? 'selected' : ''}>產品</option>
-                    <option value="護理品" ${it && it.type === '護理品' ? 'selected' : ''}>護理品</option>
+                    <option value="產品" ${type === '產品' ? 'selected' : ''}>產品</option>
+                    <option value="護理品" ${type === '護理品' ? 'selected' : ''}>護理品</option>
                 </select>
             </div>
-            <div class="form-row" id="mf_categoryRow_${key}" ${isCare ? 'style="display:none;"' : ''}><label>分類（系列）</label>
-                <select id="mf_category_${key}">
-                    <option value="" ${!defaultCategory ? 'selected' : ''}>（不分系列）</option>
-                    ${CATEGORY_ORDER.map(c => `<option value="${c}" ${defaultCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
-                </select>
+            <div class="form-row"><label>分類（系列）</label>
+                <select id="mf_category_${key}">${categoryOptionsHtml(type, defaultCategory)}</select>
             </div>
             <div class="form-row"><label>單位</label><input type="text" id="mf_unit_${key}" value="${it ? (it.unit || '') : ''}" placeholder="例如 瓶、盒"></div>
             <div class="form-row"><label>會員價</label><input type="number" id="mf_price_${key}" value="${it ? (it.memberPrice || 0) : 0}"></div>
@@ -1152,11 +1156,17 @@
         </div>`;
     }
 
-    // 護理品不需要填系列，切到護理品就把分類欄收起來
+    function categoryOptionsHtml(type, selected) {
+        return `<option value="" ${!selected ? 'selected' : ''}>（未分類）</option>`
+            + categoryOrderOf(type).map(c => `<option value="${escAttr(c)}" ${selected === c ? 'selected' : ''}>${c}</option>`).join('');
+    }
+
+    // 產品與護理品各有各的系列，切換類型就換掉系列選單的選項
     function onManageTypeChange(key) {
-        const row = document.getElementById(`mf_categoryRow_${key}`);
-        if (!row) return;
-        row.style.display = document.getElementById(`mf_type_${key}`).value === '護理品' ? 'none' : '';
+        const sel = document.getElementById(`mf_category_${key}`);
+        if (!sel) return;
+        const type = document.getElementById(`mf_type_${key}`).value;
+        sel.innerHTML = categoryOptionsHtml(type, categoryOrderOf(type).includes(sel.value) ? sel.value : '');
     }
 
     function toggleExpandItem(id) {
@@ -1186,8 +1196,7 @@
             code: document.getElementById(`mf_code_${key}`).value.trim(),
             name,
             type,
-            // 護理品不分系列
-            category: type === '護理品' ? '' : document.getElementById(`mf_category_${key}`).value,
+            category: document.getElementById(`mf_category_${key}`).value,
             unit: document.getElementById(`mf_unit_${key}`).value.trim(),
             memberPrice: Number(document.getElementById(`mf_price_${key}`).value) || 0,
             pv: Number(document.getElementById(`mf_pv_${key}`).value) || 0,
