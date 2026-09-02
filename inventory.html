@@ -274,7 +274,7 @@
         <div class="category-tabs" id="itemsCategoryTabs"></div>
         <div class="top-action-bar">
             <button class="btn btn-primary" id="addItemBtn" onclick="startAddManageItem()">＋ 新增商品</button>
-            <button class="btn btn-outline" id="sortModeBtn" onclick="toggleSortMode()">⇅ 排序</button>
+            <button class="btn btn-outline" id="sortModeBtn" onclick="toggleSortMode()">🏷️ 系列與排序</button>
         </div>
         <div class="items-list" id="itemsManageList"></div>
     </div>
@@ -905,7 +905,7 @@
 
     function renderItemsManage() {
         renderManageCategoryTabs();
-        document.getElementById('sortModeBtn').textContent = sortMode ? '✓ 完成排序' : '⇅ 排序';
+        document.getElementById('sortModeBtn').textContent = sortMode ? '✓ 完成編輯' : '🏷️ 系列與排序';
         document.getElementById('addItemBtn').style.display = sortMode ? 'none' : '';
         if (sortMode) renderSortList(); else renderManageList();
     }
@@ -915,7 +915,7 @@
         expandedItemId = null;
         addingNewItem = false;
         renderItemsManage();
-        if (!sortMode) showToast('排序已儲存');
+        if (!sortMode) showToast('已完成編輯');
     }
 
     // 目前有商品的系列，依現行順序排列
@@ -923,22 +923,27 @@
         const counts = {};
         const typeItems = manageItemsOfType();
         typeItems.forEach(it => { const c = it.category || '未分類'; counts[c] = (counts[c] || 0) + 1; });
-        return categoryListFor(typeItems, manageType).filter(c => counts[c]).map(c => ({ name: c, count: counts[c] }));
+        const names = categoryListFor(typeItems, manageType).filter(c => counts[c] || categoryOrderOf(manageType).includes(c));
+        return names.map(c => ({ name: c, count: counts[c] || 0 }));
     }
 
     function renderSortList() {
         const wrap = document.getElementById('itemsManageList');
         const cats = sortableCategories();
-        let html = '<div class="section-label">系列順序（按住右側 ⠿ 拖曳調整，放開即儲存）：</div>';
+        let html = '<div class="section-label">系列（可新增、改名、刪除，按住 ⠿ 拖曳調整順序）：</div>';
+        html += `<div class="top-action-bar"><button class="btn btn-primary btn-sm" onclick="addSeries()">＋ 新增${manageType}系列</button></div>`;
         html += '<div class="sort-group" data-group="cat">';
         html += cats.map(c => `<div class="item-panel sort-row" data-group="cat" data-id="${escAttr(c.name)}">
             <div class="sort-name">${c.name} <span class="sort-sub">（${c.count}）</span></div>
+            ${c.name === '未分類' ? '' : `<button class="btn btn-outline btn-sm" onclick="renameSeries('${escJs(c.name)}')">✎</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSeries('${escJs(c.name)}')">🗑</button>`}
             <div class="drag-handle" onpointerdown="startRowDrag(event,'cat')">⠿</div>
         </div>`).join('');
         html += '</div>';
 
         html += '<div class="section-label" style="margin-top:20px;">商品順序（按住右側 ⠿ 拖曳調整，只能在同一系列內移動）：</div>';
         cats.forEach((c, ci) => {
+            if (!c.count) return;
             if (manageCategory !== null && c.name !== manageCategory) return;
             const groupKey = 'g' + ci;
             html += `<div class="series-header">${c.name}</div>`;
@@ -950,6 +955,10 @@
             html += '</div>';
         });
         wrap.innerHTML = html;
+    }
+
+    function escJs(str) {
+        return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
     function escAttr(str) {
@@ -1044,18 +1053,60 @@
         else await saveItemOrder(ids);
     }
 
-    async function saveCategoryOrder(names) {
-        // 有商品的系列用新順序，目前沒有商品的系列維持在後面
-        CATEGORY_ORDERS[manageType] = [...names, ...categoryOrderOf(manageType).filter(c => !names.includes(c))];
+    // ── 系列的新增／改名／刪除（產品與護理品各自一份）─────
+    async function persistCategoryOrders(msg) {
         preserveScroll(renderItemsManage);
-        renderStocktakeCategoryTabs(); // 盤點作業的系列順序同步更新
+        renderStocktakeCategoryTabs();
         renderItemsGrid();
         try {
             await settingsCol.doc('categoryOrder').set({ order: categoryOrderOf('產品'), careOrder: categoryOrderOf('護理品'), updatedAt: new Date() });
-            showToast('系列順序已儲存');
+            showToast(msg);
         } catch (err) {
-            alert('系列順序儲存失敗：' + err.message);
+            alert('系列儲存失敗：' + err.message);
         }
+    }
+
+    async function addSeries() {
+        const name = (prompt(`新增${manageType}系列名稱：`) || '').trim();
+        if (!name) return;
+        if (name === '未分類') { alert('「未分類」是保留名稱，請換一個'); return; }
+        if (categoryOrderOf(manageType).includes(name)) { alert('這個系列已經存在'); return; }
+        categoryOrderOf(manageType).push(name);
+        await persistCategoryOrders('已新增系列');
+    }
+
+    async function renameSeries(oldName) {
+        const name = (prompt('系列改名為：', oldName) || '').trim();
+        if (!name || name === oldName) return;
+        if (name === '未分類') { alert('「未分類」是保留名稱，請換一個'); return; }
+        if (categoryOrderOf(manageType).includes(name)) { alert('這個系列已經存在'); return; }
+        const order = categoryOrderOf(manageType);
+        const idx = order.indexOf(oldName);
+        if (idx === -1) order.push(name); else order[idx] = name;
+        // 同步改掉該系列底下所有商品的分類
+        const items = manageItemsOfType().filter(it => (it.category || '未分類') === oldName);
+        if (items.length) {
+            const writeBatch = db.batch();
+            items.forEach(it => { it.category = name; writeBatch.update(itemsCol.doc(it.id), { category: name, updatedAt: new Date() }); });
+            await writeBatch.commit();
+        }
+        await persistCategoryOrders('已更新系列名稱');
+    }
+
+    async function deleteSeries(name) {
+        const used = manageItemsOfType().filter(it => (it.category || '未分類') === name).length;
+        if (used) { alert(`系列「${name}」底下還有 ${used} 項商品，請先把商品改到其他系列或刪除，才能刪除這個系列`); return; }
+        if (!confirm(`確定要刪除系列「${name}」嗎？`)) return;
+        CATEGORY_ORDERS[manageType] = categoryOrderOf(manageType).filter(c => c !== name);
+        if (manageCategory === name) manageCategory = null;
+        await persistCategoryOrders('已刪除系列');
+    }
+
+    async function saveCategoryOrder(names) {
+        // 有商品的系列用新順序，目前沒有商品的系列維持在後面（「未分類」不是真的系列，不寫入）
+        const ordered = names.filter(n => n !== '未分類');
+        CATEGORY_ORDERS[manageType] = [...ordered, ...categoryOrderOf(manageType).filter(c => !ordered.includes(c))];
+        await persistCategoryOrders('系列順序已儲存');
     }
 
     async function saveItemOrder(ids) {
