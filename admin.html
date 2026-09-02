@@ -372,7 +372,7 @@
                         <button type="button" onclick="clearGuardianSelection()" style="border:none; background:transparent; color:#999; cursor:pointer; font-size:1rem;">✕</button>
                     </div>
                 </div>
-                <button class="btn btn-cancel" onclick="saveNewMember()" style="width:100%;">💾 儲存新會員</button>
+                <button class="btn btn-cancel" onclick="runOnce(this,'儲存中…',()=>saveNewMember())" style="width:100%;">💾 儲存新會員</button>
             </div>
 
             <div class="box-container" style="overflow-x: auto;">
@@ -418,8 +418,8 @@
                 <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">勾選要封鎖的時段，客人將無法預約這些時間。</p>
                 <div id="blockTimeCheckboxes" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;"></div>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn btn-cancel" onclick="saveBlockedTimes()" style="flex:1;">💾 儲存封鎖時段</button>
-                    <button class="btn btn-outline" onclick="clearBlockedTimes()" style="flex:1;">🗑️ 清除所有封鎖</button>
+                    <button class="btn btn-cancel" onclick="runOnce(this,'儲存中…',()=>saveBlockedTimes())" style="flex:1;">💾 儲存封鎖時段</button>
+                    <button class="btn btn-outline" onclick="runOnce(this,'清除中…',()=>clearBlockedTimes())" style="flex:1;">🗑️ 清除所有封鎖</button>
                 </div>
                 <div style="margin-top:10px; padding-top:14px; border-top:1px dashed #ffcdd2;">
                     <button class="btn" onclick="setDayAsClosed()" style="width:100%; background:#42a5f5; color:#fff;">💙 將此日設為公休日</button>
@@ -600,6 +600,25 @@
         // 📅 2. 預約管理 (Firebase 版)
         // =====================================================================
         function createNewBooking() { window.open(`${FRONTEND_URL}?role=admin`, '_blank'); }
+
+        // 防連點：寫入 Firestore 期間鎖住按鈕，避免連按兩次寫入兩筆
+        let busyWriting = false;
+        async function runOnce(btn, label, fn) {
+            if (busyWriting) return;
+            busyWriting = true;
+            const oldText = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = label; }
+            try {
+                await fn();
+            } catch (err) {
+                console.error(err);
+                alert('操作失敗：' + (err.message || err));
+            } finally {
+                busyWriting = false;
+                // 重繪過的按鈕已經不在畫面上，只還原還活著的那顆
+                if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = oldText; }
+            }
+        }
 
         async function loadBookingData(mode = 'auto') {
             let isManual = (mode === 'manual');
@@ -870,7 +889,7 @@
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                         <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
-                        <button class="btn btn-sm btn-cancel" onclick="cancelBooking('${row.id}')">取消</button>
+                        <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'處理中…',()=>cancelBooking('${row.id}'))">取消</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1080,9 +1099,9 @@
                     <td class="col-guardian" data-label="監護人"><span style="color:#666;">${row.guardianName ? `👨‍👩‍👧 ${row.guardianName}` : '-'}</span></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-edit" id="edit-btn-${absIndex}" onclick="toggleEditRow(${absIndex}, '${row.lineId}')">修改</button>
-                        <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" style="display:none;" onclick="saveRow(${absIndex}, '${row.lineId}')">儲存</button>
+                        <button class="btn btn-sm btn-success" id="save-btn-${absIndex}" style="display:none;" onclick="runOnce(this,'儲存中…',()=>saveRow(${absIndex}, '${row.lineId}'))">儲存</button>
                         <button class="btn btn-sm btn-outline" id="cancel-btn-${absIndex}" style="display:none;" onclick="cancelEditRow()">取消</button>
-                        ${row.isManual ? `<button class="btn btn-sm btn-cancel" id="delete-btn-${absIndex}" onclick="deleteManualMember('${row.lineId}', '${(row.name || '').replace(/'/g, "\\'")}')">🗑️ 刪除</button>` : ''}
+                        ${row.isManual ? `<button class="btn btn-sm btn-cancel" id="delete-btn-${absIndex}" onclick="runOnce(this,'刪除中…',()=>deleteManualMember('${row.lineId}', '${(row.name || '').replace(/'/g, "\\'")}'))">🗑️ 刪除</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);

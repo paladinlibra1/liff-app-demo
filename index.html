@@ -591,7 +591,12 @@
 
         // 取消預約
         async function cancelBooking() {
+            if (isSubmitting) return;
             if (!confirm("確定要取消此預約嗎？\n(取消後無法復原)")) return;
+            // 取消鍵也要防連點，否則會重複發出取消通知
+            isSubmitting = true;
+            const cancelBtn = document.getElementById('cancelBtn');
+            if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.innerText = '處理中...'; }
             setButtonLoading(true);
             const editId = document.getElementById('editId').value;
             
@@ -611,8 +616,10 @@
                 if(liff.isInClient()) liff.closeWindow();
                 else window.location.href = window.location.pathname;
             } catch (err) {
-                logErrorToSheet(err.message, "取消預約 (cancelBooking) 失敗"); 
+                logErrorToSheet(err.message, "取消預約 (cancelBooking) 失敗");
                 alert("刪除失敗：" + err.message);
+                isSubmitting = false;
+                if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.innerText = '取消此預約'; }
                 setButtonLoading(false);
             }
         }
