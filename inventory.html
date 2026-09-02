@@ -896,6 +896,25 @@
         renderItemsManage();
     }
 
+    // 防連點：寫入 Firestore 期間鎖住按鈕，避免連按兩次送出兩筆
+    let busyWriting = false;
+    async function runOnce(btn, label, fn) {
+        if (busyWriting) return;
+        busyWriting = true;
+        const oldText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = label; }
+        try {
+            await fn();
+        } catch (err) {
+            console.error(err);
+            alert('操作失敗：' + (err.message || err));
+        } finally {
+            busyWriting = false;
+            // 重繪過的按鈕已經不在畫面上，只還原還活著的那顆
+            if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = oldText; }
+        }
+    }
+
     // 重繪後回到原本的捲動位置，避免排序後畫面跳回最上方
     function preserveScroll(fn) {
         const y = window.scrollY;
@@ -931,12 +950,12 @@
         const wrap = document.getElementById('itemsManageList');
         const cats = sortableCategories();
         let html = '<div class="section-label">系列（可新增、改名、刪除，按住 ⠿ 拖曳調整順序）：</div>';
-        html += `<div class="top-action-bar"><button class="btn btn-primary btn-sm" onclick="addSeries()">＋ 新增${manageType}系列</button></div>`;
+        html += `<div class="top-action-bar"><button class="btn btn-primary btn-sm" onclick="runOnce(this,'處理中…',()=>addSeries())">＋ 新增${manageType}系列</button></div>`;
         html += '<div class="sort-group" data-group="cat">';
         html += cats.map(c => `<div class="item-panel sort-row" data-group="cat" data-id="${escAttr(c.name)}">
             <div class="sort-name">${c.name} <span class="sort-sub">（${c.count}）</span></div>
-            ${c.name === '未分類' ? '' : `<button class="btn btn-outline btn-sm" onclick="renameSeries('${escJs(c.name)}')">✎</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteSeries('${escJs(c.name)}')">🗑</button>`}
+            ${c.name === '未分類' ? '' : `<button class="btn btn-outline btn-sm" onclick="runOnce(this,'…',()=>renameSeries('${escJs(c.name)}'))">✎</button>
+            <button class="btn btn-danger btn-sm" onclick="runOnce(this,'…',()=>deleteSeries('${escJs(c.name)}'))">🗑</button>`}
             <div class="drag-handle" onpointerdown="startRowDrag(event,'cat')">⠿</div>
         </div>`).join('');
         html += '</div>';
@@ -1200,9 +1219,9 @@
             <div class="form-row"><label>備註</label><textarea id="mf_note_${key}" rows="2">${it ? (it.note || '') : ''}</textarea></div>
             ${it ? `<div class="form-row"><label><input type="checkbox" id="mf_active_${key}" ${it.active !== false ? 'checked' : ''} style="width:auto;margin-right:6px;">啟用</label></div>` : ''}
             <div class="modal-actions">
-                ${it ? `<button class="btn btn-danger btn-sm" onclick="deleteManageItem('${it.id}')">刪除</button>` : ''}
+                ${it ? `<button class="btn btn-danger btn-sm" onclick="runOnce(this,'刪除中…',()=>deleteManageItem('${it.id}'))">刪除</button>` : ''}
                 <button class="btn btn-outline" onclick="cancelManageEdit()">取消</button>
-                <button class="btn btn-primary" onclick="saveManageItem('${it ? it.id : ''}')">儲存</button>
+                <button class="btn btn-primary" onclick="runOnce(this,'儲存中…',()=>saveManageItem('${it ? it.id : ''}'))">儲存</button>
             </div>
         </div>`;
     }
