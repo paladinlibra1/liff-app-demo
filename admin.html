@@ -159,6 +159,7 @@
         .dormant-card textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; font-family: inherit; resize: vertical; min-height: 44px; margin-bottom: 10px; }
         .dormant-card .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .dormant-card .dc-actions .btn-sm { padding: 7px 14px; font-size: 12.5px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; }
+        .dormant-card .dc-no-line { padding: 7px 14px; font-size: 12.5px; border-radius: 6px; color: #bbb; background: #f5f5f5; display: inline-flex; align-items: center; }
 
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
@@ -2372,10 +2373,11 @@
             const byPhone = {};
             combined.forEach(r => {
                 if (!r.phone) return;
-                if (!byPhone[r.phone]) byPhone[r.phone] = { name: r.name || '', count: 0, lastDate: '' };
+                if (!byPhone[r.phone]) byPhone[r.phone] = { name: r.name || '', count: 0, lastDate: '', lineId: '' };
                 byPhone[r.phone].count++;
                 if (r.name) byPhone[r.phone].name = r.name; // 用最新一筆的姓名顯示
                 if (r.date && r.date > byPhone[r.phone].lastDate) byPhone[r.phone].lastDate = r.date;
+                if (r.lineId) byPhone[r.phone].lineId = r.lineId; // 該預約當時登入的 LINE 使用者 id，有才能發 LINE 訊息
             });
             const customers = Object.keys(byPhone).map(phone => ({ phone, ...byPhone[phone] }));
 
@@ -2418,10 +2420,29 @@
                 <textarea id="dormantNote_${safeId}" placeholder="紀錄回撥內容…（例如：已聯絡，下個月會回來）">${escReportHtml(note)}</textarea>
                 <div class="dc-actions">
                     <a class="btn btn-sm btn-outline" href="tel:${c.phone}">📞 致電</a>
+                    ${c.lineId
+                        ? `<button class="btn btn-sm btn-outline" onclick="runOnce(this,'傳送中…',()=>sendLineDormantMessage('${escJsAttr(c.lineId)}','${escJsAttr(c.name || '')}'))">💬 發送LINE訊息</button>`
+                        : `<span class="dc-no-line" title="這位客人的預約紀錄沒有 LINE ID，無法發送 LINE 訊息">💬 無LINE資料</span>`}
                     <button class="btn btn-sm btn-primary" onclick="runOnce(this,'儲存中…',()=>saveDormantNote('${escJsAttr(c.phone)}','${safeId}'))">💾 儲存紀錄</button>
                     <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'排除中…',()=>excludeDormantCustomer('${escJsAttr(c.phone)}'))">🚫 排除</button>
                 </div>
             </div>`;
+        }
+
+        // 發送 LINE 訊息給沉睡客（透過現有的 GAS 通知 webhook）
+        // ⚠️ 需要在 GAS 腳本那邊新增處理 type === 'dormant_reengage' 的邏輯，用 data.lineId 呼叫 LINE Messaging API 的 push，
+        //    目前只有前端會把要求送過去，GAS 若還沒接住就不會真的推播出去。
+        async function sendLineDormantMessage(lineId, name) {
+            const defaultMsg = `${name ? name + '，' : ''}好久不見了！我們一直都在，有空歡迎回來找我們喔～💕`;
+            const msg = prompt('傳送給客人的 LINE 訊息內容：', defaultMsg);
+            if (msg === null || !msg.trim()) return;
+            const requestBody = { action: 'sendNotification', payload: { type: 'dormant_reengage', data: { lineId, name, message: msg.trim() } } };
+            try {
+                await fetch(GAS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(requestBody) });
+                alert('已送出傳送要求');
+            } catch (err) {
+                alert('傳送失敗：' + err.message);
+            }
         }
 
         function escReportHtml(str) {
