@@ -149,6 +149,17 @@
             .report-retention-cards { grid-template-columns: 1fr; }
         }
 
+        .report-dormant-list { display: flex; flex-direction: column; gap: 12px; max-height: 480px; overflow-y: auto; padding: 2px 4px 2px 2px; }
+        .dormant-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px; background: #fffaf9; }
+        .dormant-card .dc-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .dormant-card .dc-name { font-weight: 700; font-size: 15px; color: var(--primary-dark); }
+        .dormant-card .dc-name .dc-phone { font-weight: 400; color: #888; font-size: 13px; margin-left: 4px; }
+        .dormant-card .dc-meta { font-size: 12.5px; color: #888; margin-top: 3px; }
+        .dormant-card .dc-days { color: #c62828; font-weight: 700; font-size: 14px; white-space: nowrap; }
+        .dormant-card textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; font-family: inherit; resize: vertical; min-height: 44px; margin-bottom: 10px; }
+        .dormant-card .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .dormant-card .dc-actions .btn-sm { padding: 7px 14px; font-size: 12.5px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; }
+
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
@@ -569,20 +580,7 @@
 
                 <div style="margin-top:22px;">
                     <div style="font-weight:bold; color:#c62828; margin-bottom:10px;">😴 沉睡客名單（最近一次到店超過 90 天）<span id="reportDormantCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
-                    <div style="max-height:360px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
-                        <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
-                            <thead>
-                                <tr style="position:sticky; top:0; background:#fafafa;">
-                                    <th style="padding:10px 12px; text-align:left;">姓名</th>
-                                    <th style="padding:10px 12px; text-align:left;">電話</th>
-                                    <th style="padding:10px 12px; text-align:center;">到店次數</th>
-                                    <th style="padding:10px 12px; text-align:left;">最近一次到店</th>
-                                    <th style="padding:10px 12px; text-align:right;">已間隔</th>
-                                </tr>
-                            </thead>
-                            <tbody id="reportDormantTableBody"></tbody>
-                        </table>
-                    </div>
+                    <div id="reportDormantList" class="report-dormant-list"></div>
                 </div>
             </div>
         </div>
@@ -2027,6 +2025,20 @@
         let allCancelledBookings = [];
         let isCancelDataLoaded = false;
 
+        // 沉睡客名單的回撥紀錄／排除狀態，key 為電話號碼
+        let reportFollowUps = {};
+        let isFollowUpsLoaded = false;
+        async function loadReportFollowUps() {
+            try {
+                const snapshot = await db.collection("reportFollowUps").get();
+                reportFollowUps = {};
+                snapshot.forEach(doc => { reportFollowUps[doc.id] = doc.data(); });
+                isFollowUpsLoaded = true;
+            } catch (err) {
+                console.error("讀取客戶回撥紀錄失敗", err);
+            }
+        }
+
         // 趨勢圖／概況卡片／兩張熱度圖共用的類型篩選（客戶回訪分析不受影響，固定看全部歷史）
         let reportTypeFilter = new Set(ALL_REPORT_TYPES);
 
@@ -2074,6 +2086,7 @@
             if (!isBookingLoaded) tasks.push(loadBookingData('first_load'));
             if (allHistoryBookings.length === 0) tasks.push(loadHistoryData(false));
             if (!isCancelDataLoaded) tasks.push(loadCancelledData());
+            if (!isFollowUpsLoaded) tasks.push(loadReportFollowUps());
             if (tasks.length) await Promise.all(tasks);
             renderReport();
         }
@@ -2381,23 +2394,55 @@
                 .filter(c => c.lastDate)
                 .map(c => ({ ...c, daysSince: Math.round((todayMs - new Date(c.lastDate + 'T00:00:00').getTime()) / 86400000) }))
                 .filter(c => c.daysSince > 90)
+                .filter(c => !(reportFollowUps[c.phone] && reportFollowUps[c.phone].excluded)) // 已排除的客人不顯示
                 .sort((a, b) => b.daysSince - a.daysSince);
 
             document.getElementById('reportDormantCount').innerText = ` · 共 ${dormant.length} 位`;
-            const tbody = document.getElementById('reportDormantTableBody');
-            if (dormant.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#aaa; padding:20px;">目前沒有沉睡客</td></tr>';
-            } else {
-                tbody.innerHTML = dormant.map(c => `
-                    <tr>
-                        <td style="padding:10px 12px;">${c.name || '-'}</td>
-                        <td style="padding:10px 12px;">${c.phone}</td>
-                        <td style="padding:10px 12px; text-align:center;">${c.count}</td>
-                        <td style="padding:10px 12px;">${c.lastDate}</td>
-                        <td style="padding:10px 12px; text-align:right; color:#c62828;">${c.daysSince} 天</td>
-                    </tr>
-                `).join('');
-            }
+            const listEl = document.getElementById('reportDormantList');
+            listEl.innerHTML = dormant.length === 0
+                ? '<p style="text-align:center; color:#aaa; padding:20px 0;">目前沒有沉睡客</p>'
+                : dormant.map(renderDormantCard).join('');
+        }
+
+        function renderDormantCard(c) {
+            const note = (reportFollowUps[c.phone] && reportFollowUps[c.phone].note) || '';
+            const safeId = c.phone.replace(/[^0-9A-Za-z]/g, '_');
+            return `<div class="dormant-card">
+                <div class="dc-head">
+                    <div>
+                        <div class="dc-name">${c.name || '-'}<span class="dc-phone">${c.phone}</span></div>
+                        <div class="dc-meta">到店 ${c.count} 次 ・ 最近一次 ${c.lastDate}</div>
+                    </div>
+                    <div class="dc-days">${c.daysSince} 天未到店</div>
+                </div>
+                <textarea id="dormantNote_${safeId}" placeholder="紀錄回撥內容…（例如：已聯絡，下個月會回來）">${escReportHtml(note)}</textarea>
+                <div class="dc-actions">
+                    <a class="btn btn-sm btn-outline" href="tel:${c.phone}">📞 致電</a>
+                    <button class="btn btn-sm btn-primary" onclick="runOnce(this,'儲存中…',()=>saveDormantNote('${escJsAttr(c.phone)}','${safeId}'))">💾 儲存紀錄</button>
+                    <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'排除中…',()=>excludeDormantCustomer('${escJsAttr(c.phone)}'))">🚫 排除</button>
+                </div>
+            </div>`;
+        }
+
+        function escReportHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function escJsAttr(str) {
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
+        async function saveDormantNote(phone, safeId) {
+            const val = document.getElementById(`dormantNote_${safeId}`).value;
+            await db.collection("reportFollowUps").doc(phone).set({ note: val, updatedAt: new Date() }, { merge: true });
+            reportFollowUps[phone] = Object.assign({}, reportFollowUps[phone], { note: val });
+            alert('已儲存回撥紀錄');
+        }
+
+        async function excludeDormantCustomer(phone) {
+            if (!confirm('確定要將這位客人從沉睡客名單排除嗎？排除後這支電話不會再出現在名單中。')) return;
+            await db.collection("reportFollowUps").doc(phone).set({ excluded: true, updatedAt: new Date() }, { merge: true });
+            reportFollowUps[phone] = Object.assign({}, reportFollowUps[phone], { excluded: true });
+            renderReport();
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
