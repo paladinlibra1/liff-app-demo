@@ -2429,14 +2429,16 @@
             </div>`;
         }
 
+        // 沉睡客 LINE 訊息固定用同一套格式，不開放每次個別編輯內容
+        const DORMANT_REENGAGE_MESSAGE = (name) => `${name ? name + '，' : ''}好久不見了！我們一直都在，有空歡迎回來找我們喔～💕`;
+
         // 發送 LINE 訊息給沉睡客（透過現有的 GAS 通知 webhook）
         // ⚠️ 需要在 GAS 腳本那邊新增處理 type === 'dormant_reengage' 的邏輯，用 data.lineId 呼叫 LINE Messaging API 的 push，
         //    目前只有前端會把要求送過去，GAS 若還沒接住就不會真的推播出去。
         async function sendLineDormantMessage(lineId, name) {
-            const defaultMsg = `${name ? name + '，' : ''}好久不見了！我們一直都在，有空歡迎回來找我們喔～💕`;
-            const msg = prompt('傳送給客人的 LINE 訊息內容：', defaultMsg);
-            if (msg === null || !msg.trim()) return;
-            const requestBody = { action: 'sendNotification', payload: { type: 'dormant_reengage', data: { lineId, name, message: msg.trim() } } };
+            const message = DORMANT_REENGAGE_MESSAGE(name);
+            if (!confirm(`確定要發送這則 LINE 訊息給${name || '這位客人'}嗎？\n\n${message}`)) return;
+            const requestBody = { action: 'sendNotification', payload: { type: 'dormant_reengage', data: { lineId, name, message } } };
             try {
                 await fetch(GAS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(requestBody) });
                 alert('已送出傳送要求');
