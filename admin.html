@@ -138,6 +138,9 @@
         .report-heatmap-table .heat-time-label { color: #888; padding-right: 10px; white-space: nowrap; text-align: right; }
         .report-heatmap-table .heat-cell { width: 40px; height: 30px; border-radius: 6px; font-weight: bold; color: #333; }
 
+        .report-service-mix { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
+        .report-service-legend { display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
+
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
@@ -518,6 +521,16 @@
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
                 <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，排除複檢）</div>
                 <div id="reportTimeHeatmap"></div>
+            </div>
+
+            <div class="box-container" style="padding:20px; margin-top:20px;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🧾 服務類型分布（本期，含複檢）</div>
+                <div class="report-service-mix">
+                    <div style="position:relative; width:200px; height:200px; flex-shrink:0;">
+                        <canvas id="reportServiceChart"></canvas>
+                    </div>
+                    <div id="reportServiceLegend" class="report-service-legend"></div>
+                </div>
             </div>
         </div>
 
@@ -1956,6 +1969,8 @@
         let reportPeriod = 'week';       // 'week' | 'month' | 'year'
         let reportAnchor = new Date();   // 目前檢視期間內的任一天
         let reportChart = null;
+        let reportServiceChart = null;
+        const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         let allCancelledBookings = [];
         let isCancelDataLoaded = false;
 
@@ -2049,6 +2064,7 @@
             renderReportTrendChart(reportPeriod, start, end, inPeriodCounted);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
             renderReportHeatmaps(inPeriodCounted);
+            renderReportServiceMix(startStr, endStr, combined);
         }
 
         function renderReportTrendChart(period, start, end, rows) {
@@ -2220,6 +2236,48 @@
             });
             html += '</tbody></table>';
             heatEl.innerHTML = html;
+        }
+
+        function renderReportServiceMix(startStr, endStr, combined) {
+            const counts = {};
+            combined.filter(r => r.date >= startStr && r.date <= endStr).forEach(r => {
+                const t = r.type || '未分類';
+                counts[t] = (counts[t] || 0) + 1;
+            });
+            const types = Object.keys(counts);
+            const total = types.reduce((sum, t) => sum + counts[t], 0);
+
+            const legendEl = document.getElementById('reportServiceLegend');
+            if (total === 0) {
+                legendEl.innerHTML = '<p style="color:#aaa;">本期尚無資料</p>';
+            } else {
+                legendEl.innerHTML = types.map(t => {
+                    const pct = (counts[t] / total * 100).toFixed(1);
+                    const color = REPORT_TYPE_COLORS[t] || '#9e9e9e';
+                    return `<div style="display:flex; align-items:center; gap:8px; font-size:14px;">
+                        <span style="width:12px; height:12px; border-radius:3px; background:${color}; display:inline-block; flex-shrink:0;"></span>
+                        <span style="flex:1;">${t}</span>
+                        <span style="font-weight:bold;">${counts[t]}</span>
+                        <span style="color:#999; min-width:48px; text-align:right;">${pct}%</span>
+                    </div>`;
+                }).join('');
+            }
+
+            const data = types.map(t => counts[t]);
+            const colors = types.map(t => REPORT_TYPE_COLORS[t] || '#9e9e9e');
+            const ctx = document.getElementById('reportServiceChart').getContext('2d');
+            if (reportServiceChart) {
+                reportServiceChart.data.labels = types;
+                reportServiceChart.data.datasets[0].data = data;
+                reportServiceChart.data.datasets[0].backgroundColor = colors;
+                reportServiceChart.update();
+                return;
+            }
+            reportServiceChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: types, datasets: [{ data: data, backgroundColor: colors }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
