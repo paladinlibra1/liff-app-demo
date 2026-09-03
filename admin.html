@@ -113,6 +113,12 @@
         .report-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .report-period-label { font-weight: bold; font-size: 15px; color: var(--primary-dark); min-width: 140px; text-align: center; }
 
+        .report-type-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .report-type-filter-label { font-size: 13px; color: #888; font-weight: 600; }
+        .report-type-filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .report-type-chip { background: #f5f5f5; border: 1px solid var(--border-color); color: #999; font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 16px; cursor: pointer; transition: all .2s ease; }
+        .report-type-chip:hover { opacity: .85; }
+
         .report-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
         .report-card { background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.03); }
         .report-card-label { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 8px; }
@@ -488,11 +494,16 @@
                 </div>
             </div>
 
+            <div class="report-type-filter">
+                <span class="report-type-filter-label">類型（套用於趨勢圖／概況卡片／熱度圖）：</span>
+                <div id="reportTypeFilterChips" class="report-type-filter-chips"></div>
+            </div>
+
             <div class="report-cards">
                 <div class="report-card">
                     <div class="report-card-label">來客數</div>
                     <div class="report-card-value" id="reportCardTotal">–</div>
-                    <div class="report-card-sub">新客體驗＋一般預約（不含複檢）</div>
+                    <div class="report-card-sub" id="reportCardTotalSub">已選類型：－</div>
                 </div>
                 <div class="report-card">
                     <div class="report-card-label">新客比例</div>
@@ -518,7 +529,7 @@
 
             <div class="box-container" style="padding:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
-                    <div style="font-weight:bold; color:var(--primary-dark);">📈 來客趨勢（排除複檢）</div>
+                    <div style="font-weight:bold; color:var(--primary-dark);">📈 來客趨勢</div>
                     <div class="report-period-tabs" style="padding:3px;">
                         <button class="report-period-btn active" id="reportTrendModeBtn-count" onclick="switchReportTrendMode('count')">人數</button>
                         <button class="report-period-btn" id="reportTrendModeBtn-percent" onclick="switchReportTrendMode('percent')">%</button>
@@ -530,12 +541,12 @@
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，含複檢）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，依上方已選類型）</div>
                 <div id="reportWeekdayHeat" class="report-weekday-heat"></div>
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，含複檢）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，依上方已選類型）</div>
                 <div id="reportTimeHeatmap"></div>
             </div>
 
@@ -2026,10 +2037,33 @@
         let reportChart = null;
         let reportServiceChart = null;
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
+        const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
         let allCancelledBookings = [];
         let isCancelDataLoaded = false;
 
-        const REPORT_COUNTED_TYPES = ['新客體驗', '一般預約']; // 排除複檢
+        // 趨勢圖／概況卡片／兩張熱度圖共用的類型篩選（服務類型分布、客戶回訪分析不受影響，固定看全部類型）
+        let reportTypeFilter = new Set(ALL_REPORT_TYPES);
+
+        function toggleReportTypeFilter(type) {
+            if (reportTypeFilter.has(type)) {
+                if (reportTypeFilter.size === 1) return; // 至少保留一種類型，避免圖表全空
+                reportTypeFilter.delete(type);
+            } else {
+                reportTypeFilter.add(type);
+            }
+            renderReportTypeFilterChips();
+            renderReport();
+        }
+
+        function renderReportTypeFilterChips() {
+            const wrap = document.getElementById('reportTypeFilterChips');
+            wrap.innerHTML = ALL_REPORT_TYPES.map(t => {
+                const active = reportTypeFilter.has(t);
+                const color = REPORT_TYPE_COLORS[t];
+                const style = active ? `background:${color}; border-color:${color}; color:#fff;` : '';
+                return `<button class="report-type-chip${active ? ' active' : ''}" style="${style}" onclick="toggleReportTypeFilter('${t}')">${t}</button>`;
+            }).join('');
+        }
 
         async function loadCancelledData() {
             try {
@@ -2103,6 +2137,8 @@
         }
 
         function renderReport() {
+            renderReportTypeFilterChips();
+
             const { start, end } = getPeriodRange(reportPeriod, reportAnchor);
             const startStr = getFormattedDate(start);
             const endStr = getFormattedDate(end);
@@ -2114,18 +2150,17 @@
             document.getElementById('reportNavNextBtn').disabled = (start.getTime() >= todayRange.start.getTime());
 
             const combined = getAllBookingsCombined();
-            const inPeriodCounted = combined.filter(r => REPORT_COUNTED_TYPES.includes(r.type) && r.date >= startStr && r.date <= endStr);
-            const inPeriodAll = combined.filter(r => r.date >= startStr && r.date <= endStr);
+            const inPeriodFiltered = combined.filter(r => reportTypeFilter.has(r.type) && r.date >= startStr && r.date <= endStr);
 
-            renderReportTrendChart(reportPeriod, start, end, inPeriodCounted);
-            renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
-            renderReportHeatmaps(inPeriodAll);
+            renderReportTrendChart(reportPeriod, start, end, inPeriodFiltered);
+            renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined);
+            renderReportHeatmaps(inPeriodFiltered);
             renderReportServiceMix(startStr, endStr, combined);
             renderReportRetention(combined);
         }
 
         let reportTrendMode = 'count'; // 'count' | 'percent'
-        let reportTrendRaw = null;     // 最近一次算好的原始人數 { labels, generalData, newData }，供人數/%切換不用重算
+        let reportTrendRaw = null;     // 最近一次算好的原始人數 { labels, types, dataByType }，供人數/%切換不用重算
 
         function switchReportTrendMode(mode) {
             reportTrendMode = mode;
@@ -2134,20 +2169,22 @@
             if (reportTrendRaw) drawReportTrendChart();
         }
 
+        // rows 已經依上方「類型」勾選篩過，這裡依目前勾了哪些類型動態畫出對應的堆疊系列
         function renderReportTrendChart(period, start, end, rows) {
-            let labels = [], generalData = [], newData = [];
+            const types = ALL_REPORT_TYPES.filter(t => reportTypeFilter.has(t));
+            let labels = [];
+            const dataByType = {};
+            types.forEach(t => dataByType[t] = []);
 
             if (period === 'year') {
                 for (let m = 0; m < 12; m++) {
                     labels.push(`${m+1}月`);
-                    generalData.push(0);
-                    newData.push(0);
+                    types.forEach(t => dataByType[t].push(0));
                 }
                 rows.forEach(r => {
                     const m = parseInt(r.date.slice(5,7), 10) - 1;
-                    if (m < 0 || m > 11) return;
-                    if (r.type === '一般預約') generalData[m]++;
-                    else if (r.type === '新客體驗') newData[m]++;
+                    if (m < 0 || m > 11 || !dataByType[r.type]) return;
+                    dataByType[r.type][m]++;
                 });
             } else {
                 const dayNames = ['日','一','二','三','四','五','六'];
@@ -2159,39 +2196,41 @@
                         ? [`週${dayNames[cur.getDay()]}`, `${cur.getMonth()+1}/${cur.getDate()}`]
                         : `${cur.getDate()}日`;
                     labels.push(label);
-                    generalData.push(0);
-                    newData.push(0);
+                    types.forEach(t => dataByType[t].push(0));
                     cur.setDate(cur.getDate() + 1);
                 }
                 rows.forEach(r => {
                     const idx = keys.indexOf(r.date);
-                    if (idx === -1) return;
-                    if (r.type === '一般預約') generalData[idx]++;
-                    else if (r.type === '新客體驗') newData[idx]++;
+                    if (idx === -1 || !dataByType[r.type]) return;
+                    dataByType[r.type][idx]++;
                 });
             }
 
-            reportTrendRaw = { labels, generalData, newData };
+            reportTrendRaw = { labels, types, dataByType };
             drawReportTrendChart();
         }
 
         function drawReportTrendChart() {
-            const { labels, generalData, newData } = reportTrendRaw;
-            let plotGeneral = generalData, plotNew = newData, yMax = undefined, tickCallback = undefined;
+            const { labels, types, dataByType } = reportTrendRaw;
+            let plotData = {};
+            types.forEach(t => plotData[t] = dataByType[t]);
+            let yMax = undefined, tickCallback = undefined;
 
             if (reportTrendMode === 'percent') {
-                plotGeneral = generalData.map((g, i) => { const t = g + newData[i]; return t > 0 ? +(g / t * 100).toFixed(1) : 0; });
-                plotNew = newData.map((n, i) => { const t = generalData[i] + n; return t > 0 ? +(n / t * 100).toFixed(1) : 0; });
+                const totals = labels.map((_, i) => types.reduce((s, t) => s + dataByType[t][i], 0));
+                types.forEach(t => {
+                    plotData[t] = dataByType[t].map((v, i) => totals[i] > 0 ? +(v / totals[i] * 100).toFixed(1) : 0);
+                });
                 yMax = 100;
                 tickCallback = (v) => v + '%';
             }
             const tooltipLabel = (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}${reportTrendMode === 'percent' ? '%' : ' 人'}`;
+            const datasets = types.map(t => ({ label: t, data: plotData[t], backgroundColor: REPORT_TYPE_COLORS[t], borderRadius: 4 }));
 
             const ctx = document.getElementById('reportTrendChart').getContext('2d');
             if (reportChart) {
                 reportChart.data.labels = labels;
-                reportChart.data.datasets[0].data = plotGeneral;
-                reportChart.data.datasets[1].data = plotNew;
+                reportChart.data.datasets = datasets; // 系列數量可能因勾選變動，整組換掉
                 reportChart.options.scales.y.max = yMax;
                 reportChart.options.scales.y.ticks.callback = tickCallback;
                 reportChart.options.plugins.tooltip = { callbacks: { label: tooltipLabel } };
@@ -2200,13 +2239,7 @@
             }
             reportChart = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        { label: '一般預約', data: plotGeneral, backgroundColor: '#4CAF50', borderRadius: 4 },
-                        { label: '新客體驗', data: plotNew, backgroundColor: '#f6c026', borderRadius: 4 }
-                    ]
-                },
+                data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -2225,8 +2258,9 @@
         function renderReportCards(period, start, end, startStr, endStr, inPeriodCounted, combined) {
             const total = inPeriodCounted.length;
             document.getElementById('reportCardTotal').innerText = `${total} 人次`;
+            document.getElementById('reportCardTotalSub').innerText = `已選類型：${ALL_REPORT_TYPES.filter(t => reportTypeFilter.has(t)).join('、')}`;
 
-            // 新客比例＝新客體驗人次 ／（新客體驗＋一般預約）人次
+            // 新客比例＝新客體驗人次 ／ 已選類型人次
             const newCount = inPeriodCounted.filter(r => r.type === '新客體驗').length;
             document.getElementById('reportCardNewRatio').innerText = total > 0 ? `${(newCount / total * 100).toFixed(1)}%` : '－';
             document.getElementById('reportCardNewRatioSub').innerText = `新客體驗人次：${newCount}`;
@@ -2239,7 +2273,7 @@
             const prevRange = getPeriodRange(period, prevAnchor);
             const prevStartStr = getFormattedDate(prevRange.start);
             const prevEndStr = getFormattedDate(prevRange.end);
-            const prevTotal = combined.filter(r => REPORT_COUNTED_TYPES.includes(r.type) && r.date >= prevStartStr && r.date <= prevEndStr).length;
+            const prevTotal = combined.filter(r => reportTypeFilter.has(r.type) && r.date >= prevStartStr && r.date <= prevEndStr).length;
 
             const compareEl = document.getElementById('reportCardCompare');
             if (prevTotal === 0) {
