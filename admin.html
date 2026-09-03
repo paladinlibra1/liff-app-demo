@@ -126,6 +126,18 @@
             .report-period-switch { flex-direction: column; align-items: stretch; }
         }
 
+        .report-weekday-heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .report-weekday-cell { border-radius: 10px; padding: 14px 6px; text-align: center; transition: background-color 0.3s; }
+        .report-weekday-cell .wd-name { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
+        .report-weekday-cell .wd-count { font-size: 20px; font-weight: bold; color: var(--primary-dark); }
+        .report-weekday-cell.wd-busiest .wd-name, .report-weekday-cell.wd-busiest .wd-count { color: #ad1457; }
+
+        .report-heatmap-table { border-collapse: separate; border-spacing: 3px; font-size: 12.5px; }
+        .report-heatmap-table th { background: transparent; padding: 4px 8px; color: #888; font-weight: 600; text-transform: none; letter-spacing: 0; text-align: center; }
+        .report-heatmap-table td { text-align: center; padding: 0; }
+        .report-heatmap-table .heat-time-label { color: #888; padding-right: 10px; white-space: nowrap; text-align: right; }
+        .report-heatmap-table .heat-cell { width: 40px; height: 30px; border-radius: 6px; font-weight: bold; color: #333; }
+
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
@@ -496,6 +508,16 @@
                 <div style="position:relative; height:320px;">
                     <canvas id="reportTrendChart"></canvas>
                 </div>
+            </div>
+
+            <div class="box-container" style="padding:20px; margin-top:20px;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，排除複檢）</div>
+                <div id="reportWeekdayHeat" class="report-weekday-heat"></div>
+            </div>
+
+            <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，排除複檢）</div>
+                <div id="reportTimeHeatmap"></div>
             </div>
         </div>
 
@@ -2026,6 +2048,7 @@
 
             renderReportTrendChart(reportPeriod, start, end, inPeriodCounted);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
+            renderReportHeatmaps(inPeriodCounted);
         }
 
         function renderReportTrendChart(period, start, end, rows) {
@@ -2137,6 +2160,66 @@
             const totalScheduled = cancelledInPeriod + bookedInPeriod;
             const cancelRateEl = document.getElementById('reportCardCancelRate');
             cancelRateEl.innerText = totalScheduled > 0 ? `${(cancelledInPeriod / totalScheduled * 100).toFixed(1)}%` : '－';
+        }
+
+        // 依數值占最大值的比例，回傳粉紅色系熱度背景色／文字色
+        function heatColor(count, max) {
+            if (count === 0) return '#f5f5f5';
+            const ratio = Math.min(1, count / max);
+            const alpha = 0.15 + ratio * 0.75;
+            return `rgba(233, 30, 99, ${alpha.toFixed(2)})`;
+        }
+        function heatTextColor(count, max) {
+            if (count === 0) return '#bbb';
+            return (count / max) > 0.5 ? '#ffffff' : '#ad1457';
+        }
+
+        function renderReportHeatmaps(rows) {
+            const dayNames = ['一','二','三','四','五','六','日'];
+            const weekdayCounts = [0,0,0,0,0,0,0]; // 週一(0) ~ 週日(6)
+            const slotMap = {}; // time -> [週一(0)~週日(6) 各自次數]
+            const timeSet = new Set();
+
+            rows.forEach(r => {
+                if (!r.date || !r.time) return;
+                const jsDay = new Date(r.date + 'T00:00:00').getDay(); // 0=日 ... 6=六
+                const wd = (jsDay + 6) % 7; // 轉成 0=一 ... 6=日
+                weekdayCounts[wd]++;
+                timeSet.add(r.time);
+                if (!slotMap[r.time]) slotMap[r.time] = [0,0,0,0,0,0,0];
+                slotMap[r.time][wd]++;
+            });
+
+            // 📅 星期熱度
+            const maxWd = Math.max(1, ...weekdayCounts);
+            const wdEl = document.getElementById('reportWeekdayHeat');
+            wdEl.innerHTML = weekdayCounts.map((c, i) => {
+                const isBusiest = c > 0 && c === maxWd;
+                return `<div class="report-weekday-cell${isBusiest ? ' wd-busiest' : ''}" style="background-color:${heatColor(c, maxWd)};">
+                    <div class="wd-name">週${dayNames[i]}</div>
+                    <div class="wd-count" style="color:${heatTextColor(c, maxWd)};">${c}</div>
+                </div>`;
+            }).join('');
+
+            // 🔥 時段熱度
+            const times = Array.from(timeSet).sort();
+            const heatEl = document.getElementById('reportTimeHeatmap');
+            if (times.length === 0) {
+                heatEl.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px 0;">本期尚無資料</p>';
+                return;
+            }
+            const maxSlot = Math.max(1, ...times.map(t => Math.max(...slotMap[t])));
+            let html = '<table class="report-heatmap-table"><thead><tr><th></th>' +
+                dayNames.map(d => `<th>週${d}</th>`).join('') + '</tr></thead><tbody>';
+            times.forEach(t => {
+                html += `<tr><td class="heat-time-label">${t}</td>`;
+                slotMap[t].forEach(c => {
+                    html += `<td><div class="heat-cell" style="background-color:${heatColor(c, maxSlot)}; color:${heatTextColor(c, maxSlot)};">${c > 0 ? c : ''}</div></td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            heatEl.innerHTML = html;
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
