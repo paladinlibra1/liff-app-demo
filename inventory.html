@@ -106,6 +106,17 @@
         .batch-row .expiry-badge { font-size: 13px; padding: 3px 8px; border-radius: 12px; background: #eee; color: #666; white-space: nowrap; }
         .batch-row .expiry-badge.warn { background: #fff3cd; color: #946200; }
         .batch-row .expiry-badge.danger { background: #fde2e2; color: #b02a2a; }
+
+        /* ⚠️ 過期／低庫存提醒橫幅 */
+        .inv-alert-banner { background: #fff3cd; border: 1px solid #f3d98b; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+        .inv-alert-summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; font-weight: 700; color: #8a5a00; }
+        .inv-alert-summary .expand-arrow { transition: transform .2s; flex-shrink: 0; }
+        .inv-alert-summary .expand-arrow.open { transform: rotate(90deg); }
+        .inv-alert-detail { padding: 0 16px 14px; }
+        .inv-alert-group { margin-bottom: 10px; }
+        .inv-alert-group-title { font-size: 13px; font-weight: 700; color: #8a5a00; margin-bottom: 4px; }
+        .inv-alert-item { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; color: #6b4a00; padding: 7px 4px; border-top: 1px dashed #f0dca0; cursor: pointer; }
+        .inv-alert-item:hover { background: rgba(255,255,255,.5); border-radius: 6px; }
         .batch-row label { font-size: 13px; color: #888; }
         .batch-row .qty-field { display: flex; align-items: center; gap: 4px; }
         .batch-row .qty-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 18px; width: 90px; min-height: 40px; font-weight: 700; background: #fafbff; text-align: center; caret-color: transparent; cursor: pointer; }
@@ -246,6 +257,14 @@
         <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
     </div>
 
+    <div class="inv-alert-banner" id="invAlertBanner" style="display:none;">
+        <div class="inv-alert-summary" onclick="toggleInvAlertDetail()">
+            <span id="invAlertSummaryText"></span>
+            <span class="expand-arrow" id="invAlertArrow">›</span>
+        </div>
+        <div class="inv-alert-detail" id="invAlertDetail" style="display:none;"></div>
+    </div>
+
     <div class="tabs" id="subTabs">
         <button class="tab-btn active" id="tab-stocktake" onclick="switchTab('stocktake')">📋 盤點作業</button>
         <button class="tab-btn" id="tab-items" onclick="switchTab('items')">🏷️ 商品管理</button>
@@ -381,6 +400,7 @@
             batchesByItem[b.itemId].push(b);
         });
         Object.values(batchesByItem).forEach(list => list.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || '')));
+        renderInventoryAlerts();
     }
 
     async function loadAll() {
@@ -607,6 +627,80 @@
         if (days < 0) return 'danger';
         if (days <= 90) return 'warn';
         return '';
+    }
+
+    // ── ⚠️ 過期／低庫存提醒 ──────────────────────────────
+    // 目前庫存以資料庫已存的批次（batchesByItem）為準，不看盤點作業中尚未送出的草稿
+    function itemBookQty(itemId) {
+        return (batchesByItem[itemId] || []).reduce((s, b) => s + (Number(b.qty) || 0), 0);
+    }
+
+    function computeInventoryAlerts() {
+        const lowStock = [], expired = [], expiringSoon = [];
+        allItems.filter(it => it.active !== false).forEach(it => {
+            const threshold = (it.safetyStock === null || it.safetyStock === undefined || it.safetyStock === '') ? 0 : Number(it.safetyStock);
+            const qty = itemBookQty(it.id);
+            if (qty < threshold) lowStock.push({ item: it, qty, threshold });
+            (batchesByItem[it.id] || []).forEach(b => {
+                const cls = expiryBadgeClass(b.expiryDate);
+                if (cls === 'danger') expired.push({ item: it, batch: b });
+                else if (cls === 'warn') expiringSoon.push({ item: it, batch: b });
+            });
+        });
+        return { lowStock, expired, expiringSoon };
+    }
+
+    let invAlertExpanded = false;
+    function toggleInvAlertDetail() {
+        invAlertExpanded = !invAlertExpanded;
+        document.getElementById('invAlertDetail').style.display = invAlertExpanded ? 'block' : 'none';
+        document.getElementById('invAlertArrow').classList.toggle('open', invAlertExpanded);
+    }
+
+    function renderInventoryAlerts() {
+        const banner = document.getElementById('invAlertBanner');
+        if (!banner) return; // 初次載入時 HTML 還沒解析完，安全跳過
+        const { lowStock, expired, expiringSoon } = computeInventoryAlerts();
+        const total = lowStock.length + expired.length + expiringSoon.length;
+        if (!total) { banner.style.display = 'none'; return; }
+        banner.style.display = 'block';
+
+        const parts = [];
+        if (expired.length) parts.push(`${expired.length} 個批次已過期`);
+        if (expiringSoon.length) parts.push(`${expiringSoon.length} 個批次快到期`);
+        if (lowStock.length) parts.push(`${lowStock.length} 項商品低於安全庫存`);
+        document.getElementById('invAlertSummaryText').textContent = `⚠️ ${parts.join('・')}`;
+
+        const itemRow = (it, detail) => `<div class="inv-alert-item" onclick="jumpToManageItem('${it.id}','${it.type}')">
+            <span>${it.code || ''} ${it.name || ''}</span><span>${detail}</span>
+        </div>`;
+
+        let html = '';
+        if (expired.length) {
+            html += `<div class="inv-alert-group"><div class="inv-alert-group-title">🔴 已過期</div>`
+                + expired.map(x => itemRow(x.item, `效期 ${x.batch.expiryDate}`)).join('') + `</div>`;
+        }
+        if (expiringSoon.length) {
+            html += `<div class="inv-alert-group"><div class="inv-alert-group-title">🟡 即將到期（90天內）</div>`
+                + expiringSoon.map(x => itemRow(x.item, `效期 ${x.batch.expiryDate}`)).join('') + `</div>`;
+        }
+        if (lowStock.length) {
+            html += `<div class="inv-alert-group"><div class="inv-alert-group-title">📉 低於安全庫存</div>`
+                + lowStock.map(x => itemRow(x.item, `目前 ${x.qty} ／ 安全值 ${x.threshold}`)).join('') + `</div>`;
+        }
+        document.getElementById('invAlertDetail').innerHTML = html;
+    }
+
+    // 點提醒項目：跳到商品管理並展開該商品，方便直接調整安全庫存量或新增批次
+    function jumpToManageItem(id, type) {
+        switchTab('items');
+        selectManageType(type);
+        expandedItemId = id;
+        renderItemsManage();
+        setTimeout(() => {
+            const el = document.getElementById(`manage-item-${id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
     }
 
     function renderBatchRow(itemId, batchKey, b) {
@@ -1186,7 +1280,7 @@
     }
 
     function renderManageSummaryPanel(it) {
-        return `<div class="item-panel manage-panel" onclick="toggleExpandItem('${it.id}')">
+        return `<div class="item-panel manage-panel" id="manage-item-${it.id}" onclick="toggleExpandItem('${it.id}')">
             <div class="manage-row">
                 <div>
                     <div class="code">${it.code || ''} <span style="font-weight:400;color:#888;font-size:14px;">${it.name || ''}</span></div>
@@ -1201,7 +1295,7 @@
         const key = it ? it.id : 'new';
         const type = it ? (it.type || '產品') : manageType;
         const defaultCategory = it ? (it.category || '') : (manageCategory || categoryOrderOf(type)[0] || '');
-        return `<div class="item-panel manage-edit" onclick="event.stopPropagation()">
+        return `<div class="item-panel manage-edit" id="manage-item-${key}" onclick="event.stopPropagation()">
             <div class="form-row"><label>代碼</label><input type="text" id="mf_code_${key}" value="${it ? (it.code || '') : ''}" placeholder="例如 AB90"></div>
             <div class="form-row"><label>名稱</label><input type="text" id="mf_name_${key}" value="${it ? (it.name || '') : ''}"></div>
             <div class="form-row"><label>類型</label>
@@ -1216,6 +1310,7 @@
             <div class="form-row"><label>單位</label><input type="text" id="mf_unit_${key}" value="${it ? (it.unit || '') : ''}" placeholder="例如 瓶、盒"></div>
             <div class="form-row"><label>會員價</label><input type="number" id="mf_price_${key}" value="${it ? (it.memberPrice || 0) : 0}"></div>
             <div class="form-row"><label>PV</label><input type="number" id="mf_pv_${key}" value="${it ? (it.pv || 0) : 0}"></div>
+            <div class="form-row"><label>安全庫存量</label><input type="number" id="mf_safety_${key}" value="${it && it.safetyStock !== null && it.safetyStock !== undefined ? it.safetyStock : ''}" placeholder="未設定＝不提醒"></div>
             <div class="form-row"><label>備註</label><textarea id="mf_note_${key}" rows="2">${it ? (it.note || '') : ''}</textarea></div>
             ${it ? `<div class="form-row"><label><input type="checkbox" id="mf_active_${key}" ${it.active !== false ? 'checked' : ''} style="width:auto;margin-right:6px;">啟用</label></div>` : ''}
             <div class="modal-actions">
@@ -1270,6 +1365,7 @@
             unit: document.getElementById(`mf_unit_${key}`).value.trim(),
             memberPrice: Number(document.getElementById(`mf_price_${key}`).value) || 0,
             pv: Number(document.getElementById(`mf_pv_${key}`).value) || 0,
+            safetyStock: (() => { const v = document.getElementById(`mf_safety_${key}`).value.trim(); return v === '' ? null : Number(v); })(),
             note: document.getElementById(`mf_note_${key}`).value.trim(),
             updatedAt: new Date()
         };
