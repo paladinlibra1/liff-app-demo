@@ -530,12 +530,12 @@
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，排除複檢）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，含複檢）</div>
                 <div id="reportWeekdayHeat" class="report-weekday-heat"></div>
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，排除複檢）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，含複檢）</div>
                 <div id="reportTimeHeatmap"></div>
             </div>
 
@@ -2115,10 +2115,11 @@
 
             const combined = getAllBookingsCombined();
             const inPeriodCounted = combined.filter(r => REPORT_COUNTED_TYPES.includes(r.type) && r.date >= startStr && r.date <= endStr);
+            const inPeriodAll = combined.filter(r => r.date >= startStr && r.date <= endStr);
 
             renderReportTrendChart(reportPeriod, start, end, inPeriodCounted);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
-            renderReportHeatmaps(inPeriodCounted);
+            renderReportHeatmaps(inPeriodAll);
             renderReportServiceMix(startStr, endStr, combined);
             renderReportRetention(combined);
         }
