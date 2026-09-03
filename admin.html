@@ -517,7 +517,13 @@
             </div>
 
             <div class="box-container" style="padding:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📈 來客趨勢（排除複檢）</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                    <div style="font-weight:bold; color:var(--primary-dark);">📈 來客趨勢（排除複檢）</div>
+                    <div class="report-period-tabs" style="padding:3px;">
+                        <button class="report-period-btn active" id="reportTrendModeBtn-count" onclick="switchReportTrendMode('count')">人數</button>
+                        <button class="report-period-btn" id="reportTrendModeBtn-percent" onclick="switchReportTrendMode('percent')">%</button>
+                    </div>
+                </div>
                 <div style="position:relative; height:320px;">
                     <canvas id="reportTrendChart"></canvas>
                 </div>
@@ -2117,6 +2123,16 @@
             renderReportRetention(combined);
         }
 
+        let reportTrendMode = 'count'; // 'count' | 'percent'
+        let reportTrendRaw = null;     // 最近一次算好的原始人數 { labels, generalData, newData }，供人數/%切換不用重算
+
+        function switchReportTrendMode(mode) {
+            reportTrendMode = mode;
+            document.getElementById('reportTrendModeBtn-count').classList.toggle('active', mode === 'count');
+            document.getElementById('reportTrendModeBtn-percent').classList.toggle('active', mode === 'percent');
+            if (reportTrendRaw) drawReportTrendChart();
+        }
+
         function renderReportTrendChart(period, start, end, rows) {
             let labels = [], generalData = [], newData = [];
 
@@ -2154,11 +2170,30 @@
                 });
             }
 
+            reportTrendRaw = { labels, generalData, newData };
+            drawReportTrendChart();
+        }
+
+        function drawReportTrendChart() {
+            const { labels, generalData, newData } = reportTrendRaw;
+            let plotGeneral = generalData, plotNew = newData, yMax = undefined, tickCallback = undefined;
+
+            if (reportTrendMode === 'percent') {
+                plotGeneral = generalData.map((g, i) => { const t = g + newData[i]; return t > 0 ? +(g / t * 100).toFixed(1) : 0; });
+                plotNew = newData.map((n, i) => { const t = generalData[i] + n; return t > 0 ? +(n / t * 100).toFixed(1) : 0; });
+                yMax = 100;
+                tickCallback = (v) => v + '%';
+            }
+            const tooltipLabel = (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}${reportTrendMode === 'percent' ? '%' : ' 人'}`;
+
             const ctx = document.getElementById('reportTrendChart').getContext('2d');
             if (reportChart) {
                 reportChart.data.labels = labels;
-                reportChart.data.datasets[0].data = generalData;
-                reportChart.data.datasets[1].data = newData;
+                reportChart.data.datasets[0].data = plotGeneral;
+                reportChart.data.datasets[1].data = plotNew;
+                reportChart.options.scales.y.max = yMax;
+                reportChart.options.scales.y.ticks.callback = tickCallback;
+                reportChart.options.plugins.tooltip = { callbacks: { label: tooltipLabel } };
                 reportChart.update();
                 return;
             }
@@ -2167,8 +2202,8 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: '一般預約', data: generalData, backgroundColor: '#4CAF50', borderRadius: 4 },
-                        { label: '新客體驗', data: newData, backgroundColor: '#f6c026', borderRadius: 4 }
+                        { label: '一般預約', data: plotGeneral, backgroundColor: '#4CAF50', borderRadius: 4 },
+                        { label: '新客體驗', data: plotNew, backgroundColor: '#f6c026', borderRadius: 4 }
                     ]
                 },
                 options: {
@@ -2176,9 +2211,12 @@
                     maintainAspectRatio: false,
                     scales: {
                         x: { stacked: true },
-                        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                        y: { stacked: true, beginAtZero: true, max: yMax, ticks: { precision: 0, callback: tickCallback } }
                     },
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: tooltipLabel } }
+                    }
                 }
             });
         }
