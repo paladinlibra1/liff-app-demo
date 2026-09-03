@@ -141,9 +141,6 @@
         .report-heatmap-table .heat-time-label { color: #888; padding-right: 10px; white-space: nowrap; text-align: right; }
         .report-heatmap-table .heat-cell { width: 40px; height: 30px; border-radius: 6px; font-weight: bold; color: #333; }
 
-        .report-service-mix { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
-        .report-service-legend { display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
-
         .report-retention-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
         .report-retention-card { background: #fdf2f5; border-radius: 10px; padding: 14px 16px; text-align: center; }
         .report-retention-card .rc-label { font-size: 12.5px; color: #888; margin-bottom: 6px; }
@@ -548,16 +545,6 @@
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
                 <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，依上方已選類型）</div>
                 <div id="reportTimeHeatmap"></div>
-            </div>
-
-            <div class="box-container" style="padding:20px; margin-top:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🧾 服務類型分布（本期，含複檢）</div>
-                <div class="report-service-mix">
-                    <div style="position:relative; width:200px; height:200px; flex-shrink:0;">
-                        <canvas id="reportServiceChart"></canvas>
-                    </div>
-                    <div id="reportServiceLegend" class="report-service-legend"></div>
-                </div>
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px;">
@@ -2035,13 +2022,12 @@
         let reportPeriod = 'week';       // 'week' | 'month' | 'year'
         let reportAnchor = new Date();   // 目前檢視期間內的任一天
         let reportChart = null;
-        let reportServiceChart = null;
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
         let allCancelledBookings = [];
         let isCancelDataLoaded = false;
 
-        // 趨勢圖／概況卡片／兩張熱度圖共用的類型篩選（服務類型分布、客戶回訪分析不受影響，固定看全部類型）
+        // 趨勢圖／概況卡片／兩張熱度圖共用的類型篩選（客戶回訪分析不受影響，固定看全部歷史）
         let reportTypeFilter = new Set(ALL_REPORT_TYPES);
 
         function toggleReportTypeFilter(type) {
@@ -2155,7 +2141,6 @@
             renderReportTrendChart(reportPeriod, start, end, inPeriodFiltered);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined);
             renderReportHeatmaps(inPeriodFiltered);
-            renderReportServiceMix(startStr, endStr, combined);
             renderReportRetention(combined);
         }
 
@@ -2367,48 +2352,6 @@
             });
             html += '</tbody></table>';
             heatEl.innerHTML = html;
-        }
-
-        function renderReportServiceMix(startStr, endStr, combined) {
-            const counts = {};
-            combined.filter(r => r.date >= startStr && r.date <= endStr).forEach(r => {
-                const t = r.type || '未分類';
-                counts[t] = (counts[t] || 0) + 1;
-            });
-            const types = Object.keys(counts);
-            const total = types.reduce((sum, t) => sum + counts[t], 0);
-
-            const legendEl = document.getElementById('reportServiceLegend');
-            if (total === 0) {
-                legendEl.innerHTML = '<p style="color:#aaa;">本期尚無資料</p>';
-            } else {
-                legendEl.innerHTML = types.map(t => {
-                    const pct = (counts[t] / total * 100).toFixed(1);
-                    const color = REPORT_TYPE_COLORS[t] || '#9e9e9e';
-                    return `<div style="display:flex; align-items:center; gap:8px; font-size:14px;">
-                        <span style="width:12px; height:12px; border-radius:3px; background:${color}; display:inline-block; flex-shrink:0;"></span>
-                        <span style="flex:1;">${t}</span>
-                        <span style="font-weight:bold;">${counts[t]}</span>
-                        <span style="color:#999; min-width:48px; text-align:right;">${pct}%</span>
-                    </div>`;
-                }).join('');
-            }
-
-            const data = types.map(t => counts[t]);
-            const colors = types.map(t => REPORT_TYPE_COLORS[t] || '#9e9e9e');
-            const ctx = document.getElementById('reportServiceChart').getContext('2d');
-            if (reportServiceChart) {
-                reportServiceChart.data.labels = types;
-                reportServiceChart.data.datasets[0].data = data;
-                reportServiceChart.data.datasets[0].backgroundColor = colors;
-                reportServiceChart.update();
-                return;
-            }
-            reportServiceChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: types, datasets: [{ data: data, backgroundColor: colors }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
         }
 
         // 👥 客戶回訪分析：用電話號碼辨識同一位客人，統計「全部歷史」（所有類型皆計入到店次數）
