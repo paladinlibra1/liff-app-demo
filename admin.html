@@ -130,7 +130,7 @@
         .report-weekday-cell { border-radius: 10px; padding: 14px 6px; text-align: center; transition: background-color 0.3s; }
         .report-weekday-cell .wd-name { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
         .report-weekday-cell .wd-count { font-size: 20px; font-weight: bold; color: var(--primary-dark); }
-        .report-weekday-cell.wd-busiest .wd-name, .report-weekday-cell.wd-busiest .wd-count { color: #ad1457; }
+        .report-weekday-cell.wd-busiest { box-shadow: 0 0 0 2px #e53935 inset; }
 
         .report-heatmap-table { border-collapse: separate; border-spacing: 3px; font-size: 12.5px; }
         .report-heatmap-table th { background: transparent; padding: 4px 8px; color: #888; font-weight: 600; text-transform: none; letter-spacing: 0; text-align: center; }
@@ -2226,16 +2226,18 @@
             cancelRateEl.innerText = totalScheduled > 0 ? `${(cancelledInPeriod / totalScheduled * 100).toFixed(1)}%` : '－';
         }
 
-        // 依數值占最大值的比例，回傳粉紅色系熱度背景色／文字色
+        // 依數值占最大值的比例，回傳溫度色階（藍＝最空，紅＝最壅擠）
         function heatColor(count, max) {
-            if (count === 0) return '#f5f5f5';
+            if (count === 0) return '#eef4fb';
             const ratio = Math.min(1, count / max);
-            const alpha = 0.15 + ratio * 0.75;
-            return `rgba(233, 30, 99, ${alpha.toFixed(2)})`;
+            const hue = 220 - ratio * 220;   // 220=藍 ... 0=紅
+            const light = 78 - ratio * 33;   // 空閒偏淺、壅擠偏深，維持文字可讀性
+            return `hsl(${hue.toFixed(0)}, 78%, ${light.toFixed(0)}%)`;
         }
         function heatTextColor(count, max) {
-            if (count === 0) return '#bbb';
-            return (count / max) > 0.5 ? '#ffffff' : '#ad1457';
+            if (count === 0) return '#9aa9bb';
+            const ratio = Math.min(1, count / max);
+            return ratio > 0.45 ? '#ffffff' : '#33475b';
         }
 
         function renderReportHeatmaps(rows) {
@@ -2259,9 +2261,10 @@
             const wdEl = document.getElementById('reportWeekdayHeat');
             wdEl.innerHTML = weekdayCounts.map((c, i) => {
                 const isBusiest = c > 0 && c === maxWd;
+                const textColor = heatTextColor(c, maxWd);
                 return `<div class="report-weekday-cell${isBusiest ? ' wd-busiest' : ''}" style="background-color:${heatColor(c, maxWd)};">
-                    <div class="wd-name">週${dayNames[i]}</div>
-                    <div class="wd-count" style="color:${heatTextColor(c, maxWd)};">${c}</div>
+                    <div class="wd-name" style="color:${textColor};">週${dayNames[i]}</div>
+                    <div class="wd-count" style="color:${textColor};">${c}</div>
                 </div>`;
             }).join('');
 
