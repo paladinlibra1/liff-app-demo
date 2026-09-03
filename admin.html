@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="CF 後台">
 
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -100,6 +101,30 @@
         .btn-rebook:hover { background: #059669; }
 
         #loading { display: none; text-align: center; padding: 50px; color: var(--text-color); font-weight: bold; letter-spacing: 2px; }
+
+        /* 📊 報表 */
+        .report-period-switch { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .report-period-tabs { display: inline-flex; gap: 4px; background-color: #eeeeee; padding: 5px; border-radius: 12px; }
+        .report-period-btn { background: transparent; border: none; font-size: 14px; font-weight: 600; color: #71717a; cursor: pointer; padding: 8px 20px; border-radius: 8px; transition: all 0.2s ease; }
+        .report-period-btn.active { background-color: white; color: var(--primary-dark); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+        .report-nav { display: flex; align-items: center; gap: 14px; }
+        .report-nav-btn { background: white; border: 1px solid var(--border-color); color: var(--text-color); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 14px; transition: all 0.2s ease; }
+        .report-nav-btn:hover:not(:disabled) { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .report-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .report-period-label { font-weight: bold; font-size: 15px; color: var(--primary-dark); min-width: 140px; text-align: center; }
+
+        .report-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .report-card { background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.03); }
+        .report-card-label { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 8px; }
+        .report-card-value { font-size: 26px; font-weight: bold; color: var(--primary-dark); line-height: 1.3; }
+        .report-card-sub { font-size: 12px; color: #aaa; margin-top: 6px; }
+        @media (max-width: 900px) {
+            .report-cards { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 520px) {
+            .report-cards { grid-template-columns: 1fr; }
+            .report-period-switch { flex-direction: column; align-items: stretch; }
+        }
 
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
@@ -240,6 +265,7 @@
             <button class="tab-btn" id="tab-gcal" onclick="switchTab('gcal')">📆 Google 日曆</button>
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">⏰ 營業日設定</button>
+            <button class="tab-btn" id="tab-report" onclick="switchTab('report')">📊 報表</button>
             <a class="tab-btn tab-link" href="inventory.html">📦 庫存盤點</a>
             <!-- <button class="tab-btn" id="tab-history" style="display: none;" onclick="switchTab('history')">📜 歷史預約</button> -->
         </div>
@@ -257,6 +283,7 @@
                 <!-- <option value="gcal">📆 Google 日曆</option> -->
                 <option value="member">👥 會員清單</option>
                 <option value="operating">⏰ 營業日設定</option>
+                <option value="report">📊 報表</option>
                 <option value="inventory">📦 庫存盤點</option>
                 <!-- <option value="history" style="display: none;">📜 歷史預約</option> -->
             </select>
@@ -427,6 +454,51 @@
             </div>
         </div>
 
+        <div id="section-report" class="section">
+            <div class="report-period-switch">
+                <div class="report-period-tabs">
+                    <button class="report-period-btn active" id="reportPeriodBtn-week" onclick="switchReportPeriod('week')">週</button>
+                    <button class="report-period-btn" id="reportPeriodBtn-month" onclick="switchReportPeriod('month')">月</button>
+                    <button class="report-period-btn" id="reportPeriodBtn-year" onclick="switchReportPeriod('year')">年</button>
+                </div>
+                <div class="report-nav">
+                    <button class="report-nav-btn" onclick="navigateReportPeriod(-1)">◀</button>
+                    <span id="reportPeriodLabel" class="report-period-label">載入中…</span>
+                    <button class="report-nav-btn" id="reportNavNextBtn" onclick="navigateReportPeriod(1)">▶</button>
+                </div>
+            </div>
+
+            <div class="report-cards">
+                <div class="report-card">
+                    <div class="report-card-label">來客數</div>
+                    <div class="report-card-value" id="reportCardTotal">–</div>
+                    <div class="report-card-sub">新客體驗＋一般預約（不含複檢）</div>
+                </div>
+                <div class="report-card">
+                    <div class="report-card-label">與上期比較</div>
+                    <div class="report-card-value" id="reportCardCompare">–</div>
+                    <div class="report-card-sub" id="reportCardCompareSub">上一期：–</div>
+                </div>
+                <div class="report-card">
+                    <div class="report-card-label" id="reportCardAvgLabel">平均每天</div>
+                    <div class="report-card-value" id="reportCardAvg">–</div>
+                    <div class="report-card-sub">整體期間平均</div>
+                </div>
+                <div class="report-card">
+                    <div class="report-card-label">取消率</div>
+                    <div class="report-card-value" id="reportCardCancelRate">–</div>
+                    <div class="report-card-sub">所有類型（含複檢）· 2026/09/03 起才有紀錄</div>
+                </div>
+            </div>
+
+            <div class="box-container" style="padding:20px;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📈 來客趨勢（排除複檢）</div>
+                <div style="position:relative; height:320px;">
+                    <canvas id="reportTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- <div id="section-gcal" class="section">
             <div class="box-container calendar-wrapper">
                 <iframe id="googleCalendarIframe" src="https://calendar.google.com/calendar/embed?height=800&wkst=1&ctz=Asia%2FTaipei&mode=WEEK&showTz=0&showCalendars=0&showPrint=0&showTitle=0&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26" style="border-width:0; min-height: 800px; background-color: #ffffff;" width="100%" height=800px frameborder="0" scrolling="no"></iframe>
@@ -540,7 +612,7 @@
         window.onload = function() {
             // 1. 預設打開「預約管理」；若網址帶 ?tab=xxx（例如從庫存盤點頁跳回來）就打開該分頁
             const wantedTab = new URLSearchParams(location.search).get('tab');
-            const validTabs = ['booking', 'gcal', 'member', 'operating'];
+            const validTabs = ['booking', 'gcal', 'member', 'operating', 'report'];
             switchTab(validTabs.includes(wantedTab) ? wantedTab : 'booking');
             
             // 2. 隱藏載入中的轉圈圈動畫
@@ -587,7 +659,11 @@
                 if (!opCalendarLoaded) loadOperatingData();
                 else if (fcOperatingCalendar) setTimeout(() => fcOperatingCalendar.render(), 50);
             }
-            
+
+            if (tabName === 'report') {
+                ensureReportData();
+            }
+
             if (tabName === 'booking' && viewMode === 'calendar' && fcBookingCalendar) {
                 setTimeout(() => fcBookingCalendar.render(), 50); 
             }
@@ -1851,6 +1927,216 @@
                 headers: { "Content-Type": "text/plain" }, 
                 body: JSON.stringify(requestBody)
             }).catch(e => console.log("通知觸發失敗", e));
+        }
+
+        // 📊 9. 報表 (Firebase 版)
+        // =====================================================================
+        let reportPeriod = 'week';       // 'week' | 'month' | 'year'
+        let reportAnchor = new Date();   // 目前檢視期間內的任一天
+        let reportChart = null;
+        let allCancelledBookings = [];
+        let isCancelDataLoaded = false;
+
+        const REPORT_COUNTED_TYPES = ['新客體驗', '一般預約']; // 排除複檢
+
+        async function loadCancelledData() {
+            try {
+                const snapshot = await db.collection("cancelledBookings").get();
+                allCancelledBookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                isCancelDataLoaded = true;
+            } catch (err) {
+                console.error("讀取取消紀錄失敗", err);
+            }
+        }
+
+        // 合併「進行中」與「已封存」的預約，並用 id 去重
+        function getAllBookingsCombined() {
+            const map = {};
+            allBookings.forEach(b => { map[b.id] = b; });
+            allHistoryBookings.forEach(b => { if (!map[b.id]) map[b.id] = b; });
+            return Object.values(map);
+        }
+
+        async function ensureReportData() {
+            const tasks = [];
+            if (!isBookingLoaded) tasks.push(loadBookingData('first_load'));
+            if (allHistoryBookings.length === 0) tasks.push(loadHistoryData(false));
+            if (!isCancelDataLoaded) tasks.push(loadCancelledData());
+            if (tasks.length) await Promise.all(tasks);
+            renderReport();
+        }
+
+        function switchReportPeriod(period) {
+            reportPeriod = period;
+            reportAnchor = new Date();
+            document.querySelectorAll('.report-period-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`reportPeriodBtn-${period}`).classList.add('active');
+            renderReport();
+        }
+
+        function navigateReportPeriod(dir) {
+            if (reportPeriod === 'week') reportAnchor.setDate(reportAnchor.getDate() + dir * 7);
+            else if (reportPeriod === 'month') reportAnchor.setMonth(reportAnchor.getMonth() + dir);
+            else reportAnchor.setFullYear(reportAnchor.getFullYear() + dir);
+            renderReport();
+        }
+
+        // 回傳 { start, end } 為當週(一~日) / 當月 / 當年的 Date 範圍（皆為當天 00:00）
+        function getPeriodRange(period, anchor) {
+            let start, end;
+            if (period === 'week') {
+                const day = anchor.getDay(); // 0=日 ... 6=六
+                const diffToMon = (day === 0 ? -6 : 1 - day);
+                start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() + diffToMon);
+                end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+            } else if (period === 'month') {
+                start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+                end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+            } else {
+                start = new Date(anchor.getFullYear(), 0, 1);
+                end = new Date(anchor.getFullYear(), 11, 31);
+            }
+            return { start, end };
+        }
+
+        function formatPeriodLabel(period, start, end) {
+            if (period === 'week') {
+                const f = d => `${d.getMonth()+1}/${d.getDate()}`;
+                return `${start.getFullYear()}/${f(start)} － ${f(end)}`;
+            } else if (period === 'month') {
+                return `${start.getFullYear()}年${start.getMonth()+1}月`;
+            } else {
+                return `${start.getFullYear()}年`;
+            }
+        }
+
+        function renderReport() {
+            const { start, end } = getPeriodRange(reportPeriod, reportAnchor);
+            const startStr = getFormattedDate(start);
+            const endStr = getFormattedDate(end);
+
+            document.getElementById('reportPeriodLabel').innerText = formatPeriodLabel(reportPeriod, start, end);
+
+            // 不能切到「下一期」已經超過今天所在期間的範圍
+            const todayRange = getPeriodRange(reportPeriod, new Date());
+            document.getElementById('reportNavNextBtn').disabled = (start.getTime() >= todayRange.start.getTime());
+
+            const combined = getAllBookingsCombined();
+            const inPeriodCounted = combined.filter(r => REPORT_COUNTED_TYPES.includes(r.type) && r.date >= startStr && r.date <= endStr);
+
+            renderReportTrendChart(reportPeriod, start, end, inPeriodCounted);
+            renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
+        }
+
+        function renderReportTrendChart(period, start, end, rows) {
+            let labels = [], generalData = [], newData = [];
+
+            if (period === 'year') {
+                for (let m = 0; m < 12; m++) {
+                    labels.push(`${m+1}月`);
+                    generalData.push(0);
+                    newData.push(0);
+                }
+                rows.forEach(r => {
+                    const m = parseInt(r.date.slice(5,7), 10) - 1;
+                    if (m < 0 || m > 11) return;
+                    if (r.type === '一般預約') generalData[m]++;
+                    else if (r.type === '新客體驗') newData[m]++;
+                });
+            } else {
+                const dayNames = ['日','一','二','三','四','五','六'];
+                let cur = new Date(start);
+                const keys = [];
+                while (cur.getTime() <= end.getTime()) {
+                    keys.push(getFormattedDate(cur));
+                    const label = period === 'week'
+                        ? [`週${dayNames[cur.getDay()]}`, `${cur.getMonth()+1}/${cur.getDate()}`]
+                        : `${cur.getDate()}日`;
+                    labels.push(label);
+                    generalData.push(0);
+                    newData.push(0);
+                    cur.setDate(cur.getDate() + 1);
+                }
+                rows.forEach(r => {
+                    const idx = keys.indexOf(r.date);
+                    if (idx === -1) return;
+                    if (r.type === '一般預約') generalData[idx]++;
+                    else if (r.type === '新客體驗') newData[idx]++;
+                });
+            }
+
+            const ctx = document.getElementById('reportTrendChart').getContext('2d');
+            if (reportChart) {
+                reportChart.data.labels = labels;
+                reportChart.data.datasets[0].data = generalData;
+                reportChart.data.datasets[1].data = newData;
+                reportChart.update();
+                return;
+            }
+            reportChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '一般預約', data: generalData, backgroundColor: '#4CAF50', borderRadius: 4 },
+                        { label: '新客體驗', data: newData, backgroundColor: '#f6c026', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function renderReportCards(period, start, end, startStr, endStr, inPeriodCounted, combined) {
+            const total = inPeriodCounted.length;
+            document.getElementById('reportCardTotal').innerText = `${total} 人次`;
+
+            // 與上一期比較（相同長度的前一段期間）
+            let prevAnchor = new Date(start);
+            if (period === 'week') prevAnchor.setDate(prevAnchor.getDate() - 7);
+            else if (period === 'month') prevAnchor.setMonth(prevAnchor.getMonth() - 1);
+            else prevAnchor.setFullYear(prevAnchor.getFullYear() - 1);
+            const prevRange = getPeriodRange(period, prevAnchor);
+            const prevStartStr = getFormattedDate(prevRange.start);
+            const prevEndStr = getFormattedDate(prevRange.end);
+            const prevTotal = combined.filter(r => REPORT_COUNTED_TYPES.includes(r.type) && r.date >= prevStartStr && r.date <= prevEndStr).length;
+
+            const compareEl = document.getElementById('reportCardCompare');
+            if (prevTotal === 0) {
+                compareEl.innerText = total > 0 ? `▲ 新增 ${total}` : '－';
+                compareEl.style.color = 'var(--primary-dark)';
+            } else {
+                const diffPct = Math.round((total - prevTotal) / prevTotal * 100);
+                compareEl.innerText = (diffPct >= 0 ? `▲ +${diffPct}%` : `▼ ${diffPct}%`);
+                compareEl.style.color = diffPct >= 0 ? '#2e7d32' : '#c62828';
+            }
+            document.getElementById('reportCardCompareSub').innerText = `上一期：${prevTotal} 人次`;
+
+            // 平均
+            const avgLabelEl = document.getElementById('reportCardAvgLabel');
+            const avgEl = document.getElementById('reportCardAvg');
+            if (period === 'year') {
+                avgLabelEl.innerText = '平均每月';
+                avgEl.innerText = `${(total / 12).toFixed(1)} 人次`;
+            } else {
+                const dayCount = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+                avgLabelEl.innerText = '平均每天';
+                avgEl.innerText = `${(total / dayCount).toFixed(1)} 人次`;
+            }
+
+            // 取消率（所有類型，含複檢）
+            const cancelledInPeriod = allCancelledBookings.filter(r => r.date >= startStr && r.date <= endStr).length;
+            const bookedInPeriod = combined.filter(r => r.date >= startStr && r.date <= endStr).length;
+            const totalScheduled = cancelledInPeriod + bookedInPeriod;
+            const cancelRateEl = document.getElementById('reportCardCancelRate');
+            cancelRateEl.innerText = totalScheduled > 0 ? `${(cancelledInPeriod / totalScheduled * 100).toFixed(1)}%` : '－';
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
