@@ -141,6 +141,14 @@
         .report-service-mix { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
         .report-service-legend { display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
 
+        .report-retention-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .report-retention-card { background: #fdf2f5; border-radius: 10px; padding: 14px 16px; text-align: center; }
+        .report-retention-card .rc-label { font-size: 12.5px; color: #888; margin-bottom: 6px; }
+        .report-retention-card .rc-value { font-size: 22px; font-weight: bold; color: var(--primary-dark); }
+        @media (max-width: 520px) {
+            .report-retention-cards { grid-template-columns: 1fr; }
+        }
+
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
@@ -530,6 +538,45 @@
                         <canvas id="reportServiceChart"></canvas>
                     </div>
                     <div id="reportServiceLegend" class="report-service-legend"></div>
+                </div>
+            </div>
+
+            <div class="box-container" style="padding:20px; margin-top:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                    <div style="font-weight:bold; color:var(--primary-dark);">👥 客戶回訪分析</div>
+                    <div style="font-size:12px; color:#aaa;">依電話號碼統計全部歷史紀錄，不受上方週/月/年篩選影響</div>
+                </div>
+                <div class="report-retention-cards">
+                    <div class="report-retention-card">
+                        <div class="rc-label">新客（1次）</div>
+                        <div class="rc-value" id="reportRetentionNew">–</div>
+                    </div>
+                    <div class="report-retention-card">
+                        <div class="rc-label">回頭客（2–4次）</div>
+                        <div class="rc-value" id="reportRetentionReturning">–</div>
+                    </div>
+                    <div class="report-retention-card">
+                        <div class="rc-label">常客（5次以上）</div>
+                        <div class="rc-value" id="reportRetentionFrequent">–</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:22px;">
+                    <div style="font-weight:bold; color:#c62828; margin-bottom:10px;">😴 沉睡客名單（最近一次到店超過 90 天）<span id="reportDormantCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
+                    <div style="max-height:360px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
+                            <thead>
+                                <tr style="position:sticky; top:0; background:#fafafa;">
+                                    <th style="padding:10px 12px; text-align:left;">姓名</th>
+                                    <th style="padding:10px 12px; text-align:left;">電話</th>
+                                    <th style="padding:10px 12px; text-align:center;">到店次數</th>
+                                    <th style="padding:10px 12px; text-align:left;">最近一次到店</th>
+                                    <th style="padding:10px 12px; text-align:right;">已間隔</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportDormantTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2065,6 +2112,7 @@
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodCounted, combined);
             renderReportHeatmaps(inPeriodCounted);
             renderReportServiceMix(startStr, endStr, combined);
+            renderReportRetention(combined);
         }
 
         function renderReportTrendChart(period, start, end, rows) {
@@ -2278,6 +2326,52 @@
                 data: { labels: types, datasets: [{ data: data, backgroundColor: colors }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
+        }
+
+        // 👥 客戶回訪分析：用電話號碼辨識同一位客人，統計「全部歷史」（所有類型皆計入到店次數）
+        function renderReportRetention(combined) {
+            const byPhone = {};
+            combined.forEach(r => {
+                if (!r.phone) return;
+                if (!byPhone[r.phone]) byPhone[r.phone] = { name: r.name || '', count: 0, lastDate: '' };
+                byPhone[r.phone].count++;
+                if (r.name) byPhone[r.phone].name = r.name; // 用最新一筆的姓名顯示
+                if (r.date && r.date > byPhone[r.phone].lastDate) byPhone[r.phone].lastDate = r.date;
+            });
+            const customers = Object.keys(byPhone).map(phone => ({ phone, ...byPhone[phone] }));
+
+            let newCount = 0, returningCount = 0, frequentCount = 0;
+            customers.forEach(c => {
+                if (c.count === 1) newCount++;
+                else if (c.count <= 4) returningCount++;
+                else frequentCount++;
+            });
+            document.getElementById('reportRetentionNew').innerText = `${newCount} 人`;
+            document.getElementById('reportRetentionReturning').innerText = `${returningCount} 人`;
+            document.getElementById('reportRetentionFrequent').innerText = `${frequentCount} 人`;
+
+            const todayMs = new Date(getFormattedDate(new Date()) + 'T00:00:00').getTime();
+            const dormant = customers
+                .filter(c => c.lastDate)
+                .map(c => ({ ...c, daysSince: Math.round((todayMs - new Date(c.lastDate + 'T00:00:00').getTime()) / 86400000) }))
+                .filter(c => c.daysSince > 90)
+                .sort((a, b) => b.daysSince - a.daysSince);
+
+            document.getElementById('reportDormantCount').innerText = ` · 共 ${dormant.length} 位`;
+            const tbody = document.getElementById('reportDormantTableBody');
+            if (dormant.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#aaa; padding:20px;">目前沒有沉睡客</td></tr>';
+            } else {
+                tbody.innerHTML = dormant.map(c => `
+                    <tr>
+                        <td style="padding:10px 12px;">${c.name || '-'}</td>
+                        <td style="padding:10px 12px;">${c.phone}</td>
+                        <td style="padding:10px 12px; text-align:center;">${c.count}</td>
+                        <td style="padding:10px 12px;">${c.lastDate}</td>
+                        <td style="padding:10px 12px; text-align:right; color:#c62828;">${c.daysSince} 天</td>
+                    </tr>
+                `).join('');
+            }
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
