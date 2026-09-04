@@ -2060,7 +2060,7 @@
         }
 
         // 趨勢圖／概況卡片／兩張熱度圖共用的類型篩選（客戶回訪分析不受影響，固定看全部歷史）
-        let reportTypeFilter = new Set(ALL_REPORT_TYPES);
+        let reportTypeFilter = new Set(ALL_REPORT_TYPES.filter(t => t !== '複檢')); // 複檢預設不勾選
 
         function toggleReportTypeFilter(type) {
             if (reportTypeFilter.has(type)) {
