@@ -432,7 +432,7 @@
                 <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">沒有 LINE 帳號的會員（例如未成年子女）可用此方式手動建檔。之後店家可在「代客預約」畫面用姓名或電話搜尋，幫他/她安排預約。</p>
                 <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                     <input type="text" id="newMemberName" placeholder="姓名 *" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    <input type="tel" id="newMemberPhone" placeholder="電話 *（0 開頭最多 10 碼）" maxlength="10" inputmode="numeric" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="tel" id="newMemberPhone" placeholder="電話 *（0 開頭最多 10 碼，手機或室內）" maxlength="12" inputmode="tel" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="date" id="newMemberBirthday" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberLineName" placeholder="LINE 暱稱／備註（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberReferrer" placeholder="介紹人（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
@@ -1163,11 +1163,14 @@
             }
         }
 
-        // 電話格式規則：純數字、0 開頭、最多 10 碼
-        function isValidPhone(phone) {
-            return /^0\d{1,9}$/.test(phone);
+        // 電話格式規則：0 開頭、最多 10 碼；手機與室內電話都適用，輸入的 -、空白會自動去掉
+        function normalizePhone(phone) {
+            return (phone || '').replace(/[\s\-()]/g, '');
         }
-        const PHONE_RULE_MSG = "電話格式不正確！\n\n請輸入 0 開頭的純數字，最多 10 碼（例如 0912345678）。";
+        function isValidPhone(phone) {
+            return /^0\d{1,9}$/.test(normalizePhone(phone));
+        }
+        const PHONE_RULE_MSG = "電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。";
 
         let selectedGuardian = null;
 
@@ -1230,7 +1233,7 @@
 
         async function saveNewMember() {
             const name = document.getElementById('newMemberName').value.trim();
-            const phone = document.getElementById('newMemberPhone').value.trim();
+            const phone = normalizePhone(document.getElementById('newMemberPhone').value);
             const birthday = document.getElementById('newMemberBirthday').value;
             const lineName = document.getElementById('newMemberLineName').value.trim();
             const referrer = document.getElementById('newMemberReferrer').value.trim();
@@ -1380,7 +1383,7 @@
             roleCell.innerHTML = `<select id="edit-role-${index}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
                 ${roleOptions.map(r => `<option value="${r}" ${((member.role || '') === r) ? 'selected' : ''}>${r || '客人'}</option>`).join('')}
             </select>`;
-            phoneCell.innerHTML = `<input type="tel" id="edit-phone-${index}" value="${currentPhone}" maxlength="10" inputmode="numeric" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            phoneCell.innerHTML = `<input type="tel" id="edit-phone-${index}" value="${currentPhone}" maxlength="12" inputmode="tel" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             lineNameCell.innerHTML = `<input type="text" id="edit-linename-${index}" value="${currentLineName}" placeholder="自訂暱稱" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             referrerCell.innerHTML = `<input type="text" id="edit-referrer-${index}" value="${currentReferrer}" placeholder="無" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
@@ -1440,7 +1443,7 @@
 
         async function saveRow(index, lineId) {
             const newName = document.getElementById(`edit-name-${index}`).value.trim();
-            const newPhone = document.getElementById(`edit-phone-${index}`).value.trim();
+            const newPhone = normalizePhone(document.getElementById(`edit-phone-${index}`).value);
             const newBday = document.getElementById(`edit-birthday-${index}`).value;
             const newLineName = document.getElementById(`edit-linename-${index}`).value.trim();
             const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim();

@@ -223,7 +223,7 @@
 
             <div class="form-group">
                 <label>聯絡電話</label>
-                <input type="tel" id="phone" required placeholder="09xx-xxx-xxx">
+                <input type="tel" id="phone" required maxlength="12" placeholder="0912345678 或 0212345678">
             </div>
 
             <div class="form-group" id="birthday-group" style="display: none;">
@@ -423,7 +423,7 @@
                     lineId: lineId,
                     lineName: document.getElementById('lineName').value,
                     name: document.getElementById('name').value.trim(),
-                    phone: document.getElementById('phone').value.trim(),
+                    phone: normalizePhone(document.getElementById('phone').value),
                     birthday: document.getElementById('birthday').value,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -447,7 +447,7 @@
                     lineId: lineId,
                     lineName: document.getElementById('lineName').value,
                     name: document.getElementById('name').value.trim(),
-                    phone: document.getElementById('phone').value.trim(),
+                    phone: normalizePhone(document.getElementById('phone').value),
                     birthday: document.getElementById('birthday').value,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -460,6 +460,14 @@
             }
         }
 
+        // 電話格式規則：0 開頭、最多 10 碼；手機與室內電話都適用，輸入的 -、空白會自動去掉
+        function normalizePhone(phone) {
+            return (phone || '').replace(/[\s\-()]/g, '');
+        }
+        function isValidPhone(phone) {
+            return /^0\d{1,9}$/.test(normalizePhone(phone));
+        }
+
         // 檢查防呆
         function checkFormFields() {
             let missingFields = [];
@@ -468,7 +476,11 @@
             if (!document.getElementById('birthday').value) missingFields.push("生日");
             if (missingFields.length > 0) {
                 alert("⚠️ 綁定失敗！\n請填寫以下必填資訊：\n👉 " + missingFields.join("、"));
-                return false; 
+                return false;
+            }
+            if (!isValidPhone(document.getElementById('phone').value)) {
+                alert("⚠️ 電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。");
+                return false;
             }
             return true;
         }
@@ -477,14 +489,19 @@
         let isSubmitting = false;
         async function submitBooking(e) {
             e.preventDefault();
-            if (isSubmitting) return; 
-            isSubmitting = true; 
+            const phoneVal = document.getElementById('phone').value.trim();
+            if (phoneVal && !isValidPhone(phoneVal)) {
+                alert("⚠️ 電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。");
+                return;
+            }
+            if (isSubmitting) return;
+            isSubmitting = true;
             setButtonLoading(true);
           
             const editId = document.getElementById('editId').value;
 
             let currentLineId = document.getElementById('lineId').value;
-            let currentPhone = document.getElementById('phone').value.trim();
+            let currentPhone = normalizePhone(document.getElementById('phone').value);
             if (document.getElementById('role').value === 'admin' && !currentLineId && currentPhone) {
                 try {
                     const memberSnap = await db.collection("members").where("phone", "==", currentPhone).get();
@@ -506,7 +523,7 @@
                 type: document.getElementById('type').value, 
                 name: document.getElementById('name').value.trim(),
                 name2: document.getElementById('name2').value.trim(),
-                phone: document.getElementById('phone').value.trim(),
+                phone: normalizePhone(document.getElementById('phone').value),
                 date: document.getElementById('date').value,
                 time: document.getElementById('time').value,
                 remark: document.getElementById('remark').value.trim()
