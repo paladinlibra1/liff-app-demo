@@ -436,6 +436,12 @@
                     <input type="date" id="newMemberBirthday" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberLineName" placeholder="LINE 暱稱／備註（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberReferrer" placeholder="介紹人（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <select id="newMemberRole" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                        <option value="">身分：客人</option>
+                        <option value="店家">身分：店家</option>
+                        <option value="助理">身分：助理</option>
+                        <option value="夥伴">身分：夥伴</option>
+                    </select>
                 </div>
                 <div style="margin-bottom:14px; padding-top:12px; border-top:1px dashed #fae1e6; position:relative;">
                     <label style="font-size:0.85rem; color:#d68095; font-weight:bold; display:block; margin-bottom:6px;">👨‍👩‍👧 監護人（未成年無 LINE 時，從既有會員中選一位監護人綁定）</label>
@@ -454,6 +460,7 @@
                     <thead>
                         <tr>
                             <th>會員姓名</th>
+                            <th>身分</th>
                             <th>聯絡電話</th>
                             <th>生日</th>
                             <th>LINE 暱稱</th>
@@ -1157,6 +1164,7 @@
             document.getElementById('newMemberBirthday').value = '';
             document.getElementById('newMemberLineName').value = '';
             document.getElementById('newMemberReferrer').value = '';
+            document.getElementById('newMemberRole').value = '';
             document.getElementById('newMemberGuardianSearch').value = '';
             document.getElementById('newMemberGuardianResults').style.display = 'none';
             clearGuardianSelection();
@@ -1213,6 +1221,7 @@
             const birthday = document.getElementById('newMemberBirthday').value;
             const lineName = document.getElementById('newMemberLineName').value.trim();
             const referrer = document.getElementById('newMemberReferrer').value.trim();
+            const role = document.getElementById('newMemberRole').value;
 
             if (!name || !phone) { alert("姓名與電話為必填項！"); return; }
 
@@ -1233,6 +1242,7 @@
                     phone: phone,
                     birthday: birthday,
                     referrer: referrer,
+                    role: role,
                     guardianLineId: selectedGuardian ? selectedGuardian.lineId : "",
                     guardianName: selectedGuardian ? selectedGuardian.name : "",
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1269,7 +1279,7 @@
             tbody.innerHTML = '';
             
             if (currentFilteredMembers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888;">查無會員資料</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888;">查無會員資料</td></tr>';
                 return;
             }
 
@@ -1287,6 +1297,7 @@
 
                 tr.innerHTML = `
                     <td class="col-name" data-label="會員姓名"><span style="color:#666;">${row.name}${row.isManual ? ' <span style="font-size:11px; color:#d68095; background:#fdf2f5; padding:1px 6px; border-radius:10px;">手動</span>' : ''}</span></td>
+                    <td class="col-role" data-label="身分"><span style="color:#666;">${row.role || '客人'}</span></td>
                     <td class="col-phone" data-label="聯絡電話"><span style="color:#666;">${row.phone}</span></td>
                     <td class="col-birthday" data-label="生日"><span style="color:#666;">${birthdayDisplay}</span></td>
                     <td class="col-linename" data-label="LINE 暱稱"><span style="color:#666;">${row.lineName || '-'}</span></td>
@@ -1334,6 +1345,7 @@
             const cancelBtn = document.getElementById(`cancel-btn-${index}`);
         
             const nameCell = row.querySelector('.col-name');
+            const roleCell = row.querySelector('.col-role');
             const phoneCell = row.querySelector('.col-phone');
             const bdayCell = row.querySelector('.col-birthday');
             const lineNameCell = row.querySelector('.col-linename');
@@ -1350,6 +1362,10 @@
             editRowGuardianState = { lineId: member.guardianLineId || '', name: member.guardianName || '' };
 
             nameCell.innerHTML = `<input type="text" id="edit-name-${index}" value="${currentName}" style="width:90px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            const roleOptions = ['', '店家', '助理', '夥伴'];
+            roleCell.innerHTML = `<select id="edit-role-${index}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
+                ${roleOptions.map(r => `<option value="${r}" ${((member.role || '') === r) ? 'selected' : ''}>${r || '客人'}</option>`).join('')}
+            </select>`;
             phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             lineNameCell.innerHTML = `<input type="text" id="edit-linename-${index}" value="${currentLineName}" placeholder="自訂暱稱" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
@@ -1414,6 +1430,7 @@
             const newBday = document.getElementById(`edit-birthday-${index}`).value;
             const newLineName = document.getElementById(`edit-linename-${index}`).value.trim();
             const newReferrer = document.getElementById(`edit-referrer-${index}`).value.trim();
+            const newRole = document.getElementById(`edit-role-${index}`).value;
             const newGuardianLineId = editRowGuardianState ? editRowGuardianState.lineId : '';
             const newGuardianName = editRowGuardianState ? editRowGuardianState.name : '';
 
@@ -1428,6 +1445,7 @@
                     birthday: newBday,
                     lineName: newLineName,
                     referrer: newReferrer,
+                    role: newRole,
                     guardianLineId: newGuardianLineId,
                     guardianName: newGuardianName
                 });
