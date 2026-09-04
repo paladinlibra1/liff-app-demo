@@ -16,6 +16,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -2038,6 +2039,7 @@
         let reportPeriod = 'week';       // 'week' | 'month' | 'year'
         let reportAnchor = new Date();   // 目前檢視期間內的任一天
         let reportChart = null;
+        if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
         let allCancelledBookings = [];
@@ -2230,11 +2232,12 @@
 
         function drawReportTrendChart() {
             const { labels, types, dataByType } = reportTrendRaw;
+            const isPercent = reportTrendMode === 'percent';
             let plotData = {};
             types.forEach(t => plotData[t] = dataByType[t]);
             let yMax = undefined, tickCallback = undefined;
 
-            if (reportTrendMode === 'percent') {
+            if (isPercent) {
                 const totals = labels.map((_, i) => types.reduce((s, t) => s + dataByType[t][i], 0));
                 types.forEach(t => {
                     plotData[t] = dataByType[t].map((v, i) => totals[i] > 0 ? +(v / totals[i] * 100).toFixed(1) : 0);
@@ -2242,32 +2245,48 @@
                 yMax = 100;
                 tickCallback = (v) => v + '%';
             }
-            const tooltipLabel = (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}${reportTrendMode === 'percent' ? '%' : ' 人'}`;
-            const datasets = types.map(t => ({ label: t, data: plotData[t], backgroundColor: REPORT_TYPE_COLORS[t], borderRadius: 4 }));
+            const tooltipLabel = (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}${isPercent ? '%' : ' 人'}`;
+            // 人數：直條圖並在柱子上顯示數字；% 占比：折線圖比較好看出趨勢，不疊加數字避免太擠
+            const datasets = types.map(t => isPercent
+                ? { label: t, data: plotData[t], borderColor: REPORT_TYPE_COLORS[t], backgroundColor: REPORT_TYPE_COLORS[t], tension: 0.3, fill: false, pointRadius: 3, pointHoverRadius: 5 }
+                : { label: t, data: plotData[t], backgroundColor: REPORT_TYPE_COLORS[t], borderRadius: 4 }
+            );
+            const datalabelsOpt = isPercent
+                ? { display: false }
+                : { display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0, color: '#fff', font: { weight: 'bold', size: 11 }, formatter: (v) => v };
+            const chartType = isPercent ? 'line' : 'bar';
 
             const ctx = document.getElementById('reportTrendChart').getContext('2d');
+            if (reportChart && reportChart.config.type !== chartType) {
+                reportChart.destroy(); // 直條圖／折線圖不能用同一個 Chart 實例切換，type 變動時整個重建
+                reportChart = null;
+            }
             if (reportChart) {
                 reportChart.data.labels = labels;
                 reportChart.data.datasets = datasets; // 系列數量可能因勾選變動，整組換掉
+                reportChart.options.scales.x.stacked = !isPercent;
+                reportChart.options.scales.y.stacked = !isPercent;
                 reportChart.options.scales.y.max = yMax;
                 reportChart.options.scales.y.ticks.callback = tickCallback;
                 reportChart.options.plugins.tooltip = { callbacks: { label: tooltipLabel } };
+                reportChart.options.plugins.datalabels = datalabelsOpt;
                 reportChart.update();
                 return;
             }
             reportChart = new Chart(ctx, {
-                type: 'bar',
+                type: chartType,
                 data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { stacked: true },
-                        y: { stacked: true, beginAtZero: true, max: yMax, ticks: { precision: 0, callback: tickCallback } }
+                        x: { stacked: !isPercent },
+                        y: { stacked: !isPercent, beginAtZero: true, max: yMax, ticks: { precision: 0, callback: tickCallback } }
                     },
                     plugins: {
                         legend: { position: 'bottom' },
-                        tooltip: { callbacks: { label: tooltipLabel } }
+                        tooltip: { callbacks: { label: tooltipLabel } },
+                        datalabels: datalabelsOpt
                     }
                 }
             });
