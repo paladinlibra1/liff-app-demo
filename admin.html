@@ -603,6 +603,11 @@
                     <div id="reportDormantList" class="report-dormant-list"></div>
                 </div>
 
+                <div style="margin-top:22px;">
+                    <div style="font-weight:bold; color:#ef6c00; margin-bottom:10px;">🆕 已加會員但從未預約<span id="reportNeverBookedCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
+                    <div id="reportNeverBookedList" class="report-dormant-list"></div>
+                </div>
+
                 <div class="dormant-template-box">
                     <div class="dormant-template-label">💬 LINE 訊息範本（可用 <code>{{name}}</code> 代表客人姓名，套用到全部沉睡客）</div>
                     <textarea id="dormantMsgTemplateInput"></textarea>
@@ -1452,7 +1457,11 @@
 
                 editRowGuardianState = null;
                 alert("✅ 會員資料更新成功！");
+                const pageBeforeSave = currentMemberPage; // loadMemberData 會重設回第一頁，存完要回到原本那一頁
                 await loadMemberData();
+                const maxPage = Math.max(1, Math.ceil(currentFilteredMembers.length / memberItemsPerPage));
+                currentMemberPage = Math.min(pageBeforeSave, maxPage);
+                renderMemberTable();
             } catch (e) {
                 alert("發生系統錯誤：" + e.message);
                 document.getElementById('loading').style.display = 'none';
@@ -2126,6 +2135,7 @@
             if (!isCancelDataLoaded) tasks.push(loadCancelledData());
             if (!isFollowUpsLoaded) tasks.push(loadReportFollowUps());
             if (!isDormantTemplateLoaded) tasks.push(loadDormantMessageTemplate());
+            if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
             if (tasks.length) await Promise.all(tasks);
             renderDormantTemplateInput(); // 只在資料剛載入時填入，避免每次換期間/勾選類型都蓋掉使用者正在編輯的內容
             renderReport();
@@ -2195,6 +2205,7 @@
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined);
             renderReportHeatmaps(inPeriodFiltered);
             renderReportRetention(combined);
+            renderNeverBookedList(combined);
         }
 
         let reportTrendMode = 'count'; // 'count' | 'percent'
@@ -2462,6 +2473,50 @@
             listEl.innerHTML = dormant.length === 0
                 ? '<p style="text-align:center; color:#aaa; padding:20px 0;">目前沒有沉睡客</p>'
                 : dormant.map(renderDormantCard).join('');
+        }
+
+        // 🆕 已加會員但從未預約：會員清單裡找不到任何預約紀錄的人，只列身分是「客人」的（店家／助理／夥伴不算）
+        function renderNeverBookedList(combined) {
+            const normPhone = (p) => (p || '').replace(/\D/g, '');
+            const bookedPhones = new Set();
+            const bookedLineIds = new Set();
+            combined.forEach(r => {
+                const p = normPhone(r.phone);
+                if (p) bookedPhones.add(p);
+                if (r.lineId) bookedLineIds.add(r.lineId);
+            });
+
+            const neverBooked = allMembers
+                .filter(m => !m.role) // 有設身分的是店家／助理／夥伴，不列入
+                .filter(m => !bookedPhones.has(normPhone(m.phone)) && !bookedLineIds.has(m.lineId))
+                .filter(m => !(reportFollowUps[m.phone] && reportFollowUps[m.phone].excluded))
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+
+            document.getElementById('reportNeverBookedCount').innerText = ` · 共 ${neverBooked.length} 位`;
+            const listEl = document.getElementById('reportNeverBookedList');
+            listEl.innerHTML = neverBooked.length === 0
+                ? '<p style="text-align:center; color:#aaa; padding:20px 0;">每位會員都預約過了</p>'
+                : neverBooked.map(renderNeverBookedCard).join('');
+        }
+
+        function renderNeverBookedCard(m) {
+            const lastSent = reportFollowUps[m.phone] && reportFollowUps[m.phone].lastLineSentAt;
+            const sentNote = lastSent ? `<div class="dc-meta" style="color:#4CAF50;">✅ ${formatSentDaysAgo(lastSent)}已發送過</div>` : '';
+            const sendLabel = lastSent ? '💬 再次發送' : '💬 發送LINE訊息';
+            const canSendLine = m.lineId && !m.isManual; // 手動建檔的會員沒有真的 LINE 帳號
+            return `<div class="dormant-card" style="background:#fffdf7;">
+                <div class="dc-info">
+                    <div class="dc-name">${m.name || '-'}<span class="dc-phone">${m.phone || ''}</span></div>
+                    <div class="dc-meta">${m.lineName ? `LINE：${m.lineName}` : '（無 LINE 暱稱）'}</div>
+                    ${sentNote}
+                </div>
+                <div class="dc-actions">
+                    ${canSendLine
+                        ? `<button class="btn btn-sm btn-outline" onclick="runOnce(this,'傳送中…',()=>sendLineDormantMessage('${escJsAttr(m.lineId)}','${escJsAttr(m.name || '')}','${escJsAttr(m.phone || '')}'))">${sendLabel}</button>`
+                        : `<span class="dc-no-line" title="這位會員沒有綁定 LINE，無法發送 LINE 訊息">💬 無LINE資料</span>`}
+                    <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'排除中…',()=>excludeDormantCustomer('${escJsAttr(m.phone || '')}'))">🚫 排除</button>
+                </div>
+            </div>`;
         }
 
         function renderDormantCard(c) {
