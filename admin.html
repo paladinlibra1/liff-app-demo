@@ -130,7 +130,7 @@
             .report-period-switch { flex-direction: column; align-items: stretch; }
         }
 
-        .report-weekday-heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .report-weekday-heat { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
         .report-weekday-cell { border-radius: 10px; padding: 14px 6px; text-align: center; transition: background-color 0.3s; }
         .report-weekday-cell .wd-name { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
         .report-weekday-cell .wd-count { font-size: 20px; font-weight: bold; color: var(--primary-dark); }
@@ -2358,18 +2358,20 @@
         }
 
         function renderReportHeatmaps(rows) {
-            const dayNames = ['一','二','三','四','五','六','日'];
-            const weekdayCounts = [0,0,0,0,0,0,0]; // 週一(0) ~ 週日(6)
-            const slotMap = {}; // time -> [週一(0)~週日(6) 各自次數]
+            // 店裡沒有固定營業週日（config.js 的營業時間只有 weekday/saturday），星期熱度不顯示週日欄位
+            const dayNames = ['一','二','三','四','五','六'];
+            const weekdayCounts = [0,0,0,0,0,0]; // 週一(0) ~ 週六(5)
+            const slotMap = {}; // time -> [週一(0)~週六(5) 各自次數]
             const timeSet = new Set();
 
             rows.forEach(r => {
                 if (!r.date || !r.time) return;
                 const jsDay = new Date(r.date + 'T00:00:00').getDay(); // 0=日 ... 6=六
-                const wd = (jsDay + 6) % 7; // 轉成 0=一 ... 6=日
+                if (jsDay === 0) return; // 偶發的週日資料忽略不計入
+                const wd = jsDay - 1; // 轉成 0=一 ... 5=六
                 weekdayCounts[wd]++;
                 timeSet.add(r.time);
-                if (!slotMap[r.time]) slotMap[r.time] = [0,0,0,0,0,0,0];
+                if (!slotMap[r.time]) slotMap[r.time] = [0,0,0,0,0,0];
                 slotMap[r.time][wd]++;
             });
 
