@@ -432,7 +432,7 @@
                 <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">沒有 LINE 帳號的會員（例如未成年子女）可用此方式手動建檔。之後店家可在「代客預約」畫面用姓名或電話搜尋，幫他/她安排預約。</p>
                 <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
                     <input type="text" id="newMemberName" placeholder="姓名 *" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    <input type="text" id="newMemberPhone" placeholder="電話 *" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <input type="tel" id="newMemberPhone" placeholder="電話 *（0 開頭最多 10 碼）" maxlength="10" inputmode="numeric" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="date" id="newMemberBirthday" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberLineName" placeholder="LINE 暱稱／備註（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
                     <input type="text" id="newMemberReferrer" placeholder="介紹人（可留空）" style="flex:1; min-width:140px; padding:8px; border:1px solid #ccc; border-radius:6px;">
@@ -599,13 +599,15 @@
                 </div>
 
                 <div style="margin-top:22px;">
-                    <div style="font-weight:bold; color:#c62828; margin-bottom:10px;">😴 沉睡客名單（最近一次到店超過 90 天）<span id="reportDormantCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                        <div id="reportFollowUpTitle" style="font-weight:bold; color:#c62828;">😴 沉睡客名單（最近一次到店超過 90 天）<span id="reportFollowUpCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
+                        <div class="report-period-tabs" style="padding:3px;">
+                            <button class="report-period-btn active" id="reportFollowUpBtn-dormant" onclick="switchReportFollowUpList('dormant')">😴 沉睡客</button>
+                            <button class="report-period-btn" id="reportFollowUpBtn-never" onclick="switchReportFollowUpList('never')">🆕 從未預約</button>
+                        </div>
+                    </div>
                     <div id="reportDormantList" class="report-dormant-list"></div>
-                </div>
-
-                <div style="margin-top:22px;">
-                    <div style="font-weight:bold; color:#ef6c00; margin-bottom:10px;">🆕 已加會員但從未預約<span id="reportNeverBookedCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
-                    <div id="reportNeverBookedList" class="report-dormant-list"></div>
+                    <div id="reportNeverBookedList" class="report-dormant-list" style="display:none;"></div>
                 </div>
 
                 <div class="dormant-template-box">
@@ -1161,6 +1163,12 @@
             }
         }
 
+        // 電話格式規則：純數字、0 開頭、最多 10 碼
+        function isValidPhone(phone) {
+            return /^0\d{1,9}$/.test(phone);
+        }
+        const PHONE_RULE_MSG = "電話格式不正確！\n\n請輸入 0 開頭的純數字，最多 10 碼（例如 0912345678）。";
+
         let selectedGuardian = null;
 
         function openAddMemberPanel() {
@@ -1229,6 +1237,7 @@
             const role = document.getElementById('newMemberRole').value;
 
             if (!name || !phone) { alert("姓名與電話為必填項！"); return; }
+            if (!isValidPhone(phone)) { alert(PHONE_RULE_MSG); return; }
 
             try {
                 document.getElementById('loading').style.display = 'block';
@@ -1371,7 +1380,7 @@
             roleCell.innerHTML = `<select id="edit-role-${index}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">
                 ${roleOptions.map(r => `<option value="${r}" ${((member.role || '') === r) ? 'selected' : ''}>${r || '客人'}</option>`).join('')}
             </select>`;
-            phoneCell.innerHTML = `<input type="text" id="edit-phone-${index}" value="${currentPhone}" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
+            phoneCell.innerHTML = `<input type="tel" id="edit-phone-${index}" value="${currentPhone}" maxlength="10" inputmode="numeric" style="width:110px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             bdayCell.innerHTML = `<input type="date" id="edit-birthday-${index}" value="${currentBday}" style="width:130px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             lineNameCell.innerHTML = `<input type="text" id="edit-linename-${index}" value="${currentLineName}" placeholder="自訂暱稱" style="width:100px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
             referrerCell.innerHTML = `<input type="text" id="edit-referrer-${index}" value="${currentReferrer}" placeholder="無" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px;">`;
@@ -1440,6 +1449,7 @@
             const newGuardianName = editRowGuardianState ? editRowGuardianState.name : '';
 
             if (!newName || !newPhone) { alert("姓名與電話為必填項！"); return; }
+            if (!isValidPhone(newPhone)) { alert(PHONE_RULE_MSG); return; }
             document.getElementById('loading').style.display = 'block';
 
             try {
@@ -2468,11 +2478,33 @@
                 .filter(c => !(reportFollowUps[c.phone] && reportFollowUps[c.phone].excluded)) // 已排除的客人不顯示
                 .sort((a, b) => b.daysSince - a.daysSince);
 
-            document.getElementById('reportDormantCount').innerText = ` · 共 ${dormant.length} 位`;
+            reportFollowUpCounts.dormant = dormant.length;
+            updateReportFollowUpHeader();
             const listEl = document.getElementById('reportDormantList');
             listEl.innerHTML = dormant.length === 0
                 ? '<p style="text-align:center; color:#aaa; padding:20px 0;">目前沒有沉睡客</p>'
                 : dormant.map(renderDormantCard).join('');
+        }
+
+        // 沉睡客／從未預約 兩份名單共用同一個區塊，用上方按鈕切換，避免報表越拉越長
+        let reportFollowUpList = 'dormant'; // 'dormant' | 'never'
+        let reportFollowUpCounts = { dormant: 0, never: 0 };
+
+        function switchReportFollowUpList(mode) {
+            reportFollowUpList = mode;
+            document.getElementById('reportFollowUpBtn-dormant').classList.toggle('active', mode === 'dormant');
+            document.getElementById('reportFollowUpBtn-never').classList.toggle('active', mode === 'never');
+            document.getElementById('reportDormantList').style.display = (mode === 'dormant') ? 'flex' : 'none';
+            document.getElementById('reportNeverBookedList').style.display = (mode === 'never') ? 'flex' : 'none';
+            updateReportFollowUpHeader();
+        }
+
+        function updateReportFollowUpHeader() {
+            const isDormant = reportFollowUpList === 'dormant';
+            const titleEl = document.getElementById('reportFollowUpTitle');
+            titleEl.style.color = isDormant ? '#c62828' : '#ef6c00';
+            titleEl.innerHTML = (isDormant ? '😴 沉睡客名單（最近一次到店超過 90 天）' : '🆕 已加會員但從未預約（只列身分為客人）')
+                + `<span style="color:#999; font-weight:normal; font-size:13px;"> · 共 ${isDormant ? reportFollowUpCounts.dormant : reportFollowUpCounts.never} 位</span>`;
         }
 
         // 🆕 已加會員但從未預約：會員清單裡找不到任何預約紀錄的人，只列身分是「客人」的（店家／助理／夥伴不算）
@@ -2492,7 +2524,8 @@
                 .filter(m => !(reportFollowUps[m.phone] && reportFollowUps[m.phone].excluded))
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
 
-            document.getElementById('reportNeverBookedCount').innerText = ` · 共 ${neverBooked.length} 位`;
+            reportFollowUpCounts.never = neverBooked.length;
+            updateReportFollowUpHeader();
             const listEl = document.getElementById('reportNeverBookedList');
             listEl.innerHTML = neverBooked.length === 0
                 ? '<p style="text-align:center; color:#aaa; padding:20px 0;">每位會員都預約過了</p>'
