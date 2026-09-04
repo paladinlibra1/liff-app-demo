@@ -2426,19 +2426,31 @@
         }
 
         function renderDormantCard(c) {
+            const lastSent = reportFollowUps[c.phone] && reportFollowUps[c.phone].lastLineSentAt;
+            const sentNote = lastSent ? `<div class="dc-meta" style="color:#4CAF50;">✅ ${formatSentDaysAgo(lastSent)}已發送過</div>` : '';
+            const sendLabel = lastSent ? '💬 再次發送' : '💬 發送LINE訊息';
             return `<div class="dormant-card">
                 <div class="dc-info">
                     <div class="dc-name">${c.name || '-'}<span class="dc-phone">${c.phone}</span></div>
                     <div class="dc-meta">到店 ${c.count} 次 ・ 最近 ${c.lastDate}</div>
                     <div class="dc-days">${c.daysSince} 天未到店</div>
+                    ${sentNote}
                 </div>
                 <div class="dc-actions">
                     ${c.lineId
-                        ? `<button class="btn btn-sm btn-outline" onclick="runOnce(this,'傳送中…',()=>sendLineDormantMessage('${escJsAttr(c.lineId)}','${escJsAttr(c.name || '')}'))">💬 發送LINE訊息</button>`
+                        ? `<button class="btn btn-sm btn-outline" onclick="runOnce(this,'傳送中…',()=>sendLineDormantMessage('${escJsAttr(c.lineId)}','${escJsAttr(c.name || '')}','${escJsAttr(c.phone)}'))">${sendLabel}</button>`
                         : `<span class="dc-no-line" title="這位客人的預約紀錄沒有 LINE ID，無法發送 LINE 訊息">💬 無LINE資料</span>`}
                     <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'排除中…',()=>excludeDormantCustomer('${escJsAttr(c.phone)}'))">🚫 排除</button>
                 </div>
             </div>`;
+        }
+
+        // 把 Firestore Timestamp 轉成「X天前」文字，用來提醒是否已發送過沉睡客訊息
+        function formatSentDaysAgo(ts) {
+            const d = ts && ts.toDate ? ts.toDate() : new Date(ts);
+            const days = Math.round((Date.now() - d.getTime()) / 86400000);
+            if (days <= 0) return '今天';
+            return `${days}天前`;
         }
 
         // 沉睡客 LINE 訊息範本，存在 Firestore（reportSettings/dormantMessageTemplate），可在畫面上編輯儲存
@@ -2472,14 +2484,20 @@
         }
 
         // 發送 LINE 訊息給沉睡客（透過現有的 GAS 通知 webhook）
-        // ⚠️ 需要在 GAS 腳本那邊新增處理 type === 'dormant_reengage' 的邏輯，用 data.lineId 呼叫 LINE Messaging API 的 push，
-        //    目前只有前端會把要求送過去，GAS 若還沒接住就不會真的推播出去。
-        async function sendLineDormantMessage(lineId, name) {
+        // 發送成功後把時間記到 reportFollowUps/{phone}.lastLineSentAt，避免不同天或不同人重複發送而不自知
+        async function sendLineDormantMessage(lineId, name, phone) {
             const message = buildDormantMessage(name);
-            if (!confirm(`確定要發送這則 LINE 訊息給${name || '這位客人'}嗎？\n\n${message}`)) return;
+            const lastSent = reportFollowUps[phone] && reportFollowUps[phone].lastLineSentAt;
+            const confirmMsg = lastSent
+                ? `⚠️ 這位客人${formatSentDaysAgo(lastSent)}已經發送過提醒訊息，確定要再發一次嗎？\n\n${message}`
+                : `確定要發送這則 LINE 訊息給${name || '這位客人'}嗎？\n\n${message}`;
+            if (!confirm(confirmMsg)) return;
             const requestBody = { action: 'sendNotification', payload: { type: 'dormant_reengage', data: { lineId, name, message } } };
             try {
                 await fetch(GAS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(requestBody) });
+                await db.collection("reportFollowUps").doc(phone).set({ lastLineSentAt: new Date() }, { merge: true });
+                reportFollowUps[phone] = Object.assign({}, reportFollowUps[phone], { lastLineSentAt: new Date() });
+                renderReport();
                 alert('已送出傳送要求');
             } catch (err) {
                 alert('傳送失敗：' + err.message);
