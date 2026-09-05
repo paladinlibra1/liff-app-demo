@@ -573,9 +573,9 @@
                 <div id="reportTimeHeatmap"></div>
             </div>
 
-            <div class="box-container" id="reportRateTrendBox" style="padding:20px; margin-top:20px; display:none;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">📉 比率趨勢（依月份）</div>
-                <div style="font-size:12px; color:#aaa; margin-bottom:14px;">比率的分母太小會上下亂跳，所以只在「年」檢視用月為單位呈現；不受上方類型篩選影響</div>
+            <div class="box-container" id="reportRateTrendBox" style="padding:20px; margin-top:20px;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">📉 比率趨勢（近 12 個月）</div>
+                <div style="font-size:12px; color:#aaa; margin-bottom:14px;">固定以月為單位看最近 12 個月，不受上方週／月／年與類型篩選影響</div>
                 <div style="position:relative; height:320px;">
                     <canvas id="reportRateTrendChart"></canvas>
                 </div>
@@ -2251,7 +2251,7 @@
             renderReportTrendChart(reportPeriod, start, end, inPeriodFiltered);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined, cancelled);
             renderReportHeatmaps(inPeriodFiltered);
-            renderReportRateTrend(reportPeriod, start.getFullYear(), combined, cancelled);
+            renderReportRateTrend(combined, cancelled);
             renderReportRetention(combined);
             renderNeverBookedList(combined);
         }
@@ -2455,21 +2455,27 @@
         }
 
         // 📉 比率趨勢：取消率與新客轉換率的月線
-        // 比率類指標逐日算分母太小、線會亂跳，所以只在「年」檢視顯示，用月為單位
-        function renderReportRateTrend(period, year, combined, cancelled) {
-            const box = document.getElementById('reportRateTrendBox');
-            if (period !== 'year') { box.style.display = 'none'; return; }
-            box.style.display = '';
-
-            const yearStr = String(year);
-            const inYear = (d) => !!d && d.slice(0, 4) === yearStr;
-            const monthIdx = (d) => parseInt(d.slice(5, 7), 10) - 1;
+        // 比率類指標逐日算分母太小、線會亂跳，所以固定用月為單位，且不跟著上方週／月／年切換
+        const RATE_TREND_MONTHS = 12;
+        function renderReportRateTrend(combined, cancelled) {
+            // 由本月往回推 12 個月，key 為 'YYYY-MM'，跨年也連得起來
+            const monthKeys = [];
+            const cursor = new Date();
+            cursor.setDate(1);
+            cursor.setMonth(cursor.getMonth() - (RATE_TREND_MONTHS - 1));
+            for (let i = 0; i < RATE_TREND_MONTHS; i++) {
+                monthKeys.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+                cursor.setMonth(cursor.getMonth() + 1);
+            }
+            const idxOfMonth = {};
+            monthKeys.forEach((k, i) => idxOfMonth[k] = i);
+            const monthIdx = (d) => (d && idxOfMonth[d.slice(0, 7)] !== undefined) ? idxOfMonth[d.slice(0, 7)] : -1;
 
             // 取消率：與卡片同一套算法（所有類型、含複檢）
-            const cancelCnt = new Array(12).fill(0);
-            const bookedCnt = new Array(12).fill(0);
-            cancelled.forEach(r => { if (inYear(r.date)) cancelCnt[monthIdx(r.date)]++; });
-            combined.forEach(r => { if (inYear(r.date)) bookedCnt[monthIdx(r.date)]++; });
+            const cancelCnt = new Array(RATE_TREND_MONTHS).fill(0);
+            const bookedCnt = new Array(RATE_TREND_MONTHS).fill(0);
+            cancelled.forEach(r => { const i = monthIdx(r.date); if (i >= 0) cancelCnt[i]++; });
+            combined.forEach(r => { const i = monthIdx(r.date); if (i >= 0) bookedCnt[i]++; });
             // 該月完全沒有預約也沒有取消時給 null，讓折線斷開，不要畫成 0% 誤導
             const cancelRate = cancelCnt.map((c, i) => {
                 const total = c + bookedCnt[i];
@@ -2488,18 +2494,20 @@
                     (generalDates[phone] = generalDates[phone] || []).push(r.date);
                 }
             });
-            const trialCnt = new Array(12).fill(0);
-            const convCnt = new Array(12).fill(0);
+            const trialCnt = new Array(RATE_TREND_MONTHS).fill(0);
+            const convCnt = new Array(RATE_TREND_MONTHS).fill(0);
             Object.keys(firstTrial).forEach(phone => {
                 const d = firstTrial[phone];
-                if (!inYear(d) || d > matureBefore) return; // 未滿成熟期的月份留空，免得看起來像轉換率暴跌
+                if (d > matureBefore) return; // 未滿成熟期的月份留空，免得看起來像轉換率暴跌
                 const m = monthIdx(d);
+                if (m < 0) return;
                 trialCnt[m]++;
                 if ((generalDates[phone] || []).some(g => g > d)) convCnt[m]++;
             });
             const convRate = trialCnt.map((t, i) => t > 0 ? +(convCnt[i] / t * 100).toFixed(1) : null);
 
-            const labels = Array.from({ length: 12 }, (_, m) => `${m + 1}月`);
+            // 跨年份，所以標籤要帶年，用兩行避免 x 軸太擠
+            const labels = monthKeys.map(k => [`${parseInt(k.slice(5, 7), 10)}月`, k.slice(0, 4)]);
             const datasets = [
                 { label: '新客轉換率', data: convRate, borderColor: '#4CAF50', backgroundColor: '#4CAF50',
                   tension: 0.3, fill: false, pointRadius: 4, pointHoverRadius: 6, spanGaps: false },
