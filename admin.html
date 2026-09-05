@@ -462,16 +462,9 @@
                         <button type="button" onclick="clearGuardianSelection()" style="border:none; background:transparent; color:#999; cursor:pointer; font-size:1rem;">✕</button>
                     </div>
                 </div>
-                <button class="btn btn-cancel" onclick="runOnce(this,'儲存中…',()=>saveNewMember())" style="width:100%;">💾 儲存新會員</button>
-            </div>
-
-            <div class="box-container" style="margin-bottom:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <div style="font-weight:bold; color:var(--primary-dark);">🔍 重複會員比對</div>
-                        <p style="font-size:0.85rem; color:#888; margin:4px 0 0;">找出姓名相同、電話相同或生日相同的會員，判斷是不是同一個人重複建檔。</p>
-                    </div>
-                    <button class="btn btn-outline" onclick="runOnce(this,'比對中…',()=>renderDuplicateMembers())" style="min-width:110px;">開始比對</button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="btn btn-cancel" onclick="runOnce(this,'儲存中…',()=>saveNewMember())" style="flex:2; min-width:160px;">💾 儲存新會員</button>
+                    <button class="btn btn-outline" onclick="runOnce(this,'比對中…',()=>renderDuplicateMembers())" style="flex:1; min-width:150px;">🔍 重複會員比對</button>
                 </div>
                 <div id="dupMemberResult"></div>
             </div>
@@ -1234,7 +1227,10 @@
             const total = byName.length + byPhone.length + byBirthday.length;
             el.innerHTML = `
                 <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-color);">
-                    <div style="font-size:0.88rem; color:#666;">共 ${allMembers.length} 位會員，找到 ${total} 組可疑重複。確定是同一人的話，到下方會員清單把多餘那筆刪除或修正。</div>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+                        <div style="font-size:0.88rem; color:#666;">共 ${allMembers.length} 位會員，找到 ${total} 組可疑重複。確定是同一人的話，到下方會員清單把多餘那筆刪除或修正。</div>
+                        <button class="btn btn-sm btn-outline" onclick="document.getElementById('dupMemberResult').innerHTML='';">✕ 收起</button>
+                    </div>
                     ${sectionHtml('📛 姓名相同', '', byName)}
                     ${sectionHtml('📞 電話相同', '（去掉符號後比對，最可能是真的重複）', byPhone)}
                     ${sectionHtml('🎂 生日相同', '（同天生日很常見，要搭配姓名一起看）', byBirthday)}
