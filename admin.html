@@ -553,6 +553,11 @@
                     <div class="report-card-value" id="reportCardCancelRate">–</div>
                     <div class="report-card-sub">所有類型（含複檢）· 2026/09/03 起才有紀錄</div>
                 </div>
+                <div class="report-card">
+                    <div class="report-card-label">新客轉換率</div>
+                    <div class="report-card-value" id="reportCardConvRate">–</div>
+                    <div class="report-card-sub" id="reportCardConvRateSub">體驗後有一般預約 · 滿30天才計入</div>
+                </div>
             </div>
 
             <div class="box-container" style="padding:20px;">
@@ -2413,6 +2418,40 @@
             const totalScheduled = cancelledInPeriod + bookedInPeriod;
             const cancelRateEl = document.getElementById('reportCardCancelRate');
             cancelRateEl.innerText = totalScheduled > 0 ? `${(cancelledInPeriod / totalScheduled * 100).toFixed(1)}%` : '－';
+
+            renderReportConversionCard(combined, startStr, endStr);
+        }
+
+        // 新客轉換率＝本期做過「新客體驗」的人，後來有「一般預約」的比例
+        // 依電話辨識同一位客人；不受上方類型篩選影響（分母固定看新客體驗、分子固定看一般預約，複檢不算）
+        const CONVERSION_MATURE_DAYS = 30; // 剛體驗完還來不及回訪的新客不列入分母，免得一直低估
+        function renderReportConversionCard(combined, startStr, endStr) {
+            const matureBefore = getFormattedDate(new Date(Date.now() - CONVERSION_MATURE_DAYS * 86400000));
+            const firstTrial = {};    // 電話 → 最早一次「新客體驗」日期
+            const generalDates = {};  // 電話 → 所有「一般預約」日期
+            combined.forEach(r => {
+                const phone = normReportPhone(r.phone);
+                if (!phone || !r.date) return;
+                if (r.type === '新客體驗') {
+                    if (!firstTrial[phone] || r.date < firstTrial[phone]) firstTrial[phone] = r.date;
+                } else if (r.type === '一般預約') {
+                    (generalDates[phone] = generalDates[phone] || []).push(r.date);
+                }
+            });
+
+            const trials = Object.keys(firstTrial).filter(phone => {
+                const d = firstTrial[phone];
+                return d >= startStr && d <= endStr && d <= matureBefore;
+            });
+            // 體驗「之後」才有的一般預約才算轉換，同一天的不算
+            const converted = trials.filter(phone => (generalDates[phone] || []).some(d => d > firstTrial[phone]));
+
+            const rateEl = document.getElementById('reportCardConvRate');
+            const subEl = document.getElementById('reportCardConvRateSub');
+            rateEl.innerText = trials.length > 0 ? `${(converted.length / trials.length * 100).toFixed(1)}%` : '－';
+            subEl.innerText = trials.length > 0
+                ? `${converted.length} / ${trials.length} 位體驗後回購`
+                : `本期沒有滿 ${CONVERSION_MATURE_DAYS} 天的新客體驗`;
         }
 
         // 依數值占最大值的比例，回傳溫度色階（藍＝最空，紅＝最壅擠）
