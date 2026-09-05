@@ -130,11 +130,6 @@
             .report-period-switch { flex-direction: column; align-items: stretch; }
         }
 
-        .report-weekday-heat { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-        .report-weekday-cell { border-radius: 10px; padding: 14px 6px; text-align: center; transition: background-color 0.3s; }
-        .report-weekday-cell .wd-name { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
-        .report-weekday-cell .wd-count { font-size: 20px; font-weight: bold; color: var(--primary-dark); }
-        .report-weekday-cell.wd-busiest { box-shadow: 0 0 0 2px #e53935 inset; }
 
         .report-heatmap-table { border-collapse: separate; border-spacing: 3px; font-size: 12.5px; }
         .report-heatmap-table th { background: transparent; padding: 4px 8px; color: #888; font-weight: 600; text-transform: none; letter-spacing: 0; text-align: center; }
@@ -571,11 +566,6 @@
                 <div style="position:relative; height:320px;">
                     <canvas id="reportTrendChart"></canvas>
                 </div>
-            </div>
-
-            <div class="box-container" style="padding:20px; margin-top:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">📅 星期熱度（本期，依上方已選類型）</div>
-                <div id="reportWeekdayHeat" class="report-weekday-heat"></div>
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
@@ -2469,9 +2459,8 @@
         }
 
         function renderReportHeatmaps(rows) {
-            // 店裡沒有固定營業週日（config.js 的營業時間只有 weekday/saturday），星期熱度不顯示週日欄位
+            // 店裡沒有固定營業週日（config.js 的營業時間只有 weekday/saturday），不顯示週日欄位
             const dayNames = ['一','二','三','四','五','六'];
-            const weekdayCounts = [0,0,0,0,0,0]; // 週一(0) ~ 週六(5)
             const slotMap = {}; // time -> [週一(0)~週六(5) 各自次數]
             const timeSet = new Set();
 
@@ -2480,23 +2469,10 @@
                 const jsDay = new Date(r.date + 'T00:00:00').getDay(); // 0=日 ... 6=六
                 if (jsDay === 0) return; // 偶發的週日資料忽略不計入
                 const wd = jsDay - 1; // 轉成 0=一 ... 5=六
-                weekdayCounts[wd]++;
                 timeSet.add(r.time);
                 if (!slotMap[r.time]) slotMap[r.time] = [0,0,0,0,0,0];
                 slotMap[r.time][wd]++;
             });
-
-            // 📅 星期熱度
-            const maxWd = Math.max(1, ...weekdayCounts);
-            const wdEl = document.getElementById('reportWeekdayHeat');
-            wdEl.innerHTML = weekdayCounts.map((c, i) => {
-                const isBusiest = c > 0 && c === maxWd;
-                const textColor = heatTextColor(c, maxWd);
-                return `<div class="report-weekday-cell${isBusiest ? ' wd-busiest' : ''}" style="background-color:${heatColor(c, maxWd)};">
-                    <div class="wd-name" style="color:${textColor};">週${dayNames[i]}</div>
-                    <div class="wd-count" style="color:${textColor};">${c}</div>
-                </div>`;
-            }).join('');
 
             // 🔥 時段熱度
             const times = Array.from(timeSet).sort();
