@@ -2236,17 +2236,30 @@
                 if (r.name) customers[phone].name = r.name;
             });
 
-            const bandCount = {};
-            let missing = 0;        // 根本沒填生日
-            const anomalies = [];   // 有生日但算出來不合理
+            // 同一位客人可能換過電話、或不同筆預約留了不同號碼，只用電話歸戶會把她算成兩位。
+            // 能對到會員就改用會員身分當 key，對不到才退回用電話。
+            const people = {};
             Object.keys(customers).forEach(phone => {
                 const c = customers[phone];
                 const member = memberByPhone[phone] || memberByLineId[c.lineId];
-                const bday = member && member.birthday;
+                // combined 是逐筆過濾的，但這裡是歸戶後才對到會員：
+                // 店家某幾筆預約若沒填電話或姓名寫得不一樣，那幾筆會漏過逐筆過濾，
+                // 歸戶後才對得上會員，所以這裡要再擋一次身分與「卡」
+                if (isExcludedCustomer(member, c.name)) return;
+                const key = (member && member.lineId) ? 'L:' + member.lineId : 'P:' + phone;
+                if (people[key]) { people[key].phones.push(phone); return; }
+                people[key] = { member, name: (member && member.name) || c.name || '(未命名)', phones: [phone] };
+            });
+
+            const bandCount = {};
+            let missing = 0;        // 根本沒填生日
+            const anomalies = [];   // 有生日但算出來不合理
+            Object.values(people).forEach(pp => {
+                const bday = pp.member && pp.member.birthday;
                 if (!bday) { missing++; return; }
                 const age = ageFromBirthday(bday);
                 if (age === null || age < AGE_MIN || age > AGE_MAX) {
-                    anomalies.push({ name: (member && member.name) || c.name || '(未命名)', phone, birthday: bday, age });
+                    anomalies.push({ name: pp.name, phone: pp.phones.join('、'), birthday: bday, age });
                     return;
                 }
                 const band = Math.floor(age / AGE_BAND_SIZE) * AGE_BAND_SIZE;
@@ -2386,6 +2399,14 @@
                 if (n) names.add(n);
             });
             return { phones, lineIds, names };
+        }
+
+        // 歸戶（依電話合併同一位客人）之後再擋一次：
+        // isExcludedFromReport 是逐筆判斷的，店家某幾筆預約若沒填電話或姓名寫得不一樣，
+        // 那幾筆會漏過逐筆過濾、在歸戶後才對得上會員，這時才擋得掉
+        function isExcludedCustomer(member, fallbackName) {
+            if (member && member.role) return true;
+            return (((member && member.name) || fallbackName || '')).includes('卡');
         }
 
         function isExcludedFromReport(row, staff) {
@@ -2787,7 +2808,15 @@
                 if (r.date && r.date > byPhone[r.phone].lastDate) byPhone[r.phone].lastDate = r.date;
                 if (r.lineId) byPhone[r.phone].lineId = r.lineId; // 該預約當時登入的 LINE 使用者 id，有才能發 LINE 訊息
             });
-            const customers = Object.keys(byPhone).map(phone => ({ phone, ...byPhone[phone] }));
+            const memberByPhone = {}, memberByLineId = {};
+            allMembers.forEach(m => {
+                const p = normReportPhone(m.phone);
+                if (p) memberByPhone[p] = m;
+                if (m.lineId) memberByLineId[m.lineId] = m;
+            });
+            const customers = Object.keys(byPhone)
+                .map(phone => ({ phone, ...byPhone[phone] }))
+                .filter(c => !isExcludedCustomer(memberByPhone[normReportPhone(c.phone)] || memberByLineId[c.lineId], c.name));
 
             let newCount = 0, returningCount = 0, frequentCount = 0;
             customers.forEach(c => {
