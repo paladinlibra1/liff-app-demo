@@ -608,6 +608,16 @@
                     </div>
                 </div>
 
+                <div style="margin-top:26px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <div style="font-weight:bold; color:var(--primary-dark);">🎂 年齡層分布（每 5 歲一級距）</div>
+                        <div id="reportAgeNote" style="font-size:12px; color:#aaa;"></div>
+                    </div>
+                    <div style="position:relative; height:280px;">
+                        <canvas id="reportAgeChart"></canvas>
+                    </div>
+                </div>
+
                 <div style="margin-top:22px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
                         <div id="reportFollowUpTitle" style="font-weight:bold; color:#c62828;">😴 沉睡客名單（最近一次到店超過 90 天）<span id="reportFollowUpCount" style="color:#999; font-weight:normal; font-size:13px;"></span></div>
@@ -2100,6 +2110,7 @@
         let reportAnchor = new Date();   // 目前檢視期間內的任一天
         let reportChart = null;
         let reportRateChart = null;
+        let reportAgeChart = null;
         if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
@@ -2193,6 +2204,93 @@
             const combined = getAllBookingsCombined().filter(r => !isExcludedFromReport(r, staff));
             renderReportRetention(combined);
             renderNeverBookedList(combined);
+            renderAgeDistribution(combined);
+        }
+
+        // 🎂 年齡層分布：依電話歸戶，一位客人算一個（不是來店人次），看全部歷史
+        // 預約紀錄沒有生日，要用電話或 lineId 回頭去會員清單擈
+        const AGE_BAND_SIZE = 5;
+        function renderAgeDistribution(combined) {
+            const birthdayByPhone = {}, birthdayByLineId = {};
+            allMembers.forEach(m => {
+                if (!m.birthday) return;
+                const p = normReportPhone(m.phone);
+                if (p) birthdayByPhone[p] = m.birthday;
+                if (m.lineId) birthdayByLineId[m.lineId] = m.birthday;
+            });
+
+            // 同一支電話只算一位，順便記下任一筆預約的 lineId 當備援對應
+            const customers = {};
+            combined.forEach(r => {
+                const phone = normReportPhone(r.phone);
+                if (!phone) return;
+                if (!customers[phone]) customers[phone] = { lineId: '' };
+                if (r.lineId && !customers[phone].lineId) customers[phone].lineId = r.lineId;
+            });
+
+            const bandCount = {};
+            let unknown = 0;
+            Object.keys(customers).forEach(phone => {
+                const bday = birthdayByPhone[phone] || birthdayByLineId[customers[phone].lineId];
+                const age = ageFromBirthday(bday);
+                if (age === null) { unknown++; return; }
+                const band = Math.floor(age / AGE_BAND_SIZE) * AGE_BAND_SIZE;
+                bandCount[band] = (bandCount[band] || 0) + 1;
+            });
+
+            const noteEl = document.getElementById('reportAgeNote');
+            const bands = Object.keys(bandCount).map(Number).sort((a, b) => a - b);
+            const known = bands.reduce((sum, b) => sum + bandCount[b], 0);
+            noteEl.innerText = unknown > 0
+                ? `已知生日 ${known} 位；另有 ${unknown} 位沒有生日資料，未列入`
+                : `共 ${known} 位`;
+
+            // 中間沒人的級距也要留一格，不然 x 軸會跳著走看不出分布形狀
+            const labels = [], data = [];
+            if (bands.length > 0) {
+                for (let b = bands[0]; b <= bands[bands.length - 1]; b += AGE_BAND_SIZE) {
+                    labels.push(`${b}–${b + AGE_BAND_SIZE - 1}`);
+                    data.push(bandCount[b] || 0);
+                }
+            }
+
+            const datasets = [{ label: '人數', data, backgroundColor: '#f6c026', borderRadius: 4 }];
+            if (reportAgeChart) {
+                reportAgeChart.data.labels = labels;
+                reportAgeChart.data.datasets = datasets;
+                reportAgeChart.update();
+                return;
+            }
+            const ctx = document.getElementById('reportAgeChart').getContext('2d');
+            reportAgeChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: '年齡', color: '#aaa', font: { size: 11 } } },
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (c) => `${c.parsed.y} 位` } },
+                        datalabels: { display: (c) => c.dataset.data[c.dataIndex] > 0, color: '#7a5c00', font: { weight: 'bold', size: 11 }, anchor: 'end', align: 'top', formatter: (v) => v }
+                    }
+                }
+            });
+        }
+
+        // 生日（YYYY-MM-DD）換算成今天的實歲，格式怪或明顯不合理的回傳 null
+        function ageFromBirthday(bday) {
+            if (!bday) return null;
+            const d = new Date(bday + 'T00:00:00');
+            if (isNaN(d.getTime())) return null;
+            const now = new Date();
+            let age = now.getFullYear() - d.getFullYear();
+            const mDiff = now.getMonth() - d.getMonth();
+            if (mDiff < 0 || (mDiff === 0 && now.getDate() < d.getDate())) age--;
+            return (age >= 0 && age <= 120) ? age : null;
         }
 
         function switchReportPeriod(period) {
