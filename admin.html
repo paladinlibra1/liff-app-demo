@@ -2622,24 +2622,27 @@
             document.getElementById('reportRetentionFrequent').innerText = `${frequentCount} 人`;
 
             const todayMs = new Date(getFormattedDate(new Date()) + 'T00:00:00').getTime();
-            const dormant = customers
+            const dormantAll = customers
                 .filter(c => c.lastDate)
                 .map(c => ({ ...c, daysSince: Math.round((todayMs - new Date(c.lastDate + 'T00:00:00').getTime()) / 86400000) }))
                 .filter(c => c.daysSince > 90)
                 .filter(c => !(reportFollowUps[c.phone] && reportFollowUps[c.phone].excluded)) // 已排除的客人不顯示
                 .sort((a, b) => b.daysSince - a.daysSince);
+            const dormant = dormantAll.filter(c => !isInFollowUpCooldown(c.phone));
 
             reportFollowUpCounts.dormant = dormant.length;
+            reportFollowUpCooldown.dormant = dormantAll.length - dormant.length;
             updateReportFollowUpHeader();
             const listEl = document.getElementById('reportDormantList');
             listEl.innerHTML = dormant.length === 0
-                ? '<p style="text-align:center; color:#aaa; padding:20px 0;">目前沒有沉睡客</p>'
+                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.dormant > 0 ? `沉睡客都在 ${FOLLOWUP_COOLDOWN_DAYS} 天冷卻期內，暫時不顯示` : '目前沒有沉睡客'}</p>`
                 : dormant.map(renderDormantCard).join('');
         }
 
         // 沉睡客／從未預約 兩份名單共用同一個區塊，用上方按鈕切換，避免報表越拉越長
         let reportFollowUpList = 'dormant'; // 'dormant' | 'never'
         let reportFollowUpCounts = { dormant: 0, never: 0 };
+        let reportFollowUpCooldown = { dormant: 0, never: 0 }; // 因冷卻期被暫時隱藏的人數
 
         function switchReportFollowUpList(mode) {
             reportFollowUpList = mode;
@@ -2654,8 +2657,13 @@
             const isDormant = reportFollowUpList === 'dormant';
             const titleEl = document.getElementById('reportFollowUpTitle');
             titleEl.style.color = isDormant ? '#c62828' : '#ef6c00';
+            const hidden = isDormant ? reportFollowUpCooldown.dormant : reportFollowUpCooldown.never;
+            // 被冷卻期藏起來的人也要讓店家知道有幾位，不然會以為名單莫名其妙變少
+            const hiddenNote = hidden > 0
+                ? `　·　🔕 ${hidden} 位 ${FOLLOWUP_COOLDOWN_DAYS} 天內已發送，暫時隱藏`
+                : '';
             titleEl.innerHTML = (isDormant ? '😴 沉睡客名單（最近一次到店超過 90 天）' : '🆕 已加會員但從未預約（只列身分為客人）')
-                + `<span style="color:#999; font-weight:normal; font-size:13px;"> · 共 ${isDormant ? reportFollowUpCounts.dormant : reportFollowUpCounts.never} 位</span>`;
+                + `<span style="color:#999; font-weight:normal; font-size:13px;"> · 共 ${isDormant ? reportFollowUpCounts.dormant : reportFollowUpCounts.never} 位${hiddenNote}</span>`;
         }
 
         // 🆕 已加會員但從未預約：會員清單裡找不到任何預約紀錄的人，只列身分是「客人」的（店家／助理／夥伴不算）
@@ -2669,18 +2677,20 @@
                 if (r.lineId) bookedLineIds.add(r.lineId);
             });
 
-            const neverBooked = allMembers
+            const neverBookedAll = allMembers
                 .filter(m => !m.role) // 有設身分的是店家／助理／夥伴，不列入
                 .filter(m => !(m.name || '').includes('卡')) // 姓名含「卡」的不算真實客人
                 .filter(m => !bookedPhones.has(normPhone(m.phone)) && !bookedLineIds.has(m.lineId))
                 .filter(m => !(reportFollowUps[m.phone] && reportFollowUps[m.phone].excluded))
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
+            const neverBooked = neverBookedAll.filter(m => !isInFollowUpCooldown(m.phone));
 
             reportFollowUpCounts.never = neverBooked.length;
+            reportFollowUpCooldown.never = neverBookedAll.length - neverBooked.length;
             updateReportFollowUpHeader();
             const listEl = document.getElementById('reportNeverBookedList');
             listEl.innerHTML = neverBooked.length === 0
-                ? '<p style="text-align:center; color:#aaa; padding:20px 0;">每位會員都預約過了</p>'
+                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.never > 0 ? `名單上的人都在 ${FOLLOWUP_COOLDOWN_DAYS} 天冷卻期內，暫時不顯示` : '每位會員都預約過了'}</p>`
                 : neverBooked.map(renderNeverBookedCard).join('');
         }
 
@@ -2722,6 +2732,15 @@
                     <button class="btn btn-sm btn-cancel" onclick="runOnce(this,'排除中…',()=>excludeDormantCustomer('${escJsAttr(c.phone)}'))">🚫 排除</button>
                 </div>
             </div>`;
+        }
+
+        // 發過 LINE 之後的冷卻期：這段期間內不再把這位客人列在名單上，避免一直重複打擾同一個人
+        const FOLLOWUP_COOLDOWN_DAYS = 30;
+        function isInFollowUpCooldown(phone) {
+            const rec = reportFollowUps[phone];
+            if (!rec || !rec.lastLineSentAt) return false;
+            const sent = rec.lastLineSentAt.toDate ? rec.lastLineSentAt.toDate() : new Date(rec.lastLineSentAt);
+            return (Date.now() - sent.getTime()) < FOLLOWUP_COOLDOWN_DAYS * 86400000;
         }
 
         // 把 Firestore Timestamp 轉成「X天前」文字，用來提醒是否已發送過沉睡客訊息
