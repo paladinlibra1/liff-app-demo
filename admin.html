@@ -1181,7 +1181,14 @@
             const el = document.getElementById('dupMemberResult');
             if (allMembers.length === 0) await loadMemberData(false);
 
-            const groupBy = (keyFn) => {
+            // 未成年會員綁定監護人時本來就共用電話，把被監護人從同組裡拿掉，不然每一組都是誤報
+            const dropWards = (members) => {
+                const idsInGroup = new Set(members.map(m => m.lineId));
+                return members.filter(m => !(m.guardianLineId && idsInGroup.has(m.guardianLineId)));
+            };
+
+            let guardianPairsHidden = 0;
+            const groupBy = (keyFn, refine) => {
                 const map = {};
                 allMembers.forEach(m => {
                     const k = keyFn(m);
@@ -1189,13 +1196,17 @@
                     (map[k] = map[k] || []).push(m);
                 });
                 return Object.keys(map)
-                    .filter(k => map[k].length > 1)
-                    .sort((a, b) => map[b].length - map[a].length || a.localeCompare(b, 'zh-Hant'))
-                    .map(k => ({ key: k, members: map[k] }));
+                    .map(k => {
+                        const members = refine ? refine(map[k]) : map[k];
+                        if (map[k].length > 1 && members.length < 2) guardianPairsHidden++;
+                        return { key: k, members };
+                    })
+                    .filter(g => g.members.length > 1)
+                    .sort((a, b) => b.members.length - a.members.length || a.key.localeCompare(b.key, 'zh-Hant'));
             };
 
             const byName = groupBy(m => (m.name || '').trim());
-            const byPhone = groupBy(m => normalizePhone(m.phone));
+            const byPhone = groupBy(m => normalizePhone(m.phone), dropWards);
             const byBirthday = groupBy(m => (m.birthday || '').trim());
 
             const rowHtml = (m) => `<div class="dup-row">
@@ -1226,7 +1237,7 @@
                         <button class="btn btn-sm btn-outline" onclick="document.getElementById('dupMemberResult').innerHTML='';">✕ 收起</button>
                     </div>
                     ${sectionHtml('📛 姓名相同', '', byName)}
-                    ${sectionHtml('📞 電話相同', '（去掉符號後比對，最可能是真的重複）', byPhone)}
+                    ${sectionHtml('📞 電話相同', `（去掉符號後比對，最可能是真的重複${guardianPairsHidden > 0 ? `；已排除 ${guardianPairsHidden} 組監護人共用電話` : ''}）`, byPhone)}
                     ${sectionHtml('🎂 生日相同', '（同天生日很常見，要搭配姓名一起看）', byBirthday)}
                 </div>`;
         }
