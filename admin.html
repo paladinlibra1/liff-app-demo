@@ -174,11 +174,6 @@
         .dup-row .dup-name { font-weight: 700; color: var(--primary-dark); }
         .dup-row .dup-role { color: #999; }
         .dup-section-title { font-weight: 700; color: var(--primary-dark); margin: 18px 0 10px; }
-        .age-anomaly-box { margin-top: 16px; border: 1px solid #ffcdd2; background: #fff8f8; border-radius: 10px; padding: 12px 14px; }
-        .age-anomaly-box .aa-title { font-size: 13px; font-weight: 700; color: #c62828; margin-bottom: 8px; line-height: 1.5; }
-        .age-anomaly-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: #666; padding: 5px 0; border-top: 1px dashed #f2dede; }
-        .age-anomaly-row .aa-name { font-weight: 700; color: var(--primary-dark); }
-        .age-anomaly-row .aa-bad { color: #c62828; font-weight: 700; }
         .dormant-cooldown-row input { width: 72px; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 8px; font-size: 13.5px; font-family: inherit; text-align: center; }
 
         /* 漢堡選單樣式 */
@@ -631,7 +626,6 @@
                     <div style="position:relative; height:280px;">
                         <canvas id="reportAgeChart"></canvas>
                     </div>
-                    <div id="reportAgeAnomalies"></div>
                 </div>
 
                 <div style="margin-top:22px;">
@@ -1569,6 +1563,7 @@
 
             if (!newName || !newPhone) { alert("姓名與電話為必填項！"); return; }
             if (!isValidPhone(newPhone)) { alert(PHONE_RULE_MSG); return; }
+            if (!checkBirthdayOrAlert(newBday)) return;
             document.getElementById('loading').style.display = 'block';
 
             try {
@@ -2296,8 +2291,6 @@
         // 🎂 年齡層分布：依電話歸戶，一位客人算一個（不是來店人次），看全部歷史
         // 預約紀錄沒有生日，要用電話或 lineId 回頭去會員清單擈
         const AGE_BAND_SIZE = 5;
-        // 合理年齡範圍：超出的一律當成生日填錯，不進圖表，另外把是誰列出來讓店家去修
-        const AGE_MIN = 5, AGE_MAX = 90;
         function renderAgeDistribution(combined) {
             const memberByPhone = {}, memberByLineId = {};
             allMembers.forEach(m => {
@@ -2327,21 +2320,18 @@
                 // 歸戶後才對得上會員，所以這裡要再擋一次身分與「卡」
                 if (isExcludedCustomer(member, c.name)) return;
                 const key = (member && member.lineId) ? 'L:' + member.lineId : 'P:' + phone;
-                if (people[key]) { people[key].phones.push(phone); return; }
-                people[key] = { member, name: (member && member.name) || c.name || '(未命名)', phones: [phone] };
+                if (!people[key]) people[key] = { member };
             });
 
             const bandCount = {};
             let missing = 0;        // 根本沒填生日
-            const anomalies = [];   // 有生日但算出來不合理
+            let anomalyCount = 0;   // 有生日但算出來不合理，只計數不列明細
             Object.values(people).forEach(pp => {
                 const bday = pp.member && pp.member.birthday;
                 if (!bday) { missing++; return; }
                 const age = ageFromBirthday(bday);
-                if (age === null || age < AGE_MIN || age > AGE_MAX) {
-                    anomalies.push({ name: pp.name, phone: pp.phones.join('、'), birthday: bday, age });
-                    return;
-                }
+                // 用跟建檔／編輯同一組門檻，不然存得進去的生日反而在圖上被判成異常
+                if (age === null || age <= MEMBER_AGE_MIN || age >= MEMBER_AGE_MAX) { anomalyCount++; return; }
                 const band = Math.floor(age / AGE_BAND_SIZE) * AGE_BAND_SIZE;
                 bandCount[band] = (bandCount[band] || 0) + 1;
             });
@@ -2351,23 +2341,9 @@
             const known = bands.reduce((sum, b) => sum + bandCount[b], 0);
             const notes = [`已列入 ${known} 位`];
             if (missing > 0) notes.push(`未填生日 ${missing} 位`);
-            if (anomalies.length > 0) notes.push(`生日異常 ${anomalies.length} 位`);
+            if (anomalyCount > 0) notes.push(`生日異常 ${anomalyCount} 位`);
             noteEl.innerText = notes.join('，');
 
-            // 生日明顯填錯的直接列出來，不然只看到一個數字不知道要去改誰
-            const anomalyEl = document.getElementById('reportAgeAnomalies');
-            anomalyEl.innerHTML = anomalies.length === 0 ? '' : `
-                <div class="age-anomaly-box">
-                    <div class="aa-title">⚠️ 以下 ${anomalies.length} 位的生日不合理（合理範圍 ${AGE_MIN}–${AGE_MAX} 歲），未列入圖表，請到「👥 會員清單」用姓名或電話搜尋後修正</div>
-                    ${anomalies
-                        .sort((a, b) => (b.age === null ? 9999 : b.age) - (a.age === null ? 9999 : a.age))
-                        .map(a => `<div class="age-anomaly-row">
-                            <span class="aa-name">${a.name}</span>
-                            <span>${a.phone || '無電話'}</span>
-                            <span>生日 <span class="aa-bad">${a.birthday}</span></span>
-                            <span>換算 <span class="aa-bad">${a.age === null ? '格式錯誤' : a.age + ' 歲'}</span></span>
-                        </div>`).join('')}
-                </div>`;
 
             // 中間沒人的級距也要留一格，不然 x 軸會跳著走看不出分布形狀
             const labels = [], data = [];
