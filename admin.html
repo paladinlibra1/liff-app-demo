@@ -459,17 +459,6 @@
                 <button class="btn btn-cancel" onclick="runOnce(this,'儲存中…',()=>saveNewMember())" style="width:100%;">💾 儲存新會員</button>
             </div>
 
-            <div class="box-container" style="margin-bottom:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:6px;">🔗 合併客人（同一人用過兩支電話）</div>
-                <p style="font-size:0.85rem; color:#888; margin-bottom:12px;">把舊電話底下的所有預約紀錄改成新電話，統計才不會把同一位客人算成兩位。已封存的歷史預約也會一起改。</p>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-                    <input type="text" id="mergeFromPhone" placeholder="舊電話（要被取代的）" style="flex:1; min-width:160px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    <input type="text" id="mergeToPhone" placeholder="新電話（要保留的）" style="flex:1; min-width:160px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                    <button class="btn btn-outline" onclick="runOnce(this,'查詢中…',()=>previewMergePhone())" style="min-width:110px;">🔍 查詢</button>
-                </div>
-                <div id="mergePreview"></div>
-            </div>
-
             <div class="box-container" style="overflow-x: auto;">
                 <table id="memberTable">
                     <thead>
@@ -1182,99 +1171,6 @@
         }
 
         // =====================================================================
-        // 🔗 合併客人：同一位客人用過兩支電話時，把舊電話的預約紀錄改掛到新電話底下
-        // 已封存的 historicalBookings 在後台沒有編輯入口，只能靠這裡改
-        let mergeCandidate = null; // 查詢結果，按下合併時才真的寫入
-
-        function renderMergeMessage(html) {
-            document.getElementById('mergePreview').innerHTML = html;
-        }
-
-        async function previewMergePhone() {
-            mergeCandidate = null;
-            const fromRaw = document.getElementById('mergeFromPhone').value;
-            const toRaw = document.getElementById('mergeToPhone').value;
-            const from = normalizePhone(fromRaw);
-            const to = normalizePhone(toRaw);
-
-            if (!isValidPhone(from) || !isValidPhone(to)) { alert(PHONE_RULE_MSG); return; }
-            if (from === to) { alert('兩支電話一樣，不需要合併。'); return; }
-
-            renderMergeMessage('<p style="color:#888; font-size:0.9rem;">查詢中…</p>');
-            // 直接重抓，不吃畫面上的快取，避免拿到過期資料就動手改
-            const [bSnap, hSnap] = await Promise.all([
-                db.collection('bookings').get(),
-                db.collection('historicalBookings').get()
-            ]);
-
-            const hits = { bookings: [], historicalBookings: [] };
-            const targetInfo = { names: new Set(), count: 0 };
-            const scan = (snap, key) => snap.forEach(doc => {
-                const d = doc.data();
-                const ph = normalizePhone(d.phone);
-                if (ph === from) hits[key].push({ id: doc.id, name: d.name || '', date: d.date || '' });
-                else if (ph === to) { targetInfo.count++; if (d.name) targetInfo.names.add(d.name); }
-            });
-            scan(bSnap, 'bookings');
-            scan(hSnap, 'historicalBookings');
-
-            const total = hits.bookings.length + hits.historicalBookings.length;
-            if (total === 0) {
-                renderMergeMessage(`<p style="color:#c62828; font-size:0.9rem;">找不到電話 ${from} 的預約紀錄，沒有東西可以合併。</p>`);
-                return;
-            }
-
-            const all = hits.bookings.concat(hits.historicalBookings).filter(r => r.date).sort((a, b) => a.date.localeCompare(b.date));
-            const names = Array.from(new Set(hits.bookings.concat(hits.historicalBookings).map(r => r.name).filter(Boolean)));
-            const span = all.length ? `${all[0].date} ～ ${all[all.length - 1].date}` : '無日期';
-            const targetNames = Array.from(targetInfo.names);
-
-            mergeCandidate = { from, to, hits, total };
-            renderMergeMessage(`
-                <div style="border:1px solid #ffe0b2; background:#fffaf3; border-radius:10px; padding:14px;">
-                    <div style="font-weight:700; color:#ef6c00; margin-bottom:8px;">找到 ${total} 筆要改的預約紀錄</div>
-                    <div style="font-size:0.88rem; color:#666; line-height:1.9;">
-                        舊電話 <strong>${from}</strong>　姓名：${names.join('、') || '（無）'}<br>
-                        進行中預約 <strong>${hits.bookings.length}</strong> 筆　已封存 <strong>${hits.historicalBookings.length}</strong> 筆<br>
-                        日期範圍 ${span}<br>
-                        新電話 <strong>${to}</strong>　目前已有 <strong>${targetInfo.count}</strong> 筆${targetNames.length ? `，姓名：${targetNames.join('、')}` : ''}
-                    </div>
-                    <div style="font-size:0.82rem; color:#c62828; margin:12px 0;">⚠️ 合併後舊電話就不見了，無法復原。請先確認上面兩邊是同一位客人。</div>
-                    <button class="btn btn-cancel" onclick="runOnce(this,'合併中…',()=>executeMergePhone())" style="width:100%;">🔗 確認合併，把 ${from} 改成 ${to}</button>
-                </div>`);
-        }
-
-        async function executeMergePhone() {
-            if (!mergeCandidate) { alert('請先按「查詢」確認要合併的資料。'); return; }
-            const { from, to, hits, total } = mergeCandidate;
-            if (!confirm(`確定要把 ${total} 筆預約紀錄的電話從 ${from} 改成 ${to} 嗎？\n\n此動作無法復原。`)) return;
-
-            const jobs = [];
-            Object.keys(hits).forEach(col => hits[col].forEach(r => jobs.push({ col, id: r.id })));
-
-            try {
-                // Firestore 單一批次上限 500 筆，超過要自己切
-                const CHUNK = 400;
-                for (let i = 0; i < jobs.length; i += CHUNK) {
-                    const batch = db.batch();
-                    jobs.slice(i, i + CHUNK).forEach(j => batch.update(db.collection(j.col).doc(j.id), { phone: to }));
-                    await batch.commit();
-                }
-            } catch (err) {
-                renderMergeMessage(`<p style="color:#c62828; font-size:0.9rem;">合併失敗：${err.message}</p>`);
-                return;
-            }
-
-            // 清掉快取，下次進報表／客戶回訪才會重新抓到合併後的資料
-            allBookings = [];
-            isBookingLoaded = false;
-            allHistoryBookings = [];
-            mergeCandidate = null;
-            document.getElementById('mergeFromPhone').value = '';
-            document.getElementById('mergeToPhone').value = '';
-            renderMergeMessage(`<p style="color:#2e7d32; font-size:0.9rem;">✅ 已把 ${total} 筆紀錄的電話改成 ${to}。報表與客戶回訪分頁會在下次開啟時重新計算。</p>`);
-        }
-
         // 👥 3. 會員清單 (Firebase 版)
         // =====================================================================
         async function loadMemberData(isManual = false) {
