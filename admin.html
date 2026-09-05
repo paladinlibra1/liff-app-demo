@@ -425,6 +425,13 @@
             </div>
             <div class="controls">
                 <input type="text" id="searchMemberInput" placeholder="🔍 搜尋會員姓名、電話或 LINE 暱稱..." onkeyup="filterMemberTable()" style="flex-grow: 1; max-width: 400px;">
+                <select id="filterMemberRole" onchange="filterMemberTable()" style="margin-left:10px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                    <option value="">身分：全部</option>
+                    <option value="客人">客人</option>
+                    <option value="店家">店家</option>
+                    <option value="助理">助理</option>
+                    <option value="夥伴">夥伴</option>
+                </select>
                 <div style="color:#888; font-size:14px; margin-left:10px;">總人數：<span id="memberCount" style="font-weight:bold; color:var(--primary-dark);">0</span> 人</div>
             </div>
 
@@ -1403,11 +1410,19 @@
 
         function filterMemberTable() {
             const keyword = document.getElementById('searchMemberInput').value.toLowerCase();
-            currentFilteredMembers = allMembers.filter(row => 
-                (row.name && row.name.toLowerCase().includes(keyword)) || 
-                (row.phone && row.phone.includes(keyword)) || 
-                (row.lineName && row.lineName.toLowerCase().includes(keyword))
-            );
+            const roleFilter = document.getElementById('filterMemberRole').value;
+            currentFilteredMembers = allMembers.filter(row => {
+                // 沒設 role 的就是客人，選「客人」時要把這些也算進去
+                if (roleFilter && (row.role || '客人') !== roleFilter) return false;
+                return (row.name && row.name.toLowerCase().includes(keyword)) ||
+                    (row.phone && row.phone.includes(keyword)) ||
+                    (row.lineName && row.lineName.toLowerCase().includes(keyword));
+            });
+            // 篩選中就顯示「符合／總數」，不然選了身分卻看不出來有幾位
+            const isFiltered = keyword || roleFilter;
+            document.getElementById('memberCount').innerText = isFiltered
+                ? `${currentFilteredMembers.length} / ${allMembers.length}`
+                : allMembers.length;
             currentMemberPage = 1; 
             renderMemberTable();
         }
