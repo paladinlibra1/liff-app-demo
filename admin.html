@@ -573,6 +573,14 @@
                 <div id="reportTimeHeatmap"></div>
             </div>
 
+            <div class="box-container" id="reportRateTrendBox" style="padding:20px; margin-top:20px; display:none;">
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">📉 比率趨勢（依月份）</div>
+                <div style="font-size:12px; color:#aaa; margin-bottom:14px;">比率的分母太小會上下亂跳，所以只在「年」檢視用月為單位呈現；不受上方類型篩選影響</div>
+                <div style="position:relative; height:320px;">
+                    <canvas id="reportRateTrendChart"></canvas>
+                </div>
+            </div>
+
             <div class="box-container" style="padding:20px; margin-top:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
                     <div style="font-weight:bold; color:var(--primary-dark);">👥 客戶回訪分析</div>
@@ -2074,6 +2082,7 @@
         let reportPeriod = 'week';       // 'week' | 'month' | 'year'
         let reportAnchor = new Date();   // 目前檢視期間內的任一天
         let reportChart = null;
+        let reportRateChart = null;
         if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
@@ -2242,6 +2251,7 @@
             renderReportTrendChart(reportPeriod, start, end, inPeriodFiltered);
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined, cancelled);
             renderReportHeatmaps(inPeriodFiltered);
+            renderReportRateTrend(reportPeriod, start.getFullYear(), combined, cancelled);
             renderReportRetention(combined);
             renderNeverBookedList(combined);
         }
@@ -2442,6 +2452,91 @@
             subEl.innerText = trials.length > 0
                 ? `${converted.length} / ${trials.length} 位體驗後回購`
                 : `本期沒有滿 ${CONVERSION_MATURE_DAYS} 天的新客體驗`;
+        }
+
+        // 📉 比率趨勢：取消率與新客轉換率的月線
+        // 比率類指標逐日算分母太小、線會亂跳，所以只在「年」檢視顯示，用月為單位
+        function renderReportRateTrend(period, year, combined, cancelled) {
+            const box = document.getElementById('reportRateTrendBox');
+            if (period !== 'year') { box.style.display = 'none'; return; }
+            box.style.display = '';
+
+            const yearStr = String(year);
+            const inYear = (d) => !!d && d.slice(0, 4) === yearStr;
+            const monthIdx = (d) => parseInt(d.slice(5, 7), 10) - 1;
+
+            // 取消率：與卡片同一套算法（所有類型、含複檢）
+            const cancelCnt = new Array(12).fill(0);
+            const bookedCnt = new Array(12).fill(0);
+            cancelled.forEach(r => { if (inYear(r.date)) cancelCnt[monthIdx(r.date)]++; });
+            combined.forEach(r => { if (inYear(r.date)) bookedCnt[monthIdx(r.date)]++; });
+            // 該月完全沒有預約也沒有取消時給 null，讓折線斷開，不要畫成 0% 誤導
+            const cancelRate = cancelCnt.map((c, i) => {
+                const total = c + bookedCnt[i];
+                return total > 0 ? +(c / total * 100).toFixed(1) : null;
+            });
+
+            // 新客轉換率：與卡片同一套算法（依電話歸戶、複檢不算、未滿成熟期不列入分母）
+            const matureBefore = getFormattedDate(new Date(Date.now() - CONVERSION_MATURE_DAYS * 86400000));
+            const firstTrial = {}, generalDates = {};
+            combined.forEach(r => {
+                const phone = normReportPhone(r.phone);
+                if (!phone || !r.date) return;
+                if (r.type === '新客體驗') {
+                    if (!firstTrial[phone] || r.date < firstTrial[phone]) firstTrial[phone] = r.date;
+                } else if (r.type === '一般預約') {
+                    (generalDates[phone] = generalDates[phone] || []).push(r.date);
+                }
+            });
+            const trialCnt = new Array(12).fill(0);
+            const convCnt = new Array(12).fill(0);
+            Object.keys(firstTrial).forEach(phone => {
+                const d = firstTrial[phone];
+                if (!inYear(d) || d > matureBefore) return; // 未滿成熟期的月份留空，免得看起來像轉換率暴跌
+                const m = monthIdx(d);
+                trialCnt[m]++;
+                if ((generalDates[phone] || []).some(g => g > d)) convCnt[m]++;
+            });
+            const convRate = trialCnt.map((t, i) => t > 0 ? +(convCnt[i] / t * 100).toFixed(1) : null);
+
+            const labels = Array.from({ length: 12 }, (_, m) => `${m + 1}月`);
+            const datasets = [
+                { label: '新客轉換率', data: convRate, borderColor: '#4CAF50', backgroundColor: '#4CAF50',
+                  tension: 0.3, fill: false, pointRadius: 4, pointHoverRadius: 6, spanGaps: false },
+                { label: '取消率', data: cancelRate, borderColor: '#e57373', backgroundColor: '#e57373',
+                  tension: 0.3, fill: false, pointRadius: 4, pointHoverRadius: 6, spanGaps: false }
+            ];
+            // tooltip 補上原始人數，只看百分比不知道分母多小
+            const tooltipLabel = (ctx) => {
+                const i = ctx.dataIndex;
+                if (ctx.datasetIndex === 0) return `新客轉換率: ${ctx.parsed.y}%（${convCnt[i]} / ${trialCnt[i]} 位）`;
+                return `取消率: ${ctx.parsed.y}%（取消 ${cancelCnt[i]} / 共 ${cancelCnt[i] + bookedCnt[i]} 筆）`;
+            };
+
+            if (reportRateChart) {
+                reportRateChart.data.labels = labels;
+                reportRateChart.data.datasets = datasets;
+                reportRateChart.options.plugins.tooltip = { callbacks: { label: tooltipLabel } };
+                reportRateChart.update();
+                return;
+            }
+            const ctx = document.getElementById('reportRateTrendChart').getContext('2d');
+            reportRateChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { callback: (v) => v + '%' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: tooltipLabel } },
+                        datalabels: { display: false }
+                    }
+                }
+            });
         }
 
         // 依數值占最大值的比例，回傳溫度色階（藍＝最空，紅＝最壅擠）
