@@ -1,9 +1,10 @@
-const CACHE_NAME = "cf-shell-v4";
+const CACHE_NAME = "cf-shell-v5";
 const SHELL_FILES = [
   "./index.html",
   "./my-bookings.html",
   "./admin.html",
   "./config.js",
+  "./common.js",
   "./manifest.json",
   "./manifest-admin.json",
   "./icons/icon-192.png",

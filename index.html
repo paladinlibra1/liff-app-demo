@@ -19,6 +19,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="config.js"></script>
+    <script src="common.js"></script>
 
     <style>
         /* --- 全域設定 (粉色系) --- */
@@ -460,14 +461,6 @@
             }
         }
 
-        // 電話格式規則：0 開頭、最多 10 碼；手機與室內電話都適用，輸入的 -、空白會自動去掉
-        function normalizePhone(phone) {
-            return (phone || '').replace(/[\s\-()]/g, '');
-        }
-        function isValidPhone(phone) {
-            return /^0\d{1,9}$/.test(normalizePhone(phone));
-        }
-
         // 檢查防呆
         function checkFormFields() {
             let missingFields = [];
@@ -479,7 +472,7 @@
                 return false;
             }
             if (!isValidPhone(document.getElementById('phone').value)) {
-                alert("⚠️ 電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。");
+                alert("⚠️ " + PHONE_RULE_MSG);
                 return false;
             }
             return true;
@@ -491,7 +484,7 @@
             e.preventDefault();
             const phoneVal = document.getElementById('phone').value.trim();
             if (phoneVal && !isValidPhone(phoneVal)) {
-                alert("⚠️ 電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。");
+                alert("⚠️ " + PHONE_RULE_MSG);
                 return;
             }
             if (isSubmitting) return;

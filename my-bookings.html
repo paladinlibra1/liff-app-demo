@@ -18,6 +18,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
+<script src="common.js"></script>
 <style>
 :root {
   --primary-color: #d68095;
@@ -466,19 +467,6 @@ async function cancelBooking(id, date, time) {
     alert('取消失敗：' + err.message);
     btns.forEach(b => b.disabled = false);
   }
-}
-
-// 📊 寫入取消紀錄，供報表計算取消率用（不影響主流程，失敗不阻擋取消）
-function logCancelledBooking(bookingData, cancelledBy) {
-  db.collection("cancelledBookings").add({
-    date: bookingData.date || '',
-    time: bookingData.time || '',
-    type: bookingData.type || '',
-    name: bookingData.name || '',
-    phone: bookingData.phone || '',
-    cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-    cancelledBy: cancelledBy
-  }).catch(err => console.error("取消紀錄寫入失敗", err));
 }
 
 // ── 新增預約 ──

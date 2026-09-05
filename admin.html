@@ -22,6 +22,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="config.js"></script>
+    <script src="common.js"></script>
 
     <style>
         /* ================================================================= */
@@ -1168,18 +1169,6 @@
             }
         }
 
-        // 📊 寫入取消紀錄，供報表計算取消率用（不影響主流程，失敗不阻擋取消）
-        function logCancelledBooking(bookingData, cancelledBy) {
-            db.collection("cancelledBookings").add({
-                date: bookingData.date || '',
-                time: bookingData.time || '',
-                type: bookingData.type || '',
-                name: bookingData.name || '',
-                phone: bookingData.phone || '',
-                cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-                cancelledBy: cancelledBy
-            }).catch(err => console.error("取消紀錄寫入失敗", err));
-        }
 
         // =====================================================================
         // 🔍 重複會員比對：同一個人重複建檔會讓統計把他算成兩位，先找出可疑的組合讓店家自己判斷
@@ -1278,13 +1267,6 @@
         }
 
         // 電話格式規則：0 開頭、最多 10 碼；手機與室內電話都適用，輸入的 -、空白會自動去掉
-        function normalizePhone(phone) {
-            return (phone || '').replace(/[\s\-()]/g, '');
-        }
-        function isValidPhone(phone) {
-            return /^0\d{1,9}$/.test(normalizePhone(phone));
-        }
-        const PHONE_RULE_MSG = "電話格式不正確！\n\n請輸入 0 開頭的號碼，最多 10 碼。\n手機 0912345678、室內電話 0212345678 都可以。";
 
         let selectedGuardian = null;
 
