@@ -2198,6 +2198,33 @@
             }
         }
 
+        // 📊 報表排除規則：有身分的人（店家／助理／夥伴）與姓名含「卡」的紀錄，都不算真實客人
+        const normReportPhone = (p) => (p || '').replace(/\D/g, '');
+
+        // 從會員清單撈出有設身分的人，電話／lineId／姓名三組都收，讓沒填電話或沒 lineId 的紀錄也擋得掉
+        function buildReportStaffMatcher() {
+            const phones = new Set(), lineIds = new Set(), names = new Set();
+            allMembers.forEach(m => {
+                if (!m.role) return; // 沒設身分＝客人
+                const p = normReportPhone(m.phone);
+                if (p) phones.add(p);
+                if (m.lineId) lineIds.add(m.lineId);
+                const n = (m.name || '').trim();
+                if (n) names.add(n);
+            });
+            return { phones, lineIds, names };
+        }
+
+        function isExcludedFromReport(row, staff) {
+            const name = (row.name || '').trim();
+            if (name.includes('卡')) return true;
+            if (name && staff.names.has(name)) return true;
+            const p = normReportPhone(row.phone);
+            if (p && staff.phones.has(p)) return true;
+            if (row.lineId && staff.lineIds.has(row.lineId)) return true;
+            return false;
+        }
+
         function renderReport() {
             renderReportTypeFilterChips();
 
@@ -2211,11 +2238,14 @@
             const todayRange = getPeriodRange(reportPeriod, new Date());
             document.getElementById('reportNavNextBtn').disabled = (start.getTime() >= todayRange.start.getTime());
 
-            const combined = getAllBookingsCombined();
+            // 趨勢圖／概況卡片／熱度圖／回訪分析／名單全部共用這份已排除店家與「卡」紀錄的資料
+            const reportStaff = buildReportStaffMatcher();
+            const combined = getAllBookingsCombined().filter(r => !isExcludedFromReport(r, reportStaff));
+            const cancelled = allCancelledBookings.filter(r => !isExcludedFromReport(r, reportStaff));
             const inPeriodFiltered = combined.filter(r => reportTypeFilter.has(r.type) && r.date >= startStr && r.date <= endStr);
 
             renderReportTrendChart(reportPeriod, start, end, inPeriodFiltered);
-            renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined);
+            renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined, cancelled);
             renderReportHeatmaps(inPeriodFiltered);
             renderReportRetention(combined);
             renderNeverBookedList(combined);
@@ -2334,7 +2364,7 @@
             });
         }
 
-        function renderReportCards(period, start, end, startStr, endStr, inPeriodCounted, combined) {
+        function renderReportCards(period, start, end, startStr, endStr, inPeriodCounted, combined, cancelled) {
             const total = inPeriodCounted.length;
             document.getElementById('reportCardTotal').innerText = `${total} 人次`;
             document.getElementById('reportCardTotalSub').innerText = `已選類型：${ALL_REPORT_TYPES.filter(t => reportTypeFilter.has(t)).join('、')}`;
@@ -2378,7 +2408,7 @@
             }
 
             // 取消率（所有類型，含複檢）
-            const cancelledInPeriod = allCancelledBookings.filter(r => r.date >= startStr && r.date <= endStr).length;
+            const cancelledInPeriod = cancelled.filter(r => r.date >= startStr && r.date <= endStr).length;
             const bookedInPeriod = combined.filter(r => r.date >= startStr && r.date <= endStr).length;
             const totalScheduled = cancelledInPeriod + bookedInPeriod;
             const cancelRateEl = document.getElementById('reportCardCancelRate');
@@ -2523,6 +2553,7 @@
 
             const neverBooked = allMembers
                 .filter(m => !m.role) // 有設身分的是店家／助理／夥伴，不列入
+                .filter(m => !(m.name || '').includes('卡')) // 姓名含「卡」的不算真實客人
                 .filter(m => !bookedPhones.has(normPhone(m.phone)) && !bookedLineIds.has(m.lineId))
                 .filter(m => !(reportFollowUps[m.phone] && reportFollowUps[m.phone].excluded))
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh-Hant'));
