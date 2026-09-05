@@ -310,6 +310,7 @@
             <button class="tab-btn" id="tab-member" onclick="switchTab('member')">👥 會員清單</button>
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">⏰ 營業日設定</button>
             <button class="tab-btn" id="tab-report" onclick="switchTab('report')">📊 報表</button>
+            <button class="tab-btn" id="tab-retention" onclick="switchTab('retention')">💗 客戶回訪</button>
             <a class="tab-btn tab-link" href="inventory.html">📦 庫存盤點</a>
             <!-- <button class="tab-btn" id="tab-history" style="display: none;" onclick="switchTab('history')">📜 歷史預約</button> -->
         </div>
@@ -328,6 +329,7 @@
                 <option value="member">👥 會員清單</option>
                 <option value="operating">⏰ 營業日設定</option>
                 <option value="report">📊 報表</option>
+                <option value="retention">💗 客戶回訪</option>
                 <option value="inventory">📦 庫存盤點</option>
                 <!-- <option value="history" style="display: none;">📜 歷史預約</option> -->
             </select>
@@ -583,10 +585,13 @@
                 </div>
             </div>
 
+        </div>
+
+        <div id="section-retention" class="section">
             <div class="box-container" style="padding:20px; margin-top:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
                     <div style="font-weight:bold; color:var(--primary-dark);">👥 客戶回訪分析</div>
-                    <div style="font-size:12px; color:#aaa;">依電話號碼統計全部歷史紀錄，不受上方週/月/年篩選影響</div>
+                    <div style="font-size:12px; color:#aaa;">依電話號碼統計全部歷史紀錄，不分期間、不分類型</div>
                 </div>
                 <div class="report-retention-cards">
                     <div class="report-retention-card">
@@ -742,7 +747,7 @@
         window.onload = function() {
             // 1. 預設打開「預約管理」；若網址帶 ?tab=xxx（例如從庫存盤點頁跳回來）就打開該分頁
             const wantedTab = new URLSearchParams(location.search).get('tab');
-            const validTabs = ['booking', 'gcal', 'member', 'operating', 'report'];
+            const validTabs = ['booking', 'gcal', 'member', 'operating', 'report', 'retention'];
             switchTab(validTabs.includes(wantedTab) ? wantedTab : 'booking');
             
             // 2. 隱藏載入中的轉圈圈動畫
@@ -792,6 +797,10 @@
 
             if (tabName === 'report') {
                 ensureReportData();
+            }
+
+            if (tabName === 'retention') {
+                ensureRetentionData();
             }
 
             if (tabName === 'booking' && viewMode === 'calendar' && fcBookingCalendar) {
@@ -2153,7 +2162,8 @@
             return Object.values(map);
         }
 
-        async function ensureReportData() {
+        // 報表與客戶回訪兩個分頁喬的是同一批資料，只載一次，各自畫自己的畫面
+        async function ensureAnalyticsData() {
             const tasks = [];
             if (!isBookingLoaded) tasks.push(loadBookingData('first_load'));
             if (allHistoryBookings.length === 0) tasks.push(loadHistoryData(false));
@@ -2163,9 +2173,26 @@
             if (!isFollowUpCooldownLoaded) tasks.push(loadFollowUpCooldown());
             if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
             if (tasks.length) await Promise.all(tasks);
-            renderDormantTemplateInput(); // 只在資料剛載入時填入，避免每次換期間/勾選類型都蓋掉使用者正在編輯的內容
-            renderFollowUpCooldownInput();
+        }
+
+        async function ensureReportData() {
+            await ensureAnalyticsData();
             renderReport();
+        }
+
+        async function ensureRetentionData() {
+            await ensureAnalyticsData();
+            renderDormantTemplateInput(); // 只在資料剛載入時填入，避免重畫時蓋掉使用者正在編輯的內容
+            renderFollowUpCooldownInput();
+            renderRetention();
+        }
+
+        // 客戶回訪分析：看全部歷史，不受報表那邊的期間與類型篩選影響
+        function renderRetention() {
+            const staff = buildReportStaffMatcher();
+            const combined = getAllBookingsCombined().filter(r => !isExcludedFromReport(r, staff));
+            renderReportRetention(combined);
+            renderNeverBookedList(combined);
         }
 
         function switchReportPeriod(period) {
@@ -2262,8 +2289,6 @@
             renderReportCards(reportPeriod, start, end, startStr, endStr, inPeriodFiltered, combined, cancelled);
             renderReportHeatmaps(inPeriodFiltered);
             renderReportRateTrend(combined, cancelled);
-            renderReportRetention(combined);
-            renderNeverBookedList(combined);
         }
 
         let reportTrendMode = 'count'; // 'count' | 'percent'
@@ -2786,7 +2811,7 @@
             }
             await db.collection("reportSettings").doc("followUpSettings").set({ cooldownDays: days, updatedAt: new Date() }, { merge: true });
             followUpCooldownDays = days;
-            renderReport();
+            renderRetention();
             alert(days === 0 ? '已儲存：發送後不再隱藏客人' : `已儲存：發送後 ${days} 天內不顯示`);
         }
 
@@ -2850,7 +2875,7 @@
                 await fetch(GAS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(requestBody) });
                 await db.collection("reportFollowUps").doc(phone).set({ lastLineSentAt: new Date() }, { merge: true });
                 reportFollowUps[phone] = Object.assign({}, reportFollowUps[phone], { lastLineSentAt: new Date() });
-                renderReport();
+                renderRetention();
                 alert('已送出傳送要求');
             } catch (err) {
                 alert('傳送失敗：' + err.message);
@@ -2865,7 +2890,7 @@
             if (!confirm('確定要將這位客人從沉睡客名單排除嗎？排除後這支電話不會再出現在名單中。')) return;
             await db.collection("reportFollowUps").doc(phone).set({ excluded: true, updatedAt: new Date() }, { merge: true });
             reportFollowUps[phone] = Object.assign({}, reportFollowUps[phone], { excluded: true });
-            renderReport();
+            renderRetention();
         }
 
         // 📡 8. 跨分頁即時同步雷達 (監聽前端預約完成訊號)
