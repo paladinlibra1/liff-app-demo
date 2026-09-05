@@ -571,12 +571,12 @@
             </div>
 
             <div class="box-container" style="padding:20px; margin-top:20px; overflow-x:auto;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，依上方已選類型）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:14px;">🔥 時段熱度（本期，以 1 小時為單位，依上方已選類型）</div>
                 <div id="reportTimeHeatmap"></div>
             </div>
 
             <div class="box-container" id="reportRateTrendBox" style="padding:20px; margin-top:20px;">
-                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">📉 比率趨勢（近 12 個月）</div>
+                <div style="font-weight:bold; color:var(--primary-dark); margin-bottom:4px;">📈 營運趨勢（近 12 個月）</div>
                 <div style="font-size:12px; color:#aaa; margin-bottom:14px;">固定以月為單位看最近 12 個月，不受上方週／月／年與類型篩選影響</div>
                 <div style="position:relative; height:320px;">
                     <canvas id="reportRateTrendChart"></canvas>
@@ -2464,7 +2464,7 @@
                 : `本期沒有滿 ${CONVERSION_MATURE_DAYS} 天的新客體驗`;
         }
 
-        // 📉 比率趨勢：取消率與新客轉換率的月線
+        // 📈 營運趨勢：取消率與新客轉換率的月線
         // 比率類指標逐日算分母太小、線會亂跳，所以固定用月為單位，且不跟著上方週／月／年切換
         const RATE_TREND_MONTHS = 12;
         function renderReportRateTrend(combined, cancelled) {
@@ -2574,31 +2574,42 @@
         function renderReportHeatmaps(rows) {
             // 店裡沒有固定營業週日（config.js 的營業時間只有 weekday/saturday），不顯示週日欄位
             const dayNames = ['一','二','三','四','五','六'];
-            const slotMap = {}; // time -> [週一(0)~週六(5) 各自次數]
-            const timeSet = new Set();
+            const slotMap = {}; // 'HH' -> [週一(0)~週六(5) 各自次數]
+            const hourSet = new Set();
+            // 預約時段是每半小時一格，全部列出來太長，所以以小時分桶：12:00 與 12:30 都算 12 點
+            const hourKey = (t) => String(parseInt(t, 10)).padStart(2, '0');
 
             rows.forEach(r => {
                 if (!r.date || !r.time) return;
                 const jsDay = new Date(r.date + 'T00:00:00').getDay(); // 0=日 ... 6=六
                 if (jsDay === 0) return; // 偶發的週日資料忽略不計入
                 const wd = jsDay - 1; // 轉成 0=一 ... 5=六
-                timeSet.add(r.time);
-                if (!slotMap[r.time]) slotMap[r.time] = [0,0,0,0,0,0];
-                slotMap[r.time][wd]++;
+                const h = hourKey(r.time);
+                if (!/^\d\d$/.test(h)) return; // 時間格式怪的舊資料略過
+                hourSet.add(h);
+                if (!slotMap[h]) slotMap[h] = [0,0,0,0,0,0];
+                slotMap[h][wd]++;
             });
 
             // 🔥 時段熱度
-            const times = Array.from(timeSet).sort();
+            const present = Array.from(hourSet).sort();
             const heatEl = document.getElementById('reportTimeHeatmap');
-            if (times.length === 0) {
+            if (present.length === 0) {
                 heatEl.innerHTML = '<p style="color:#aaa; text-align:center; padding:20px 0;">本期尚無資料</p>';
                 return;
+            }
+            // 中間完全沒預約的小時也要留一列，不然看不出哪幾個時段是空的
+            const times = [];
+            for (let h = parseInt(present[0], 10); h <= parseInt(present[present.length - 1], 10); h++) {
+                const key = String(h).padStart(2, '0');
+                if (!slotMap[key]) slotMap[key] = [0,0,0,0,0,0];
+                times.push(key);
             }
             const maxSlot = Math.max(1, ...times.map(t => Math.max(...slotMap[t])));
             let html = '<table class="report-heatmap-table"><thead><tr><th></th>' +
                 dayNames.map(d => `<th>週${d}</th>`).join('') + '</tr></thead><tbody>';
             times.forEach(t => {
-                html += `<tr><td class="heat-time-label">${t}</td>`;
+                html += `<tr><td class="heat-time-label">${parseInt(t, 10)} 點</td>`;
                 slotMap[t].forEach(c => {
                     html += `<td><div class="heat-cell" style="background-color:${heatColor(c, maxSlot)}; color:${heatTextColor(c, maxSlot)};">${c > 0 ? c : ''}</div></td>`;
                 });
