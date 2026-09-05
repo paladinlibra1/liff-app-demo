@@ -1333,6 +1333,19 @@
             document.getElementById('newMemberGuardianSelected').style.display = 'none';
         }
 
+        // 建檔時的生日合理範圍：5 歲以下與 95 歲以上一律當成填錯（最常見是民國年打成西元年）
+        const MEMBER_AGE_MIN = 5, MEMBER_AGE_MAX = 95;
+        function checkBirthdayOrAlert(birthday) {
+            if (!birthday) return true; // 生日非必填，沒填就不檢查
+            const age = ageFromBirthday(birthday);
+            if (age === null) { alert("生日格式不正確，請重新選擇日期。"); return false; }
+            if (age <= MEMBER_AGE_MIN || age >= MEMBER_AGE_MAX) {
+                alert(`生日不合理！\n\n${birthday} 換算是 ${age} 歲，年齡需介於 ${MEMBER_AGE_MIN + 1} 到 ${MEMBER_AGE_MAX - 1} 歲之間。\n\n請確認是不是把民國年打成西元年了。`);
+                return false;
+            }
+            return true;
+        }
+
         async function saveNewMember() {
             const name = document.getElementById('newMemberName').value.trim();
             const phone = normalizePhone(document.getElementById('newMemberPhone').value);
@@ -1343,6 +1356,7 @@
 
             if (!name || !phone) { alert("姓名與電話為必填項！"); return; }
             if (!isValidPhone(phone)) { alert(PHONE_RULE_MSG); return; }
+            if (!checkBirthdayOrAlert(birthday)) return;
 
             try {
                 document.getElementById('loading').style.display = 'block';
