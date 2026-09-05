@@ -167,6 +167,8 @@
         .dormant-template-label { font-size: 13px; color: #888; font-weight: 600; margin-bottom: 8px; }
         .dormant-template-label code { background: #f5f5f5; padding: 1px 5px; border-radius: 4px; }
         .dormant-template-box textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; font-family: inherit; resize: vertical; min-height: 60px; margin-bottom: 8px; }
+        .dormant-cooldown-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: #888; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color); }
+        .dormant-cooldown-row input { width: 72px; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 8px; font-size: 13.5px; font-family: inherit; text-align: center; }
 
         /* 漢堡選單樣式 */
         .tab-select-container { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 25px; min-height: 46px; width: 100%; }
@@ -614,6 +616,12 @@
                 </div>
 
                 <div class="dormant-template-box">
+                    <div class="dormant-cooldown-row">
+                        <span style="font-weight:600;">🔕 發送後冷卻期</span>
+                        <input type="number" id="followUpCooldownInput" min="0" max="365" step="1">
+                        <span>天內不再顯示在名單上（設 0 就不隱藏）</span>
+                        <button class="btn btn-sm btn-primary" onclick="runOnce(this,'儲存中…',()=>saveFollowUpCooldown())">💾 儲存</button>
+                    </div>
                     <div class="dormant-template-label">💬 LINE 訊息範本（可用 <code>{{name}}</code> 代表客人姓名，套用到全部沉睡客）</div>
                     <textarea id="dormantMsgTemplateInput"></textarea>
                     <button class="btn btn-sm btn-primary" onclick="runOnce(this,'儲存中…',()=>saveDormantMessageTemplate())">💾 儲存範本</button>
@@ -2152,9 +2160,11 @@
             if (!isCancelDataLoaded) tasks.push(loadCancelledData());
             if (!isFollowUpsLoaded) tasks.push(loadReportFollowUps());
             if (!isDormantTemplateLoaded) tasks.push(loadDormantMessageTemplate());
+            if (!isFollowUpCooldownLoaded) tasks.push(loadFollowUpCooldown());
             if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
             if (tasks.length) await Promise.all(tasks);
             renderDormantTemplateInput(); // 只在資料剛載入時填入，避免每次換期間/勾選類型都蓋掉使用者正在編輯的內容
+            renderFollowUpCooldownInput();
             renderReport();
         }
 
@@ -2635,7 +2645,7 @@
             updateReportFollowUpHeader();
             const listEl = document.getElementById('reportDormantList');
             listEl.innerHTML = dormant.length === 0
-                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.dormant > 0 ? `沉睡客都在 ${FOLLOWUP_COOLDOWN_DAYS} 天冷卻期內，暫時不顯示` : '目前沒有沉睡客'}</p>`
+                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.dormant > 0 ? `沉睡客都在 ${followUpCooldownDays} 天冷卻期內，暫時不顯示` : '目前沒有沉睡客'}</p>`
                 : dormant.map(renderDormantCard).join('');
         }
 
@@ -2660,7 +2670,7 @@
             const hidden = isDormant ? reportFollowUpCooldown.dormant : reportFollowUpCooldown.never;
             // 被冷卻期藏起來的人也要讓店家知道有幾位，不然會以為名單莫名其妙變少
             const hiddenNote = hidden > 0
-                ? `　·　🔕 ${hidden} 位 ${FOLLOWUP_COOLDOWN_DAYS} 天內已發送，暫時隱藏`
+                ? `　·　🔕 ${hidden} 位 ${followUpCooldownDays} 天內已發送，暫時隱藏`
                 : '';
             titleEl.innerHTML = (isDormant ? '😴 沉睡客名單（最近一次到店超過 90 天）' : '🆕 已加會員但從未預約（只列身分為客人）')
                 + `<span style="color:#999; font-weight:normal; font-size:13px;"> · 共 ${isDormant ? reportFollowUpCounts.dormant : reportFollowUpCounts.never} 位${hiddenNote}</span>`;
@@ -2690,7 +2700,7 @@
             updateReportFollowUpHeader();
             const listEl = document.getElementById('reportNeverBookedList');
             listEl.innerHTML = neverBooked.length === 0
-                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.never > 0 ? `名單上的人都在 ${FOLLOWUP_COOLDOWN_DAYS} 天冷卻期內，暫時不顯示` : '每位會員都預約過了'}</p>`
+                ? `<p style="text-align:center; color:#aaa; padding:20px 0;">${reportFollowUpCooldown.never > 0 ? `名單上的人都在 ${followUpCooldownDays} 天冷卻期內，暫時不顯示` : '每位會員都預約過了'}</p>`
                 : neverBooked.map(renderNeverBookedCard).join('');
         }
 
@@ -2735,12 +2745,46 @@
         }
 
         // 發過 LINE 之後的冷卻期：這段期間內不再把這位客人列在名單上，避免一直重複打擾同一個人
-        const FOLLOWUP_COOLDOWN_DAYS = 30;
+        // 天數存在 Firestore（reportSettings/followUpSettings.cooldownDays），可在報表畫面上調整
+        let followUpCooldownDays = 30;
+        let isFollowUpCooldownLoaded = false;
+
+        async function loadFollowUpCooldown() {
+            try {
+                const doc = await db.collection("reportSettings").doc("followUpSettings").get();
+                const val = doc.exists ? doc.data().cooldownDays : null;
+                if (Number.isFinite(val) && val >= 0) followUpCooldownDays = val;
+                isFollowUpCooldownLoaded = true;
+            } catch (err) {
+                console.error("讀取冷卻期設定失敗", err);
+            }
+        }
+
+        function renderFollowUpCooldownInput() {
+            const el = document.getElementById('followUpCooldownInput');
+            if (el) el.value = followUpCooldownDays;
+        }
+
+        async function saveFollowUpCooldown() {
+            const raw = document.getElementById('followUpCooldownInput').value;
+            const days = parseInt(raw, 10);
+            if (!Number.isFinite(days) || days < 0 || days > 365) {
+                alert('請輸入 0 到 365 之間的天數。\n設 0 表示發送後不隱藏。');
+                renderFollowUpCooldownInput(); // 把輸入框轉回目前生效的值，避免留著無效數字
+                return;
+            }
+            await db.collection("reportSettings").doc("followUpSettings").set({ cooldownDays: days, updatedAt: new Date() }, { merge: true });
+            followUpCooldownDays = days;
+            renderReport();
+            alert(days === 0 ? '已儲存：發送後不再隱藏客人' : `已儲存：發送後 ${days} 天內不顯示`);
+        }
+
         function isInFollowUpCooldown(phone) {
+            if (followUpCooldownDays <= 0) return false;
             const rec = reportFollowUps[phone];
             if (!rec || !rec.lastLineSentAt) return false;
             const sent = rec.lastLineSentAt.toDate ? rec.lastLineSentAt.toDate() : new Date(rec.lastLineSentAt);
-            return (Date.now() - sent.getTime()) < FOLLOWUP_COOLDOWN_DAYS * 86400000;
+            return (Date.now() - sent.getTime()) < followUpCooldownDays * 86400000;
         }
 
         // 把 Firestore Timestamp 轉成「X天前」文字，用來提醒是否已發送過沉睡客訊息
