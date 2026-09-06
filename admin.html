@@ -2881,16 +2881,31 @@
             heatEl.innerHTML = html;
         }
 
-        // 👥 客戶回訪分析：用電話號碼辨識同一位客人，統計「全部歷史」（所有類型皆計入到店次數）
+        // 👥 客戶回訪分析：辨識同一位客人，統計「全部歷史」（所有類型皆計入到店次數）
+        // 認人以 LINE 帳號優先、電話次之：電話是人工輸入的，打錯一個字就會把同一位客人
+        // 拆成兩個，其中一半看起來很久沒來就會誤入沉睡客名單。
         function renderReportRetention(combined) {
+            // 先用「同時有電話與 LINE」的預約，建立 電話 → LINE 帳號 的對照，
+            // 這樣沒帶 LINE 的代客預約也能併回同一個人
+            const phoneToLine = {};
+            combined.forEach(r => {
+                const p = normReportPhone(r.phone);
+                if (p && r.lineId) phoneToLine[p] = r.lineId;
+            });
             const byPhone = {};
             combined.forEach(r => {
-                if (!r.phone) return;
-                if (!byPhone[r.phone]) byPhone[r.phone] = { name: r.name || '', count: 0, lastDate: '', lineId: '' };
-                byPhone[r.phone].count++;
-                if (r.name) byPhone[r.phone].name = r.name; // 用最新一筆的姓名顯示
-                if (r.date && r.date > byPhone[r.phone].lastDate) byPhone[r.phone].lastDate = r.date;
-                if (r.lineId) byPhone[r.phone].lineId = r.lineId; // 該預約當時登入的 LINE 使用者 id，有才能發 LINE 訊息
+                const p = normReportPhone(r.phone);
+                if (!p && !r.lineId) return;
+                const key = r.lineId || phoneToLine[p] || p;
+                if (!byPhone[key]) byPhone[key] = { name: r.name || '', count: 0, lastDate: '', lineId: '', phone: r.phone || '' };
+                const g = byPhone[key];
+                g.count++;
+                if (r.date && r.date > g.lastDate) {
+                    g.lastDate = r.date;
+                    if (r.name) g.name = r.name;        // 以最近一次預約填的姓名為準
+                    if (r.phone) g.phone = r.phone;     // 電話也用最近一次的，排除／發送紀錄才對得上
+                }
+                if (r.lineId) g.lineId = r.lineId;
             });
             const memberByPhone = {}, memberByLineId = {};
             allMembers.forEach(m => {
@@ -2899,10 +2914,10 @@
                 if (m.lineId) memberByLineId[m.lineId] = m;
             });
             const customers = Object.keys(byPhone)
-                .map(phone => {
-                    const c = { phone, ...byPhone[phone] };
+                .map(key => {
+                    const c = { ...byPhone[key] };
                     // 預約單存的是「當時填的」姓名；會員清單事後更正過名字兩邊就會對不上，以會員資料為準
-                    const m = memberByPhone[normReportPhone(phone)] || memberByLineId[c.lineId];
+                    const m = memberByPhone[normReportPhone(c.phone)] || memberByLineId[c.lineId];
                     if (m && m.name) c.name = m.name;
                     return c;
                 })
