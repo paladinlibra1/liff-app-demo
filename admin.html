@@ -2305,17 +2305,41 @@
             }, 100);
             hint.textContent = '📊 資料載入中… 0.0 秒';
             hint.style.display = 'block';
+            // 用 allSettled 而不是 all：一批失敗不該讓整個 await 拋錯，
+            // 否則 renderReport() 根本不會被呼叫，畫面停在初始的 0 而且沒有任何錯誤訊息
+            const names = ['預約', '歷史預約', '取消紀錄', '回訪狀態', '訊息範本', '冷卻設定', '會員清單'];
+            const labels = [];
+            if (!isBookingLoaded) labels.push(names[0]);
+            if (allHistoryBookings.length === 0) labels.push(names[1]);
+            if (!isCancelDataLoaded) labels.push(names[2]);
+            if (!isFollowUpsLoaded) labels.push(names[3]);
+            if (!isDormantTemplateLoaded) labels.push(names[4]);
+            if (!isFollowUpCooldownLoaded) labels.push(names[5]);
+            if (allMembers.length === 0) labels.push(names[6]);
+            let failed = [];
             try {
-                await Promise.all(tasks.map((t, i) => {
+                const results = await Promise.allSettled(tasks.map((t, i) => {
                     const s0 = performance.now();
-                    return t.then(v => { console.log(`[報表載入] 第 ${i + 1} 批 ${Math.round(performance.now() - s0)} ms`); return v; });
+                    return t.then(v => { console.log(`[報表載入] ${labels[i] || i} ${Math.round(performance.now() - s0)} ms`); return v; });
                 }));
+                results.forEach((r, i) => {
+                    if (r.status === 'rejected') {
+                        failed.push(labels[i] || i);
+                        console.error(`[報表載入] ${labels[i] || i} 失敗`, r.reason);
+                    }
+                });
             } finally {
                 clearInterval(timer);
                 const secs = ((performance.now() - t0) / 1000).toFixed(1);
                 console.log(`[報表載入] 全部完成 ${secs} 秒`);
-                hint.textContent = `✅ 載入完成 ${secs} 秒`;
-                setTimeout(() => { hint.style.display = 'none'; }, 2500);
+                if (failed.length) {
+                    hint.style.background = '#c62828';
+                    hint.textContent = `⚠️ ${failed.join('、')} 載入失敗（${secs} 秒），數字可能不完整`;
+                    setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, 8000);
+                } else {
+                    hint.textContent = `✅ 載入完成 ${secs} 秒`;
+                    setTimeout(() => { hint.style.display = 'none'; }, 2500);
+                }
             }
         }
 
