@@ -141,8 +141,15 @@ function loginWithGoogle() {
     document.getElementById('authError').textContent = "";
     _auth.signInWithPopup(provider)
         .catch(err => {
+            // 不要退回 signInWithRedirect：本站在 github.io、Firebase 登入處理頁在
+            // firebaseapp.com，跨網域的 sessionStorage 會被 Safari 16.1+ 與
+            // LINE/IG 這類 App 內建瀏覽器切斷，跳轉回來一定出現
+            // 「missing initial state」。而會擋彈窗的正好就是這些瀏覽器。
             if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
-                return _auth.signInWithRedirect(provider);   // 手機擋彈窗時改用整頁跳轉
+                document.getElementById('authError').innerHTML =
+                    '這個瀏覽器不支援 Google 登入。<br>請改用下方的電子郵件與密碼，' +
+                    '或用 Safari／Chrome 開啟本頁。';
+                return;
             }
             if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
                 document.getElementById('authError').textContent = _authErrText(err);
