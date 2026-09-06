@@ -7,7 +7,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="config.js"></script>
+    <script src="common.js"></script>
 
     <style>
         :root {
@@ -226,7 +228,7 @@
         }
     </style>
 </head>
-<body>
+<body class="auth-locked">
 
 <div class="container">
     <div class="top-bar">
@@ -259,6 +261,7 @@
             <div class="current-tab-title">📦 庫存盤點</div>
         </div>
         <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
+        <button class="btn btn-outline" onclick="logout()" title="登出" aria-label="登出">🚪</button>
     </div>
 
     <div class="inv-alert-banner" id="invAlertBanner" style="display:none;">
@@ -347,6 +350,8 @@
 <script>
     firebase.initializeApp(STORE_CONFIG.firebase);
     const db = firebase.firestore();
+
+    initAuthGate();   // 登入閘門在 common.js
     const itemsCol = db.collection("inventoryItems");
     const batchesCol = db.collection("inventoryBatches");
     const stocktakesCol = db.collection("inventoryStocktakes");
