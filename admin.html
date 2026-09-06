@@ -14,9 +14,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CF 後台">
 
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
@@ -792,6 +792,8 @@
         let fcHistoryCalendar = null;
 
         window.onload = function() {
+            // Chart.js 改用 defer 載入，到這裡才保證存在
+            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
             // 1. 預設打開「預約管理」；若網址帶 ?tab=xxx（例如從庫存盤點頁跳回來）就打開該分頁
             const wantedTab = new URLSearchParams(location.search).get('tab');
             const validTabs = ['booking', 'gcal', 'member', 'operating', 'report', 'retention'];
@@ -2219,7 +2221,6 @@
         let reportChart = null;
         let reportRateChart = null;
         let reportAgeChart = null;
-        if (typeof ChartDataLabels !== 'undefined') Chart.register(ChartDataLabels);
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
         let allCancelledBookings = [];
