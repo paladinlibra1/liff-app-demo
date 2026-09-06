@@ -225,6 +225,7 @@
             <div class="form-group">
                 <label>聯絡電話</label>
                 <input type="tel" id="phone" required maxlength="12" placeholder="0912345678 或 0212345678">
+                <div id="phoneLockedHint" style="display:none; margin-top:6px; font-size:13px; color:#999;">🔒 這是您登記的電話，如有錯誤請告知店家更正</div>
             </div>
 
             <div class="form-group" id="birthday-group" style="display: none;">
@@ -376,6 +377,13 @@
                             let memberData = memberDoc.data();
                             if (!prefillName) document.getElementById('name').value = memberData.name;
                             if (!prefillPhone) document.getElementById('phone').value = memberData.phone;
+                            if (memberData.phone && document.getElementById('role').value !== 'admin') {
+                                const phoneEl = document.getElementById('phone');
+                                phoneEl.readOnly = true;
+                                phoneEl.style.background = '#f2f2f2';
+                                phoneEl.style.color = '#777';
+                                document.getElementById('phoneLockedHint').style.display = 'block';
+                            }
                             document.getElementById('birthday-group').style.display = 'none';
                             document.getElementById('birthday').required = false;
                         }
