@@ -895,6 +895,7 @@
 
             try {
                 const snapshot = await db.collection("bookings").get();
+                if (snapshot.metadata.fromCache && snapshot.empty) throw new Error("unavailable：連不上伺服器，拿到的是空的快取");
                 let fetchedBookings = [];
                 
                 // 🧹 封存邏輯已移至 GAS 定時觸發 (archiveOldBookings)，此處不再執行
@@ -1271,6 +1272,7 @@
             try {
                 // ⚡ 極速抓取所有會員
                 const snapshot = await db.collection("members").get();
+                if (snapshot.metadata.fromCache && snapshot.empty) throw new Error("unavailable：連不上伺服器，拿到的是空的快取");
                 let fetchedMembers = [];
                 snapshot.forEach(doc => {
                     let data = doc.data();
@@ -1979,6 +1981,7 @@
 
             try {
                 const snapshot = await db.collection("historicalBookings").get();
+                if (snapshot.metadata.fromCache && snapshot.empty) throw new Error("unavailable：連不上伺服器，拿到的是空的快取");
                 let fetchedHistory = [];
                 snapshot.forEach(doc => {
                     let data = doc.data();
@@ -2239,6 +2242,7 @@
         async function loadReportFollowUps() {
             try {
                 const snapshot = await db.collection("reportFollowUps").get();
+                if (snapshot.metadata.fromCache && snapshot.empty) throw new Error("unavailable：連不上伺服器，拿到的是空的快取");
                 reportFollowUps = {};
                 snapshot.forEach(doc => { reportFollowUps[doc.id] = doc.data(); });
                 isFollowUpsLoaded = true;
@@ -2275,6 +2279,7 @@
         async function loadCancelledData() {
             try {
                 const snapshot = await db.collection("cancelledBookings").get();
+                if (snapshot.metadata.fromCache && snapshot.empty) throw new Error("unavailable：連不上伺服器，拿到的是空的快取");
                 allCancelledBookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 isCancelDataLoaded = true;
             } catch (err) {
@@ -2311,7 +2316,8 @@
                 if (allMembers.length === 0) add('會員清單', loadMemberData(false));
                 return t;
             };
-            if (!pending().length) return;
+            const tasks = pending();   // 只能呼叫一次：pending() 會順便把查詢發出去
+            if (!tasks.length) return;
 
             const hint = document.getElementById('analyticsLoading');
             const t0 = performance.now();
@@ -2321,7 +2327,7 @@
             hint.style.display = 'block';
             try {
                 analyticsLoadErrors = [];
-                await Promise.all(pending());
+                await Promise.all(tasks);
                 if (analyticsLoadErrors.length) {
                     console.warn('[報表載入] 失敗，自動重試：', analyticsLoadErrors.join('、'));
                     hint.textContent = `📊 連線不穩，重試中… ${elapsed()} 秒`;
