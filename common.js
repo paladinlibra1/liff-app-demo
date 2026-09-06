@@ -46,6 +46,7 @@ const ADMIN_EMAILS = [
     "paladinlibra1022@gmail.com",   // 備用，主帳號登不進去時才用
     "colorfashion180@gmail.com",
     "kitty34342006@gmail.com",
+    "kitt34342006@gmail.com",     // 注意：與上一行只差一個 y，是不同的帳號
     "lunhs7787@gmail.com",
     "sidney850318@gmail.com",
     "uu6566460@gmail.com",
