@@ -6,6 +6,10 @@
     <title>Colorfashion 庫存盤點</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -243,6 +247,13 @@
 </head>
 <body class="auth-locked">
 
+<script>
+    // 提早啟動：登入檢查要連 Google 換 token，越早發出這個請求，
+    // 網路等待就越能跟下面 HTML 的解析重疊，手機上少等一大截
+    firebase.initializeApp(STORE_CONFIG.firebase);
+    initAuthGate();
+</script>
+
 <div class="container">
     <div class="top-bar">
         <div class="tabs page-tabs pc-tabs">
@@ -364,7 +375,6 @@
 <div class="toast" id="toast"></div>
 
 <script>
-    firebase.initializeApp(STORE_CONFIG.firebase);
     const db = firebase.firestore();
 
     initAuthGate();   // 登入閘門在 common.js
