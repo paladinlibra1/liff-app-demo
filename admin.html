@@ -2899,7 +2899,13 @@
                 if (m.lineId) memberByLineId[m.lineId] = m;
             });
             const customers = Object.keys(byPhone)
-                .map(phone => ({ phone, ...byPhone[phone] }))
+                .map(phone => {
+                    const c = { phone, ...byPhone[phone] };
+                    // 預約單存的是「當時填的」姓名；會員清單事後更正過名字兩邊就會對不上，以會員資料為準
+                    const m = memberByPhone[normReportPhone(phone)] || memberByLineId[c.lineId];
+                    if (m && m.name) c.name = m.name;
+                    return c;
+                })
                 .filter(c => !isExcludedCustomer(memberByPhone[normReportPhone(c.phone)] || memberByLineId[c.lineId], c.name));
 
             let newCount = 0, returningCount = 0, frequentCount = 0;
