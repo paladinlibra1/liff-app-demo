@@ -94,3 +94,47 @@ function rebuildCalendarFromFirestore() {
 
   Logger.log("🏁 補件完畢：新增 " + created + " 筆，略過（已存在）" + skipped + " 筆");
 }
+
+// =========================================================
+// 唯讀比對：Firestore 的未來預約 vs Google 日曆
+//   只印報告，不新增也不刪除。手動從垃圾桶還原後用這支驗收。
+// =========================================================
+function checkCalendarVsFirestore() {
+  var PROJECT_ID = "colorfashion-booking";
+  var API_KEY = "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU";
+  var calendar = CalendarApp.getCalendarById(CALENDAR_ID);
+  var todayStr = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy-MM-dd");
+
+  var url = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID +
+            "/databases/(default)/documents/bookings?pageSize=1000&key=" + API_KEY;
+  var result = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions: true }).getContentText());
+  if (!result.documents) { Logger.log("bookings 沒有資料"); return; }
+
+  var rows = [];
+  for (var i = 0; i < result.documents.length; i++) {
+    var f = result.documents[i].fields || {};
+    var g = function (k) { return (f[k] && f[k].stringValue) ? f[k].stringValue : ""; };
+    if (!g("date") || g("date") < todayStr) continue;
+    if (g("status") && g("status") !== "active") continue;
+    rows.push({ id: result.documents[i].name.split("/").pop(), date: g("date"),
+                time: g("time"), name: g("name") + (g("name2") ? " & " + g("name2") : "") });
+  }
+  rows.sort(function (a, b) { return (a.date + a.time) < (b.date + b.time) ? -1 : 1; });
+
+  var missing = 0, dup = 0, wrongTime = 0;
+  for (var k = 0; k < rows.length; k++) {
+    var r = rows[k];
+    var dayStart = new Date(r.date + "T00:00:00");
+    var hits = calendar.getEvents(dayStart, new Date(dayStart.getTime() + 86400000))
+      .filter(function (ev) { return (ev.getDescription() || "").indexOf("系統ID：" + r.id) !== -1; });
+
+    if (hits.length === 0) { Logger.log("❌ 缺少   " + r.date + " " + r.time + " " + r.name); missing++; }
+    else if (hits.length > 1) { Logger.log("⚠️ 重複x" + hits.length + " " + r.date + " " + r.time + " " + r.name); dup++; }
+    else {
+      var t = Utilities.formatDate(hits[0].getStartTime(), "Asia/Taipei", "HH:mm");
+      if (t !== r.time) { Logger.log("⏰ 時間不符 " + r.date + " 日曆" + t + " / 系統" + r.time + " " + r.name); wrongTime++; }
+      else { Logger.log("✅ 正常   " + r.date + " " + r.time + " " + r.name); }
+    }
+  }
+  Logger.log("🏁 共 " + rows.length + " 筆：缺少 " + missing + "，重複 " + dup + "，時間不符 " + wrongTime);
+}
