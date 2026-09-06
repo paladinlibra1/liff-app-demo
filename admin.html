@@ -937,7 +937,7 @@
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
             } catch (err) { 
                 console.error("更新預約資料失敗", err);
-                analyticsLoadErrors.push("預約"); 
+                analyticsLoadErrors.push("預約:" + ((err && (err.code || err.message)) || "?")); 
                 if (isManual) alert("網路不穩，請稍後再試！");
             } finally {
                 document.getElementById('loading').style.display = 'none';
@@ -1286,7 +1286,7 @@
                 filterMemberTable(); 
             } catch (err) { 
                 console.error("更新會員資料失敗", err);
-                analyticsLoadErrors.push("會員清單"); 
+                analyticsLoadErrors.push("會員清單:" + ((err && (err.code || err.message)) || "?")); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -1995,7 +1995,7 @@
                 
             } catch (err) { 
                 console.error("讀取歷史紀錄失敗", err);
-                analyticsLoadErrors.push("歷史預約"); 
+                analyticsLoadErrors.push("歷史預約:" + ((err && (err.code || err.message)) || "?")); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -2244,7 +2244,7 @@
                 isFollowUpsLoaded = true;
             } catch (err) {
                 console.error("讀取客戶回撥紀錄失敗", err);
-                analyticsLoadErrors.push("回訪狀態");
+                analyticsLoadErrors.push("回訪狀態:" + ((err && (err.code || err.message)) || "?"));
             }
         }
 
@@ -2279,7 +2279,7 @@
                 isCancelDataLoaded = true;
             } catch (err) {
                 console.error("讀取取消紀錄失敗", err);
-                analyticsLoadErrors.push("取消紀錄");
+                analyticsLoadErrors.push("取消紀錄:" + ((err && (err.code || err.message)) || "?"));
             }
         }
 
@@ -3129,7 +3129,7 @@
                 isFollowUpCooldownLoaded = true;
             } catch (err) {
                 console.error("讀取冷卻期設定失敗", err);
-                analyticsLoadErrors.push("冷卻設定");
+                analyticsLoadErrors.push("冷卻設定:" + ((err && (err.code || err.message)) || "?"));
             }
         }
 
@@ -3179,7 +3179,7 @@
                 isDormantTemplateLoaded = true;
             } catch (err) {
                 console.error("讀取LINE訊息範本失敗", err);
-                analyticsLoadErrors.push("訊息範本");
+                analyticsLoadErrors.push("訊息範本:" + ((err && (err.code || err.message)) || "?"));
             }
         }
 
