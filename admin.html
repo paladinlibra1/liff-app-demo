@@ -936,7 +936,8 @@
                 
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
             } catch (err) { 
-                console.error("更新預約資料失敗", err); 
+                console.error("更新預約資料失敗", err);
+                analyticsLoadErrors.push("預約"); 
                 if (isManual) alert("網路不穩，請稍後再試！");
             } finally {
                 document.getElementById('loading').style.display = 'none';
@@ -1284,7 +1285,8 @@
                 document.getElementById('memberCount').innerText = allMembers.length;
                 filterMemberTable(); 
             } catch (err) { 
-                console.error("更新會員資料失敗", err); 
+                console.error("更新會員資料失敗", err);
+                analyticsLoadErrors.push("會員清單"); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -1992,7 +1994,8 @@
                 if (fcHistoryCalendar) fcHistoryCalendar.refetchEvents(); 
                 
             } catch (err) { 
-                console.error("讀取歷史紀錄失敗", err); 
+                console.error("讀取歷史紀錄失敗", err);
+                analyticsLoadErrors.push("歷史預約"); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -2227,6 +2230,7 @@
         const REPORT_TYPE_COLORS = { '一般預約': '#4CAF50', '新客體驗': '#f6c026', '複檢': '#29b6f6' };
         const ALL_REPORT_TYPES = ['一般預約', '新客體驗', '複檢'];
         let allCancelledBookings = [];
+        let analyticsLoadErrors = [];   // 本輪載入失敗的批次名稱（各函式自己吞錯，靠這個回報）
         let isCancelDataLoaded = false;
 
         // 沉睡客名單的回撥紀錄／排除狀態，key 為電話號碼
@@ -2240,6 +2244,7 @@
                 isFollowUpsLoaded = true;
             } catch (err) {
                 console.error("讀取客戶回撥紀錄失敗", err);
+                analyticsLoadErrors.push("回訪狀態");
             }
         }
 
@@ -2274,6 +2279,7 @@
                 isCancelDataLoaded = true;
             } catch (err) {
                 console.error("讀取取消紀錄失敗", err);
+                analyticsLoadErrors.push("取消紀錄");
             }
         }
 
@@ -2285,61 +2291,56 @@
             return Object.values(map);
         }
 
-        // 報表與客戶回訪兩個分頁喬的是同一批資料，只載一次，各自畫自己的畫面
+        // 報表與客戶回訪兩個分頁用的是同一批資料，只載一次，各自畫自己的畫面。
+        // 每支載入函式都自己吞掉錯誤照樣「成功」回傳，失敗時陣列是空的、報表就算出 0 人次，
+        // 而且畫面上看不出任何異常。靠 analyticsLoadErrors 判斷，失敗就自動重試一次。
         async function ensureAnalyticsData() {
-            const tasks = [];
-            if (!isBookingLoaded) tasks.push(loadBookingData('first_load'));
-            if (allHistoryBookings.length === 0) tasks.push(loadHistoryData(false));
-            if (!isCancelDataLoaded) tasks.push(loadCancelledData());
-            if (!isFollowUpsLoaded) tasks.push(loadReportFollowUps());
-            if (!isDormantTemplateLoaded) tasks.push(loadDormantMessageTemplate());
-            if (!isFollowUpCooldownLoaded) tasks.push(loadFollowUpCooldown());
-            if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
-            if (!tasks.length) return;
-            // 顯示實際秒數，讓「感覺很慢」變成可以拿來比對的數字；
-            // 每一批也各自計時印到 console，慢在哪一支一眼就看得出來
+            const timings = [];
+            const pending = () => {
+                const t = [];
+                const add = (name, p) => {
+                    const s0 = performance.now();
+                    t.push(p.then(v => { timings.push([name, Math.round(performance.now() - s0)]); return v; }));
+                };
+                if (!isBookingLoaded) add('預約', loadBookingData('first_load'));
+                if (allHistoryBookings.length === 0) add('歷史預約', loadHistoryData(false));
+                if (!isCancelDataLoaded) add('取消紀錄', loadCancelledData());
+                if (!isFollowUpsLoaded) add('回訪狀態', loadReportFollowUps());
+                if (!isDormantTemplateLoaded) add('訊息範本', loadDormantMessageTemplate());
+                if (!isFollowUpCooldownLoaded) add('冷卻設定', loadFollowUpCooldown());
+                if (allMembers.length === 0) add('會員清單', loadMemberData(false));
+                return t;
+            };
+            if (!pending().length) return;
+
             const hint = document.getElementById('analyticsLoading');
             const t0 = performance.now();
-            const timer = setInterval(() => {
-                hint.textContent = `📊 資料載入中… ${((performance.now() - t0) / 1000).toFixed(1)} 秒`;
-            }, 100);
+            const elapsed = () => ((performance.now() - t0) / 1000).toFixed(1);
+            const timer = setInterval(() => { hint.textContent = `📊 資料載入中… ${elapsed()} 秒`; }, 100);
             hint.textContent = '📊 資料載入中… 0.0 秒';
             hint.style.display = 'block';
-            // 用 allSettled 而不是 all：一批失敗不該讓整個 await 拋錯，
-            // 否則 renderReport() 根本不會被呼叫，畫面停在初始的 0 而且沒有任何錯誤訊息
-            const names = ['預約', '歷史預約', '取消紀錄', '回訪狀態', '訊息範本', '冷卻設定', '會員清單'];
-            const labels = [];
-            if (!isBookingLoaded) labels.push(names[0]);
-            if (allHistoryBookings.length === 0) labels.push(names[1]);
-            if (!isCancelDataLoaded) labels.push(names[2]);
-            if (!isFollowUpsLoaded) labels.push(names[3]);
-            if (!isDormantTemplateLoaded) labels.push(names[4]);
-            if (!isFollowUpCooldownLoaded) labels.push(names[5]);
-            if (allMembers.length === 0) labels.push(names[6]);
-            let failed = [];
             try {
-                const results = await Promise.allSettled(tasks.map((t, i) => {
-                    const s0 = performance.now();
-                    return t.then(v => { console.log(`[報表載入] ${labels[i] || i} ${Math.round(performance.now() - s0)} ms`); return v; });
-                }));
-                results.forEach((r, i) => {
-                    if (r.status === 'rejected') {
-                        failed.push(labels[i] || i);
-                        console.error(`[報表載入] ${labels[i] || i} 失敗`, r.reason);
-                    }
-                });
+                analyticsLoadErrors = [];
+                await Promise.all(pending());
+                if (analyticsLoadErrors.length) {
+                    console.warn('[報表載入] 失敗，自動重試：', analyticsLoadErrors.join('、'));
+                    hint.textContent = `📊 連線不穩，重試中… ${elapsed()} 秒`;
+                    analyticsLoadErrors = [];
+                    await Promise.all(pending());   // 判斷條件本身就代表「還沒載到」，只會重試失敗的那幾批
+                }
             } finally {
                 clearInterval(timer);
-                const secs = ((performance.now() - t0) / 1000).toFixed(1);
-                console.log(`[報表載入] 全部完成 ${secs} 秒`);
-                if (failed.length) {
-                    hint.style.background = '#c62828';
-                    hint.textContent = `⚠️ ${failed.join('、')} 載入失敗（${secs} 秒），數字可能不完整`;
-                    setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, 8000);
-                } else {
-                    hint.textContent = `✅ 載入完成 ${secs} 秒`;
-                    setTimeout(() => { hint.style.display = 'none'; }, 2500);
-                }
+                const secs = elapsed();
+                console.log(`[報表載入] 結束 ${secs} 秒`, timings, '失敗：', analyticsLoadErrors);
+                // 把最慢的那一批直接寫在提示上，手機不用開開發者工具就看得到瓶頸
+                timings.sort((x, y) => y[1] - x[1]);
+                const worst = timings.length ? `（最慢：${timings[0][0]} ${(timings[0][1] / 1000).toFixed(1)} 秒）` : '';
+                const bad = analyticsLoadErrors.length > 0;
+                hint.style.background = bad ? '#c62828' : '#2c2c2c';
+                hint.textContent = bad
+                    ? `⚠️ ${analyticsLoadErrors.join('、')} 載入失敗，數字不完整，請重新整理`
+                    : `✅ 載入完成 ${secs} 秒${worst}`;
+                setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, bad ? 8000 : 2500);
             }
         }
 
@@ -3125,6 +3126,7 @@
                 isFollowUpCooldownLoaded = true;
             } catch (err) {
                 console.error("讀取冷卻期設定失敗", err);
+                analyticsLoadErrors.push("冷卻設定");
             }
         }
 
@@ -3174,6 +3176,7 @@
                 isDormantTemplateLoaded = true;
             } catch (err) {
                 console.error("讀取LINE訊息範本失敗", err);
+                analyticsLoadErrors.push("訊息範本");
             }
         }
 
