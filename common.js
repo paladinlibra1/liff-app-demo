@@ -16,7 +16,13 @@
 // 台灣市話最短 9 碼（06-2345678、08-7654321），最長 10 碼（02-12345678、0800-123456）。
 // 舊規則只要求「0 開頭、2 到 10 碼」，手機少打一碼也照樣通過。
 function normalizePhone(phone) {
-    return (phone || '').replace(/[\s\-()]/g, '');
+    return (phone || '')
+        // 全形數字轉半形：從通訊錄或訊息貼過來常常是全形
+        .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 65248); })
+        // 空白、各式連字號、點、全形括號一律當分隔符號清掉
+        .replace(/[\s\-‐‑‒–—−ー.．()（）]/g, '')
+        // 國際碼寫法轉回本地：+886912345678 → 0912345678
+        .replace(/^\+?886/, '0');
 }
 function isValidPhone(phone) {
     const p = normalizePhone(phone);
