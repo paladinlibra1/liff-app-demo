@@ -326,6 +326,8 @@
 </script>
 
 
+    <div id="analyticsLoading" style="display:none; position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:9998; background:#2c2c2c; color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; box-shadow:0 6px 18px rgba(0,0,0,.18);">📊 資料載入中，請稍候…</div>
+
     <div id="dashboard" class="container">    
         <div class="tabs pc-tabs">
             <button class="tab-btn active" id="tab-booking" onclick="switchTab('booking')">📝 預約管理</button>
@@ -2293,7 +2295,11 @@
             if (!isDormantTemplateLoaded) tasks.push(loadDormantMessageTemplate());
             if (!isFollowUpCooldownLoaded) tasks.push(loadFollowUpCooldown());
             if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
-            if (tasks.length) await Promise.all(tasks);
+            if (!tasks.length) return;
+            const hint = document.getElementById('analyticsLoading');
+            hint.style.display = 'block';
+            try { await Promise.all(tasks); }
+            finally { hint.style.display = 'none'; }
         }
 
         async function ensureReportData() {
