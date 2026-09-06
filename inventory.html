@@ -55,6 +55,11 @@
             .top-bar { position: relative; }
             .tab-select-container { flex: 1 1 100%; }
             .top-bar-actions { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 6; }
+            /* 兩顆都做成 46x46 方框，跟左邊的漢堡選單、admin 手機版一致 */
+            .btn-refresh .refresh-text { display: none; }
+            .btn-refresh, .btn-logout { width: 46px; height: 46px; padding: 0; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: #8a8a8a; }
+            .btn-refresh .refresh-icon { font-size: 22px; }
+            .btn-logout { font-size: 16px; }
             .pc-tabs { display: none !important; }
             .mobile-tabs { display: flex !important; }
         }
