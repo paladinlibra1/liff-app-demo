@@ -42,6 +42,7 @@
             .container { max-width: 95%; padding: 0; }
             /* 分頁列、選擇系列那幾排滿版；商品清單維持 960px 並置中 */
             .top-bar { margin-bottom: 30px; }
+            .btn-logout { display: none; }   /* 電腦版的登出在分頁列最後 */
             .top-bar .page-tabs { margin-bottom: 0; }
             .items-list, .top-action-bar, #historyNote, #historyList { max-width: 960px; margin-left: auto; margin-right: auto; }
         }
@@ -251,6 +252,7 @@
             <a class="tab-btn tab-link" href="admin.html?tab=report">📊 報表</a>
             <a class="tab-btn tab-link" href="admin.html?tab=retention">💗 客戶回訪</a>
             <span class="tab-btn tab-link active">📦 庫存盤點</span>
+            <button class="tab-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 登出</button>
         </div>
 
         <div class="tab-select-container mobile-tabs">
