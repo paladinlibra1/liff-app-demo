@@ -2296,10 +2296,27 @@
             if (!isFollowUpCooldownLoaded) tasks.push(loadFollowUpCooldown());
             if (allMembers.length === 0) tasks.push(loadMemberData(false)); // 「已加會員但從未預約」要比對會員清單
             if (!tasks.length) return;
+            // 顯示實際秒數，讓「感覺很慢」變成可以拿來比對的數字；
+            // 每一批也各自計時印到 console，慢在哪一支一眼就看得出來
             const hint = document.getElementById('analyticsLoading');
+            const t0 = performance.now();
+            const timer = setInterval(() => {
+                hint.textContent = `📊 資料載入中… ${((performance.now() - t0) / 1000).toFixed(1)} 秒`;
+            }, 100);
+            hint.textContent = '📊 資料載入中… 0.0 秒';
             hint.style.display = 'block';
-            try { await Promise.all(tasks); }
-            finally { hint.style.display = 'none'; }
+            try {
+                await Promise.all(tasks.map((t, i) => {
+                    const s0 = performance.now();
+                    return t.then(v => { console.log(`[報表載入] 第 ${i + 1} 批 ${Math.round(performance.now() - s0)} ms`); return v; });
+                }));
+            } finally {
+                clearInterval(timer);
+                const secs = ((performance.now() - t0) / 1000).toFixed(1);
+                console.log(`[報表載入] 全部完成 ${secs} 秒`);
+                hint.textContent = `✅ 載入完成 ${secs} 秒`;
+                setTimeout(() => { hint.style.display = 'none'; }, 2500);
+            }
         }
 
         async function ensureReportData() {
