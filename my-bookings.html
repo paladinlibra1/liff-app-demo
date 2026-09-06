@@ -14,6 +14,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Color Fashion">
 
+<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+<link rel="preconnect" href="https://api.line.me" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -292,8 +296,15 @@ let allBookings = [];
 let currentTab = 'upcoming';
 let currentUserLineId = '';
 
-// ── 啟動 ──
-window.onload = async function () {
+// ── 啟動 ──（不用 window.onload：那會等到所有圖片樣式載完，這裡只需要 DOM）
+(async function () {
+  // liff.init 與 getProfile 是兩趟連到 LINE 的網路來回，查預約得排在後面等。
+  // 上次登入過就先用記住的 lineId 平行發出查詢，等身分確認一致再用那份結果。
+  let cachedLineId = '';
+  try { cachedLineId = localStorage.getItem('cf_lineId') || ''; } catch (e) {}
+  const earlyFetch = cachedLineId
+    ? db.collection("bookings").where("lineId", "==", cachedLineId).get().catch(() => null)
+    : null;
   try {
     await liff.init({ liffId: MY_LIFF_ID });
 
@@ -304,13 +315,14 @@ window.onload = async function () {
 
     const profile = await liff.getProfile();
     currentUserLineId = profile.userId;
+    try { localStorage.setItem('cf_lineId', currentUserLineId); } catch (e) {}
 
     const avatar = document.getElementById('avatarImg');
     avatar.src = profile.pictureUrl || '';
     avatar.style.display = profile.pictureUrl ? 'inline-block' : 'none';
     document.getElementById('welcomeText').textContent = `${profile.displayName} 的預約紀錄`;
 
-    await fetchBookings();
+    await fetchBookings(cachedLineId === currentUserLineId ? earlyFetch : null);
 
   } catch (err) {
     if (err.message && (err.message.includes("expired") || err.message.includes("Access token"))) {
@@ -320,12 +332,12 @@ window.onload = async function () {
     }
     showError('初始化失敗：' + err.message);
   }
-};
+})();
 
 // ── 讀取預約 ──
-async function fetchBookings() {
+async function fetchBookings(preloaded) {
   try {
-    const snapshot = await db.collection("bookings")
+    const snapshot = (preloaded && await preloaded) || await db.collection("bookings")
       .where("lineId", "==", currentUserLineId)
       .get();
 
