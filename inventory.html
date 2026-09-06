@@ -376,6 +376,9 @@
 
 <script>
     const db = firebase.firestore();
+    // Firestore 預設的串流連線在部分手機網路環境會被擋掉，SDK 要等約 10 秒才逾時放棄，
+    // 症狀是「頁面開得出來、Firestore 一律 unavailable」。實機驗證改用長輪詢後穩定在 3.2 秒。
+    db.settings({ experimentalForceLongPolling: true });
 
     initAuthGate();   // 登入閘門在 common.js
     const itemsCol = db.collection("inventoryItems");
