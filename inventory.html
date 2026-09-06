@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Colorfashion 庫存盤點</title>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -51,6 +52,9 @@
         .tab-btn.tab-link { display: inline-block; text-decoration: none; line-height: normal; }
         .mobile-tabs { display: none !important; }
         @media (max-width: 768px) {
+            .top-bar { position: relative; }
+            .tab-select-container { flex: 1 1 100%; }
+            .top-bar-actions { position: absolute; right: 0; top: 50%; transform: translateY(-50%); z-index: 6; }
             .pc-tabs { display: none !important; }
             .mobile-tabs { display: flex !important; }
         }
@@ -60,6 +64,8 @@
         .hamburger-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: var(--text-color); pointer-events: none; z-index: 5; }
         .tab-select { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; opacity: 0; cursor: pointer; appearance: none; -webkit-appearance: none; z-index: 10; }
         .current-tab-title { font-size: 18px; font-weight: 700; color: var(--text-color); letter-spacing: 1px; margin: 0; pointer-events: none; white-space: nowrap; }
+        .top-bar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+        .btn-logout { flex: 0 0 auto; padding: 8px 12px; font-size: 16px; line-height: 1; color: #8a8a8a; }
         .btn-refresh { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
         .btn-refresh .refresh-icon { font-size: 30px; line-height: 1; display: inline-block; }
         .btn-refresh .refresh-text { font-size: 15px; font-weight: 600; }
@@ -260,8 +266,10 @@
             </select>
             <div class="current-tab-title">📦 庫存盤點</div>
         </div>
-        <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
-        <button class="btn btn-outline" onclick="logout()" title="登出" aria-label="登出">🚪</button>
+        <div class="top-bar-actions">
+            <button class="btn btn-outline btn-refresh" id="refreshBtn" onclick="refreshData()" title="重新整理" aria-label="重新整理"><span class="refresh-icon">⟳</span><span class="refresh-text">重新整理</span></button>
+            <button class="btn btn-outline btn-logout" onclick="logout()" title="登出" aria-label="登出"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
     </div>
 
     <div class="inv-alert-banner" id="invAlertBanner" style="display:none;">
