@@ -802,7 +802,8 @@
         //     要加人／移除人，改下面這個陣列就好（大小寫不拘）
         // =====================================================================
         const ADMIN_EMAILS = [
-            "paladinlibra1@gmail.com",
+            "store@colorfashion.local",   // 店裡共用的備援帳號（密碼登入）
+            "paladinlibra1022@gmail.com",
             "colorfashion180@gmail.com",
             "kitty34342006@gmail.com",
             "lunhs7787@gmail.com",
@@ -826,6 +827,8 @@
                 'auth/user-not-found': '帳號或密碼錯誤',
                 'auth/wrong-password': '帳號或密碼錯誤',
                 'auth/invalid-credential': '帳號或密碼錯誤',
+                'auth/operation-not-allowed': '這種登入方式尚未啟用（Firebase → Authentication → 登入方式）',
+                'auth/user-disabled': '這個帳號已被停用，請到 Firebase Console 重新啟用或刪除後重建',
                 'auth/too-many-requests': '嘗試次數過多，請稍後再試',
                 'auth/network-request-failed': '網路連線失敗，請檢查網路',
                 'auth/unauthorized-domain': '這個網域尚未授權（Firebase → Authentication → Settings → 授權網域）'
