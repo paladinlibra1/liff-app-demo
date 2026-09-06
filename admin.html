@@ -942,7 +942,7 @@
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
             } catch (err) { 
                 console.error("更新預約資料失敗", err);
-                analyticsLoadErrors.push("預約:" + ((err && (err.code || err.message)) || "?")); 
+                analyticsLoadErrors.push("預約"); 
                 if (isManual) alert("網路不穩，請稍後再試！");
             } finally {
                 document.getElementById('loading').style.display = 'none';
@@ -1292,7 +1292,7 @@
                 filterMemberTable(); 
             } catch (err) { 
                 console.error("更新會員資料失敗", err);
-                analyticsLoadErrors.push("會員清單:" + ((err && (err.code || err.message)) || "?")); 
+                analyticsLoadErrors.push("會員清單"); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -2002,7 +2002,7 @@
                 
             } catch (err) { 
                 console.error("讀取歷史紀錄失敗", err);
-                analyticsLoadErrors.push("歷史預約:" + ((err && (err.code || err.message)) || "?")); 
+                analyticsLoadErrors.push("歷史預約"); 
             } finally {
                 document.getElementById('loading').style.display = 'none';
             }
@@ -2252,7 +2252,7 @@
                 isFollowUpsLoaded = true;
             } catch (err) {
                 console.error("讀取客戶回撥紀錄失敗", err);
-                analyticsLoadErrors.push("回訪狀態:" + ((err && (err.code || err.message)) || "?"));
+                analyticsLoadErrors.push("回訪狀態");
             }
         }
 
@@ -2288,7 +2288,7 @@
                 isCancelDataLoaded = true;
             } catch (err) {
                 console.error("讀取取消紀錄失敗", err);
-                analyticsLoadErrors.push("取消紀錄:" + ((err && (err.code || err.message)) || "?"));
+                analyticsLoadErrors.push("取消紀錄");
             }
         }
 
@@ -2304,20 +2304,15 @@
         // 每支載入函式都自己吞掉錯誤照樣「成功」回傳，失敗時陣列是空的、報表就算出 0 人次，
         // 而且畫面上看不出任何異常。靠 analyticsLoadErrors 判斷，失敗就自動重試一次。
         async function ensureAnalyticsData() {
-            const timings = [];
             const pending = () => {
                 const t = [];
-                const add = (name, p) => {
-                    const s0 = performance.now();
-                    t.push(p.then(v => { timings.push([name, Math.round(performance.now() - s0)]); return v; }));
-                };
-                if (!isBookingLoaded) add('預約', loadBookingData('first_load'));
-                if (allHistoryBookings.length === 0) add('歷史預約', loadHistoryData(false));
-                if (!isCancelDataLoaded) add('取消紀錄', loadCancelledData());
-                if (!isFollowUpsLoaded) add('回訪狀態', loadReportFollowUps());
-                if (!isDormantTemplateLoaded) add('訊息範本', loadDormantMessageTemplate());
-                if (!isFollowUpCooldownLoaded) add('冷卻設定', loadFollowUpCooldown());
-                if (allMembers.length === 0) add('會員清單', loadMemberData(false));
+                if (!isBookingLoaded) t.push(loadBookingData('first_load'));
+                if (allHistoryBookings.length === 0) t.push(loadHistoryData(false));
+                if (!isCancelDataLoaded) t.push(loadCancelledData());
+                if (!isFollowUpsLoaded) t.push(loadReportFollowUps());
+                if (!isDormantTemplateLoaded) t.push(loadDormantMessageTemplate());
+                if (!isFollowUpCooldownLoaded) t.push(loadFollowUpCooldown());
+                if (allMembers.length === 0) t.push(loadMemberData(false));
                 return t;
             };
             const tasks = pending();   // 只能呼叫一次：pending() 會順便把查詢發出去
@@ -2326,34 +2321,29 @@
             const hint = document.getElementById('analyticsLoading');
             const t0 = performance.now();
             const elapsed = () => ((performance.now() - t0) / 1000).toFixed(1);
-            const timer = setInterval(() => { hint.textContent = `📊 資料載入中… ${elapsed()} 秒`; }, 100);
-            hint.textContent = '📊 資料載入中… 0.0 秒';
+            hint.textContent = '📊 資料載入中，請稍候…';
             hint.style.display = 'block';
             try {
                 analyticsLoadErrors = [];
                 await Promise.all(tasks);
                 if (analyticsLoadErrors.length) {
                     console.warn('[報表載入] 失敗，自動重試：', analyticsLoadErrors.join('、'));
-                    hint.textContent = `📊 連線不穩，重試中… ${elapsed()} 秒`;
+                    hint.textContent = '📊 連線不穩，重試中…';
                     analyticsLoadErrors = [];
                     await Promise.all(pending());   // 判斷條件本身就代表「還沒載到」，只會重試失敗的那幾批
                 }
             } finally {
-                clearInterval(timer);
                 const secs = elapsed();
-                console.log(`[報表載入] 結束 ${secs} 秒`, timings, '失敗：', analyticsLoadErrors);
-                // 七批全部列出來：如果數字都差不多，代表卡在共用的連線或 token，
-                // 而不是某一支查詢慢——只看「最慢的」分辨不出這兩種情況
-                timings.sort((x, y) => y[1] - x[1]);
-                const worst = timings.length
-                    ? '｜' + timings.map(([n, ms]) => `${n} ${(ms / 1000).toFixed(1)}`).join('　')
-                    : '';
+                console.log(`[報表載入] 結束 ${secs} 秒，失敗：`, analyticsLoadErrors);
                 const bad = analyticsLoadErrors.length > 0;
                 hint.style.background = bad ? '#c62828' : '#2c2c2c';
-                hint.textContent = bad
-                    ? `⚠️ ${analyticsLoadErrors.join('、')} 載入失敗，數字不完整，請重新整理`
-                    : `✅ 共 ${secs} 秒${worst}`;
-                setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, bad ? 8000 : 2500);
+                // 成功就安靜地收掉；只有失敗才留在畫面上，避免又出現「靜靜顯示 0」
+                if (bad) {
+                    hint.textContent = `⚠️ ${analyticsLoadErrors.join('、')} 載入失敗，數字不完整，請重新整理`;
+                    setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, 8000);
+                } else {
+                    hint.style.display = 'none';
+                }
             }
         }
 
@@ -3139,7 +3129,7 @@
                 isFollowUpCooldownLoaded = true;
             } catch (err) {
                 console.error("讀取冷卻期設定失敗", err);
-                analyticsLoadErrors.push("冷卻設定:" + ((err && (err.code || err.message)) || "?"));
+                analyticsLoadErrors.push("冷卻設定");
             }
         }
 
@@ -3189,7 +3179,7 @@
                 isDormantTemplateLoaded = true;
             } catch (err) {
                 console.error("讀取LINE訊息範本失敗", err);
-                analyticsLoadErrors.push("訊息範本:" + ((err && (err.code || err.message)) || "?"));
+                analyticsLoadErrors.push("訊息範本");
             }
         }
 
