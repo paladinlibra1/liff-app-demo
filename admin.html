@@ -326,7 +326,7 @@
 </script>
 
 
-    <div id="analyticsLoading" style="display:none; position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:9998; background:#2c2c2c; color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; box-shadow:0 6px 18px rgba(0,0,0,.18);">📊 資料載入中，請稍候…</div>
+    <div id="analyticsLoading" style="display:none; position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:9998; background:#2c2c2c; color:#fff; padding:10px 20px; border-radius:14px; font-size:13px; max-width:92vw; line-height:1.7; box-shadow:0 6px 18px rgba(0,0,0,.18);">📊 資料載入中，請稍候…</div>
 
     <div id="dashboard" class="container">    
         <div class="tabs pc-tabs">
@@ -2332,14 +2332,17 @@
                 clearInterval(timer);
                 const secs = elapsed();
                 console.log(`[報表載入] 結束 ${secs} 秒`, timings, '失敗：', analyticsLoadErrors);
-                // 把最慢的那一批直接寫在提示上，手機不用開開發者工具就看得到瓶頸
+                // 七批全部列出來：如果數字都差不多，代表卡在共用的連線或 token，
+                // 而不是某一支查詢慢——只看「最慢的」分辨不出這兩種情況
                 timings.sort((x, y) => y[1] - x[1]);
-                const worst = timings.length ? `（最慢：${timings[0][0]} ${(timings[0][1] / 1000).toFixed(1)} 秒）` : '';
+                const worst = timings.length
+                    ? '｜' + timings.map(([n, ms]) => `${n} ${(ms / 1000).toFixed(1)}`).join('　')
+                    : '';
                 const bad = analyticsLoadErrors.length > 0;
                 hint.style.background = bad ? '#c62828' : '#2c2c2c';
                 hint.textContent = bad
                     ? `⚠️ ${analyticsLoadErrors.join('、')} 載入失敗，數字不完整，請重新整理`
-                    : `✅ 載入完成 ${secs} 秒${worst}`;
+                    : `✅ 共 ${secs} 秒${worst}`;
                 setTimeout(() => { hint.style.display = 'none'; hint.style.background = '#2c2c2c'; }, bad ? 8000 : 2500);
             }
         }
