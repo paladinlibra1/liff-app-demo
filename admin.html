@@ -773,6 +773,10 @@
         // 🔥 1. 初始化 Firebase 引擎
         // =====================================================================
         const db = firebase.firestore();
+        // Firestore 預設用串流連線（WebChannel），在部分 Wi-Fi／行動網路環境會被擋掉，
+        // 而 SDK 要等約 10 秒才發現並放棄，症狀是「頁面開得出來、Firestore 一律 unavailable」。
+        // 改用長輪詢跳過那條會失敗的連線。我們只用一次性查詢，即時性影響很小。
+        db.settings({ experimentalForceLongPolling: true });
 
         initAuthGate();   // 登入閘門在 common.js
 
