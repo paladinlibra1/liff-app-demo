@@ -339,6 +339,7 @@
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">⏰ 營業日設定</button>
             <button class="tab-btn" id="tab-report" onclick="switchTab('report')">📊 報表</button>
             <button class="tab-btn" id="tab-retention" onclick="switchTab('retention')">💗 客戶回訪</button>
+            <button class="tab-btn" id="tab-admins" style="display:none;" onclick="switchTab('admins')">🔑 權限管理</button>
             <a class="tab-btn tab-link" href="inventory.html">📦 庫存盤點</a>
             <button class="tab-btn" id="logoutPc" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 登出</button>
             <!-- <button class="tab-btn" id="tab-history" style="display: none;" onclick="switchTab('history')">📜 歷史預約</button> -->
@@ -685,6 +686,29 @@
             </div>
         </div>
 
+        <div id="section-admins" class="section">
+            <div class="box-container" style="padding:22px; max-width:660px;">
+                <h3 style="margin:0 0 6px; font-size:1.05rem;">🔑 後台登入名單</h3>
+                <p style="margin:0 0 18px; font-size:0.85rem; color:#888; line-height:1.7;">
+                    只有你看得到這個分頁。名單改完馬上生效（對方下次開啟後台時），
+                    <strong>預約管理跟庫存盤點兩頁都同時適用</strong>。<br>
+                    要加的人必須先有 Google 帳號，填的就是他登入 Google 的那個信箱。
+                </p>
+
+                <div id="adminListStatus" style="font-size:0.85rem; color:#888; margin-bottom:12px;">載入中…</div>
+                <div id="adminListBox" style="display:none;">
+                    <div id="adminOwnerRows" style="margin-bottom:6px;"></div>
+                    <div id="adminEmailRows"></div>
+                    <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                        <input type="email" id="newAdminEmail" placeholder="要新增的 Gmail" autocomplete="off"
+                            style="flex:1; min-width:200px; box-sizing:border-box; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;"
+                            onkeydown="if(event.key==='Enter') document.getElementById('addAdminBtn').click();">
+                        <button class="btn btn-primary" id="addAdminBtn" onclick="runOnce(this,'新增中…',()=>addAdminEmail())">➕ 新增</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- <div id="section-gcal" class="section">
             <div class="box-container calendar-wrapper">
                 <iframe id="googleCalendarIframe" src="https://calendar.google.com/calendar/embed?height=800&wkst=1&ctz=Asia%2FTaipei&mode=WEEK&showTz=0&showCalendars=0&showPrint=0&showTitle=0&src=NjA2OWQ4YTFmMGI2ZWEwM2QyYmE3YjcyODYyZWZlYjE5MTg4M2ZhMjQ5MjM3OWY2ZDQ0YzkwODJiMGM3MmIyNkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23f6bf26" style="border-width:0; min-height: 800px; background-color: #ffffff;" width="100%" height=800px frameborder="0" scrolling="no"></iframe>
@@ -814,6 +838,87 @@
             document.getElementById('bookingTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding: 40px; font-size: 15px;">👆 請點擊上方【單日 / 單週 / 單月】按鈕來載入資料</td></tr>';
         };
 
+        // ── 權限管理（只有擁有者看得到） ───────────────
+        let adminListCache = [];
+
+        onAuthReady(function (user, isOwner) {
+            if (!isOwner) return;
+            document.getElementById('tab-admins').style.display = '';
+            const sel = document.getElementById('mainTabSelect');
+            if (sel && !sel.querySelector('option[value="admins"]')) {
+                const opt = document.createElement('option');
+                opt.value = 'admins';
+                opt.text = '🔑 權限管理';
+                sel.insertBefore(opt, sel.querySelector('option[value="inventory"]'));
+            }
+        });
+
+        function escHtml(str) {
+            return String(str).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        }
+
+        function adminRowHtml(email, isOwnerRow) {
+            const right = isOwnerRow
+                ? '<span style="font-size:0.72rem; color:#b08d57; border:1px solid #e6d5b8; background:#fdf8ef; padding:3px 10px; border-radius:20px; white-space:nowrap;">擁有者</span>'
+                : `<button class="btn btn-sm btn-cancel" onclick="runOnce(this,'刪除中…',()=>removeAdminEmail('${escJsAttr(email)}'))">刪除</button>`;
+            return `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 2px; border-bottom:1px solid var(--border-color);">
+                <span style="font-size:0.92rem; word-break:break-all;">${escHtml(email)}</span>${right}</div>`;
+        }
+
+        function renderAdminList() {
+            document.getElementById('adminOwnerRows').innerHTML =
+                OWNER_EMAILS.map(e => adminRowHtml(e, true)).join('');
+            const others = adminListCache.filter(e => !OWNER_EMAILS.includes(e));
+            document.getElementById('adminEmailRows').innerHTML = others.length
+                ? others.map(e => adminRowHtml(e, false)).join('')
+                : '<div style="padding:14px 2px; font-size:0.85rem; color:#aaa;">除了擁有者以外，名單是空的。</div>';
+        }
+
+        function loadAdminList() {
+            const status = document.getElementById('adminListStatus');
+            const box = document.getElementById('adminListBox');
+            status.style.display = '';
+            status.style.color = '#888';
+            status.textContent = '載入中…';
+            box.style.display = 'none';
+            return fetchAdminList().then(res => {
+                adminListCache = res.emails;
+                if (res.exists) {
+                    status.style.display = 'none';
+                } else {
+                    // 還沒寫過 Firestore，現在看到的是 common.js 的內建名單
+                    status.style.color = '#8a6d3b';
+                    status.innerHTML = '⚠️ 名單還沒建立，下面是程式內建的後備名單。' +
+                        '<strong>第一次新增或刪除時會把整份寫進 Firestore</strong>，之後就以這裡為準。';
+                }
+                box.style.display = '';
+                renderAdminList();
+            }).catch(err => {
+                console.error(err);
+                status.style.color = '#d9534f';
+                status.textContent = '讀取名單失敗：' + (err.message || err);
+            });
+        }
+
+        async function addAdminEmail() {
+            const input = document.getElementById('newAdminEmail');
+            const email = input.value.trim().toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('請輸入正確的電子郵件'); return; }
+            if (OWNER_EMAILS.includes(email)) { alert('這是擁有者帳號，本來就有權限'); return; }
+            if (adminListCache.includes(email)) { alert('這個帳號已經在名單裡了'); return; }
+            adminListCache = await saveAdminEmails(adminListCache.concat(email));
+            input.value = '';
+            document.getElementById('adminListStatus').style.display = 'none';
+            renderAdminList();
+        }
+
+        async function removeAdminEmail(email) {
+            if (!confirm('確定要把 ' + email + ' 從後台名單移除嗎？\n他下次開啟後台會被擋在登入畫面。')) return;
+            adminListCache = await saveAdminEmails(adminListCache.filter(e => e !== email));
+            document.getElementById('adminListStatus').style.display = 'none';
+            renderAdminList();
+        }
+
         function switchTab(tabName) {
             const selectEl = document.getElementById('mainTabSelect');
 
@@ -834,6 +939,7 @@
                     if (!fcColorCalendar) initColorCalendar();
                 }
                 if (tabName === 'history') document.getElementById('currentTabTitle').innerText = '📜 歷史預約';
+                if (tabName === 'admins') document.getElementById('currentTabTitle').innerText = '🔑 權限管理';
             }
 
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -859,6 +965,8 @@
             if (tabName === 'retention') {
                 ensureRetentionData();
             }
+
+            if (tabName === 'admins') loadAdminList();
 
             if (tabName === 'booking' && viewMode === 'calendar' && fcBookingCalendar) {
                 setTimeout(() => fcBookingCalendar.render(), 50); 

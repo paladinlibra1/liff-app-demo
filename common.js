@@ -116,8 +116,40 @@ function loadAdminEmails() {
     });
 }
 
+// 給「權限管理」介面用：要能分辨「名單還沒建立」跟「名單是空的」，
+// 所以不走 loadAdminEmails() 那個會默默退回內建名單的版本
+function fetchAdminList() {
+    return firebase.firestore().collection(ADMIN_LIST_PATH.col).doc(ADMIN_LIST_PATH.doc).get()
+        .then(snap => {
+            const arr = snap.exists ? snap.data()[ADMIN_LIST_PATH.field] : null;
+            if (!Array.isArray(arr)) return { emails: ADMIN_EMAILS.slice(), exists: false };
+            return { emails: arr.map(e => String(e).trim().toLowerCase()).filter(Boolean), exists: true };
+        });
+}
+
+function saveAdminEmails(list) {
+    const clean = Array.from(new Set(list.map(e => String(e).trim().toLowerCase()).filter(Boolean)));
+    const doc = {};
+    doc[ADMIN_LIST_PATH.field] = clean;
+    doc.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    doc.updatedBy = (_auth && _auth.currentUser && _auth.currentUser.email) || "";
+    return firebase.firestore().collection(ADMIN_LIST_PATH.col).doc(ADMIN_LIST_PATH.doc)
+        .set(doc, { merge: true })
+        .then(() => clean);
+}
+
 let _isOwner = false;
 function isAuthOwner() { return _isOwner; }
+
+// 登入通過後要做的事用這個訂閱。initAuthGate() 在 <body> 開頭就跑，
+// 可能在頁面底部 script 還沒解析完就已經放行，所以不能單靠回呼——
+// 已經放行了才訂閱的話，這裡會直接把結果补給他
+let _authReady = null;
+const _authReadyCbs = [];
+function onAuthReady(cb) {
+    if (_authReady) { cb(_authReady.user, _authReady.isOwner); return; }
+    _authReadyCbs.push(cb);
+}
 
 function _isInAppBrowser() {
     return /\bLine\/|Instagram|FBAN|FBAV|; wv\)/i.test(navigator.userAgent || "");
@@ -159,6 +191,15 @@ function initAuthGate() {
         _authDenyMsg = "";
     }
 
+    function _authUnlock(user) {
+        document.body.classList.remove('auth-locked');
+        _authReady = { user: user, isOwner: _isOwner };
+        const queued = _authReadyCbs.splice(0);
+        queued.forEach(cb => {
+            try { cb(_authReady.user, _authReady.isOwner); } catch (e) { console.error("onAuthReady 出錯", e); }
+        });
+    }
+
     // onAuthStateChanged 可能永遠不回報：瀏覽器擋掉網站資料（IndexedDB）、
     // 禁第三方 Cookie，或網路擋下 identitytoolkit.googleapis.com 都會卡住。
     // 沒這個逾時的話畫面會停在「檢查登入狀態…」一直轉，連手動登入都沒得選。
@@ -181,12 +222,12 @@ function initAuthGate() {
         // 擁有者不查 Firestore，少一道可能失敗的關卡
         if (OWNER_EMAILS.includes(email)) {
             _isOwner = true;
-            document.body.classList.remove('auth-locked');
+            _authUnlock(user);
             return;
         }
         _isOwner = false;
         loadAdminEmails().then(list => {
-            if (list.includes(email)) { document.body.classList.remove('auth-locked'); return; }
+            if (list.includes(email)) { _authUnlock(user); return; }
             _authDenyMsg = "⛔ " + (user.email || "這個帳號") + " 沒有後台權限";
             _auth.signOut();
         });
