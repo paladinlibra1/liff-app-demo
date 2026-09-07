@@ -245,13 +245,13 @@
         }
     </style>
 </head>
-<body>
+<body class="auth-locked">
 
 <script>
     // 提早啟動：登入檢查要連 Google 換 token，越早發出這個請求，
     // 網路等待就越能跟下面 HTML 的解析重疊，手機上少等一大截
     firebase.initializeApp(STORE_CONFIG.firebase);
-    // initAuthGate();  // 暫時關閉登入驗證
+    initAuthGate();
 </script>
 
 <div class="container">
@@ -380,7 +380,7 @@
     // 症狀是「頁面開得出來、Firestore 一律 unavailable」。實機驗證改用長輪詢後穩定在 3.2 秒。
     db.settings({ experimentalForceLongPolling: true });
 
-    // initAuthGate();   // 暫時關閉登入驗證
+    // 登入閘門已在檔案最上方呼叫過，這裡不要再叫一次（會多插一張登入卡、多一個監聽器）
     const itemsCol = db.collection("inventoryItems");
     const batchesCol = db.collection("inventoryBatches");
     const stocktakesCol = db.collection("inventoryStocktakes");

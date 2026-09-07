@@ -316,13 +316,13 @@
         .logout-mobile { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; background: white; border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); color: #8a8a8a; font-size: 16px; cursor: pointer; z-index: 5; }
     </style>
 </head>
-<body>
+<body class="auth-locked">
 
 <script>
     // 提早啟動：登入檢查要連 Google 換 token，越早發出這個請求，
     // 網路等待就越能跟下面 HTML 的解析重疊，手機上少等一大截
     firebase.initializeApp(STORE_CONFIG.firebase);
-    // initAuthGate();  // 暫時關閉登入驗證
+    initAuthGate();
 </script>
 
 
@@ -778,7 +778,7 @@
         // 改用長輪詢跳過那條會失敗的連線。我們只用一次性查詢，即時性影響很小。
         db.settings({ experimentalForceLongPolling: true });
 
-        // initAuthGate();   // 暫時關閉登入驗證
+        // 登入閘門已在檔案最上方呼叫過，這裡不要再叫一次（會多插一張登入卡、多一個監聽器）
 
 
         const FRONTEND_URL = "https://liff.line.me/" + STORE_CONFIG.liffId.booking;
