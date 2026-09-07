@@ -251,6 +251,9 @@
     // 提早啟動：登入檢查要連 Google 換 token，越早發出這個請求，
     // 網路等待就越能跟下面 HTML 的解析重疊，手機上少等一大截
     firebase.initializeApp(STORE_CONFIG.firebase);
+    // 長輪詢必須在任何 Firestore 讀寫之前套用，而登入閘門會讀後台名單，
+    // 所以這行要在 initAuthGate() 之前（原本放頁面底部會來不及，且會拋錯）
+    firebase.firestore().settings({ experimentalForceLongPolling: true });
     initAuthGate();
 </script>
 
@@ -375,10 +378,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
+    // 長輪詢（experimentalForceLongPolling）已在檔案最上方套用，不能再設一次：
+    // Firestore 一旦開始用了，再呼叫 settings() 會拋錯。原因見上方註解。
     const db = firebase.firestore();
-    // Firestore 預設的串流連線在部分手機網路環境會被擋掉，SDK 要等約 10 秒才逾時放棄，
-    // 症狀是「頁面開得出來、Firestore 一律 unavailable」。實機驗證改用長輪詢後穩定在 3.2 秒。
-    db.settings({ experimentalForceLongPolling: true });
 
     // 登入閘門已在檔案最上方呼叫過，這裡不要再叫一次（會多插一張登入卡、多一個監聽器）
     const itemsCol = db.collection("inventoryItems");

@@ -49,8 +49,16 @@ function logCancelledBooking(bookingData, cancelledBy) {
 // ── 後台登入閘門 ───────────────────────────────
 // admin.html / inventory.html 共用。頁面需求：
 //   1. <script src="...firebase-auth-compat.js"> 2. <body class="auth-locked">
-//   3. 建好 db 之後呼叫 initAuthGate()
-// 要加人／移除人，改下面這個陣列就好（大小寫不拘），兩個頁面同時生效
+//   3. 呼叫 initAuthGate()（要在 firestore().settings() 之後，因為它會讀後台名單）
+// 擁有者：永遠進得去，也是唯一能改後台名單的人。
+// 這份只能改程式，故意不放進 Firestore——名單被人改壞或誤刪時還能登入修回來
+const OWNER_EMAILS = [
+    "paladinlibra1@gmail.com",
+    "paladinlibra1022@gmail.com"   // 備用，主帳號登不進去時才用
+].map(e => e.toLowerCase());
+
+// 內建名單：只在 Firestore 的名單讀不到時當後備（首次部署、Firestore 掛掉），
+// 平常以 Firestore settings/admins 的 emails 為準，在後台「權限管理」分頁維護
 const ADMIN_EMAILS = [
     "store@colorfashion.local",     // 店裡共用的備援帳號（密碼登入）
     "paladinlibra1@gmail.com",
@@ -87,6 +95,29 @@ body.auth-locked #authGate { display: flex; }
 let _auth = null;
 let _authDenyMsg = "";   // 被擋下的原因，等登出完成後才顯示，才不會被蓋掉
 const _GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+// 後台名單放在 Firestore settings/admins 的 emails 欄位。刷不到就用內建名單，
+// 且自帶 5 秒逾時：Firestore 連不上時 get() 會一直懸著，不能讓它把登入卡死
+const ADMIN_LIST_PATH = { col: "settings", doc: "admins", field: "emails" };
+
+function loadAdminEmails() {
+    const fallback = ADMIN_EMAILS.slice();
+    return Promise.race([
+        firebase.firestore().collection(ADMIN_LIST_PATH.col).doc(ADMIN_LIST_PATH.doc).get()
+            .then(snap => {
+                const arr = snap.exists ? snap.data()[ADMIN_LIST_PATH.field] : null;
+                if (!Array.isArray(arr)) return fallback;
+                return arr.map(e => String(e).trim().toLowerCase()).filter(Boolean);
+            }),
+        new Promise(resolve => setTimeout(() => resolve(fallback), 5000))
+    ]).catch(err => {
+        console.warn("讀不到後台名單，改用內建名單", err);
+        return fallback;
+    });
+}
+
+let _isOwner = false;
+function isAuthOwner() { return _isOwner; }
 
 function _isInAppBrowser() {
     return /\bLine\/|Instagram|FBAN|FBAV|; wv\)/i.test(navigator.userAgent || "");
@@ -144,14 +175,21 @@ function initAuthGate() {
     _auth.onAuthStateChanged(function (user) {
         _authAnswered = true;
         clearTimeout(_authTimer);
-        const email = (user && user.email) ? user.email.toLowerCase() : "";
-        if (user && ADMIN_EMAILS.includes(email)) { document.body.classList.remove('auth-locked'); return; }
-        if (user) {
-            _authDenyMsg = "⛔ " + (user.email || "這個帳號") + " 沒有後台權限";
-            _auth.signOut();
+        if (!user) { _isOwner = false; _showLoginForm(""); return; }
+
+        const email = user.email ? user.email.toLowerCase() : "";
+        // 擁有者不查 Firestore，少一道可能失敗的關卡
+        if (OWNER_EMAILS.includes(email)) {
+            _isOwner = true;
+            document.body.classList.remove('auth-locked');
             return;
         }
-        _showLoginForm("");
+        _isOwner = false;
+        loadAdminEmails().then(list => {
+            if (list.includes(email)) { document.body.classList.remove('auth-locked'); return; }
+            _authDenyMsg = "⛔ " + (user.email || "這個帳號") + " 沒有後台權限";
+            _auth.signOut();
+        });
     }, function (err) {
         _authAnswered = true;
         clearTimeout(_authTimer);
