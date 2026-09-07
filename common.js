@@ -118,7 +118,32 @@ function initAuthGate() {
         document.getElementById('authInAppNote').style.display = 'block';
     }
 
+    // 把登入表單放出來（err 有值就是「問不出登入狀態」而不是「沒登入」）
+    function _showLoginForm(errHtml) {
+        document.body.classList.add('auth-locked');
+        document.getElementById('authChecking').style.display = 'none';
+        document.getElementById('authBody').style.display = 'block';
+        const box = document.getElementById('authError');
+        if (errHtml) box.innerHTML = errHtml; else box.textContent = _authDenyMsg;
+        _authDenyMsg = "";
+    }
+
+    // onAuthStateChanged 可能永遠不回報：瀏覽器擋掉網站資料（IndexedDB）、
+    // 禁第三方 Cookie，或網路擋下 identitytoolkit.googleapis.com 都會卡住。
+    // 沒這個逾時的話畫面會停在「檢查登入狀態…」一直轉，連手動登入都沒得選。
+    let _authAnswered = false;
+    const _authTimer = setTimeout(function () {
+        if (_authAnswered) return;
+        _authAnswered = true;
+        _showLoginForm('⚠️ 連不上登入服務，無法確認登入狀態。<br>' +
+            '這台電腦的瀏覽器可能擋掉了「網站資料」或「第三方 Cookie」，<br>' +
+            '也可能是防毒/公司網路擋下 Google 驗證。<br>' +
+            '可先試下方帳號密碼，或改用一般視窗的 Chrome 開啟。');
+    }, 8000);
+
     _auth.onAuthStateChanged(function (user) {
+        _authAnswered = true;
+        clearTimeout(_authTimer);
         const email = (user && user.email) ? user.email.toLowerCase() : "";
         if (user && ADMIN_EMAILS.includes(email)) { document.body.classList.remove('auth-locked'); return; }
         if (user) {
@@ -126,11 +151,11 @@ function initAuthGate() {
             _auth.signOut();
             return;
         }
-        document.body.classList.add('auth-locked');
-        document.getElementById('authChecking').style.display = 'none';
-        document.getElementById('authBody').style.display = 'block';
-        document.getElementById('authError').textContent = _authDenyMsg;
-        _authDenyMsg = "";
+        _showLoginForm("");
+    }, function (err) {
+        _authAnswered = true;
+        clearTimeout(_authTimer);
+        _showLoginForm('⚠️ 登入服務回報錯誤：' + _authErrText(err));
     });
     _auth.getRedirectResult().catch(err => { _authDenyMsg = _authErrText(err); });
 }
