@@ -740,7 +740,7 @@
                 
                 // 優先判斷封鎖時段
                 if (blockedTimes.includes(t)) {
-                    isDisabled = true; statusText = " (不開放)";
+                    isDisabled = true; statusText = " (已額滿)";
                 } else if (slotDateTime <= now) {
                     isDisabled = true; statusText = " (已過)";
                 } else {
