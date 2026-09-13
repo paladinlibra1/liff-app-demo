@@ -1,0 +1,17 @@
+# ⚠️ 這個 repo 是公開的，任何金鑰都不可以進版控
+
+# Supabase CLI 本機狀態（含連線資訊）
+supabase/.temp/
+supabase/.branches/
+
+# 環境變數
+.env
+.env.*
+!.env.example
+
+# Cloudflare
+.dev.vars
+.wrangler/
+
+node_modules/
+dist/
