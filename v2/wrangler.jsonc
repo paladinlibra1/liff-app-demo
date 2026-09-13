@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "colorfashion-chaozhou",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2025-09-01",
+
+  // 前端打包後的靜態檔會掛在同一個 Worker 上 → 前後端同源，不用處理 CORS
+  // （React 還沒建，先註解著）
+  // "assets": { "directory": "./dist", "not_found_handling": "single-page-application" },
+
+  "vars": {
+    // ⚠️ 暫時借用「本店」現有的 LINE provider，之後換成潮州店自己的。
+    //    置換時所有 line_user_id 會全部作廢（LINE userId 是 per-provider）。
+    "LINE_LOGIN_CHANNEL_ID": "2009018559",
+    "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
+  }
+
+  // 機密用 `wrangler secret put` 設定，不寫在這裡（repo 是公開的）：
+  //   SUPABASE_SECRET_KEY       → sb_secret_... （繞過 RLS，只能待在 Worker）
+  //   LINE_CHANNEL_ACCESS_TOKEN → 推播用（下一階段才需要）
+}

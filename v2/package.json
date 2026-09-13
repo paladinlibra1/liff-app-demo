@@ -1,0 +1,15 @@
+{
+  "name": "colorfashion-v2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "supabase gen types typescript --linked > src/types/database.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.0.0"
+  }
+}
