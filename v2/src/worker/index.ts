@@ -14,6 +14,8 @@
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 
 export interface Env {
+  /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
+  ASSETS: Fetcher;
   LINE_LOGIN_CHANNEL_ID: string;
   SUPABASE_URL: string;
   /** sb_secret_... 繞過 RLS，只存在於 Worker secret，絕不外流 */
@@ -31,6 +33,12 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    // Worker 只負責 /api，其餘（含 SPA fallback）交給靜態資源。
+    // 少了這段，Worker 會把每個前端路由都回成 404。
+    if (!path.startsWith("/api/")) {
+      return env.ASSETS.fetch(request);
+    }
 
     // ── 健康檢查 ────────────────────────────────────────
     if (path === "/api/health") {

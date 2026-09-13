@@ -3,13 +3,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "vite",
     "deploy": "wrangler deploy",
-    "types": "supabase gen types typescript --linked > src/types/database.ts"
+    "types": "supabase gen types typescript --linked > src/types/database.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "dev:worker": "wrangler dev --port 8788 --local",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^5.7.3",
+    "vite": "^8.3.0",
     "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

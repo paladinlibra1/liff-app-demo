@@ -4,9 +4,13 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2025-09-01",
 
-  // 前端打包後的靜態檔會掛在同一個 Worker 上 → 前後端同源，不用處理 CORS
-  // （React 還沒建，先註解著）
-  // "assets": { "directory": "./dist", "not_found_handling": "single-page-application" },
+  // 前端打包後的靜態檔掛在同一個 Worker 上 → 前後端同源，不用處理 CORS。
+  // single-page-application：找不到的路徑一律回 index.html，交給前端路由。
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
 
   "vars": {
     // ⚠️ 暫時借用「本店」現有的 LINE provider，之後換成潮州店自己的。
