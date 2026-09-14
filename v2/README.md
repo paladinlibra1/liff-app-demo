@@ -62,6 +62,8 @@ repo 是公開的，金鑰一律不進版控。
 
 ## 注意
 
-LINE provider 目前**暫時借用本店的**（channel `2009018559`）。
-換成潮州店自己的 provider 時，**所有已收集的 `line_user_id` 會全部作廢**
-——LINE userId 是 per-provider 的。所以測試期間不要接真客人。
+LINE 的 `userId` 是 **per-provider** 的。LINE Login channel（LIFF 用）與
+Messaging API channel（推播用）**必須開在同一個 provider 底下**，
+否則前端存下來的 userId 拿去推播會找不到人。
+
+潮州店用自己的 provider，LINE Login channel 是 `2011603381`。

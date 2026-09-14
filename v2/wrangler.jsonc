@@ -13,9 +13,12 @@
   },
 
   "vars": {
-    // ⚠️ 暫時借用「本店」現有的 LINE provider，之後換成潮州店自己的。
-    //    置換時所有 line_user_id 會全部作廢（LINE userId 是 per-provider）。
-    "LINE_LOGIN_CHANNEL_ID": "2009018559",
+    // 潮州店自己的 LINE Login channel。Worker 會比對 LIFF token 的 client_id
+    // 是不是這一個——少了這個檢查，任何人都能拿別的 LINE 應用程式的 token
+    // 來這裡登入別人的帳號。
+    // 推播用的 Messaging API channel 必須跟它在同一個 provider 底下，
+    // 否則 userId 對不起來（LINE 的 userId 是 per-provider）。
+    "LINE_LOGIN_CHANNEL_ID": "2011603381",
     "STORE_SLUG": "chaozhou",
     "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
   }
