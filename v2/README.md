@@ -51,13 +51,28 @@ repo 是公開的，金鑰一律不進版控。
 - **任何 secret key 都不可以加 `VITE_` 前綴**，那會被編進前端。
   Worker 的機密用 `npx wrangler secret put <名稱>`。
 
+## 線上網址
+
+<https://colorfashion-chaozhou.colorfashion-v2.workers.dev>
+
+| 路徑 | 是什麼 | 怎麼開 |
+|---|---|---|
+| `/` | 客人端預約頁 | LIFF `2011603381-Hks28cwY` |
+| `/my` | 我的預約／取消 | LIFF `2011603381-dBGrCXYs` |
+| `/admin` | 後台 | 一般瀏覽器，要登入 |
+
+部署是 `npm run deploy`（從本機打包上傳），**跟 push 到 GitHub 無關**——
+推上 GitHub 不會讓線上版更新，這點跟舊系統的 GitHub Pages 不一樣。
+
 ## 目前進度
 
 - [x] Supabase schema、RLS、後台政策
 - [x] Worker 骨架與 LINE token 驗證
 - [x] React 後台：登入 / 未授權 / 儀表板
-- [ ] 後台功能：預約管理、會員清單、營業日設定
-- [ ] 客人端 LIFF 預約頁
+- [x] 後台功能：預約管理、會員清單、營業日設定（平日／假日營業時間）
+- [x] 客人端：預約頁與「我的預約」，已接上 LIFF
+- [x] 部署到 Cloudflare，兩個 LIFF 端點已指過來
+- [ ] 後台帳號（`store_admins` 還是空的，沒人進得去）
 - [ ] LINE 推播、Google 日曆同步、排程
 
 ## 注意
