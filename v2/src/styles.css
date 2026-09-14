@@ -618,8 +618,18 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 .batch-btns { display: flex; gap: 7px; flex-wrap: wrap; }
 .batch-btns button { margin: 0; }
 
+/* 表頭只在桌面出現：手機是卡片式，每格自己帶標籤 */
+.arow.head { display: none; }
+
 /* 桌面：資料列排成一橫列 */
 @media (min-width: 760px) {
+  .arow.head {
+    display: flex;
+    background: transparent; border: 0; box-shadow: none;
+    padding: 0 14px 2px; margin-bottom: -4px;
+    font-size: 13px; font-weight: 700; color: var(--muted);
+  }
+  .arow.head .acts { min-width: 96px; }
   .arow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
   .arow .c { flex: 1 1 0; min-width: 0; }
   .arow .c[data-label]::before { display: none; }

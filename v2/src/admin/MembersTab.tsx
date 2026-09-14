@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { normalizePhone, isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
 import type { Store } from "./AdminShell";
@@ -10,13 +10,34 @@ interface MemberRow {
   birthday: string | null;
   referrer: string | null;
   note: string | null;
+  guardian_id: string | null;
   line_user_id: string | null;
   line_name: string | null;
   created_at: string;
 }
 
+const FIELDS =
+  "id,name,phone,birthday,referrer,note,guardian_id,line_user_id,line_name,created_at";
+
 /** 空字串要存成 null，不然日期欄位會被 Postgres 退回 */
 const orNull = (v: string) => (v.trim() ? v.trim() : null);
+
+/**
+ * 生日的合理範圍。沿用舊系統：5 歲以下、95 歲以上一律當成填錯——
+ * 最常見的是把民國年打成西元年（民國 80 年打成 1980）。
+ */
+const AGE_MIN = 5;
+const AGE_MAX = 95;
+
+function ageOf(birthday: string): number | null {
+  const d = new Date(birthday + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getUTCFullYear() - d.getUTCFullYear();
+  const m = now.getUTCMonth() - d.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age--;
+  return age;
+}
 
 export default function MembersTab({ store }: { store: Store }) {
   const [keyword, setKeyword] = useState("");
@@ -27,11 +48,18 @@ export default function MembersTab({ store }: { store: Store }) {
   /** null = 沒在編輯；物件 = 正在編輯（沒有 id 就是新增） */
   const [editing, setEditing] = useState<Partial<MemberRow> | null>(null);
 
+  /**
+   * 可以當監護人的人選：只列「已綁定 LINE」的會員。
+   * 監護人的用途就是替未成年收通知，沒綁 LINE 的人當監護人等於沒設。
+   * 跟搜尋結果分開讀，才不會因為搜尋而少了人選。
+   */
+  const [guardians, setGuardians] = useState<MemberRow[]>([]);
+
   const load = useCallback(async () => {
     setErr("");
     let q = supabase
       .from("members")
-      .select("id,name,phone,birthday,referrer,note,line_user_id,line_name,created_at")
+      .select(FIELDS)
       .eq("store_id", store.id)
       .order("created_at", { ascending: false })
       .limit(300);
@@ -48,7 +76,26 @@ export default function MembersTab({ store }: { store: Store }) {
     else setRows(data as MemberRow[]);
   }, [store.id, keyword]);
 
+  const loadGuardians = useCallback(async () => {
+    const { data } = await supabase
+      .from("members")
+      .select(FIELDS)
+      .eq("store_id", store.id)
+      .not("line_user_id", "is", null)
+      .order("name");
+    setGuardians((data ?? []) as MemberRow[]);
+  }, [store.id]);
+
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void loadGuardians(); }, [loadGuardians]);
+
+  /** id → 姓名，清單要顯示監護人是誰 */
+  const nameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const g of guardians) m.set(g.id, g.name);
+    for (const r of rows ?? []) m.set(r.id, r.name);
+    return m;
+  }, [guardians, rows]);
 
   async function save() {
     if (saving || !editing) return;          // 防連點
@@ -56,17 +103,32 @@ export default function MembersTab({ store }: { store: Store }) {
 
     const name = (editing.name ?? "").trim();
     const phone = (editing.phone ?? "").trim();
-    if (!name) return setErr("請填姓名");
+    const birthday = (editing.birthday ?? "").trim();
+
+    if (!name) return setErr("請填會員姓名");
     if (!isValidPhone(phone)) return setErr(PHONE_RULE_MSG);
+
+    if (birthday) {
+      const age = ageOf(birthday);
+      if (age === null) return setErr("生日格式不正確");
+      if (age <= AGE_MIN || age >= AGE_MAX) {
+        return setErr(
+          `生日不合理：${birthday} 換算是 ${age} 歲。` +
+          `年齡要介於 ${AGE_MIN + 1} 到 ${AGE_MAX - 1} 歲之間，` +
+          `請確認是不是把民國年打成西元年了。`,
+        );
+      }
+    }
 
     setSaving(true);
     const payload = {
       store_id: store.id,
       name,
       phone: normalizePhone(phone),
-      birthday: orNull(editing.birthday ?? ""),
+      birthday: orNull(birthday),
       referrer: orNull(editing.referrer ?? ""),
       note: orNull(editing.note ?? ""),
+      guardian_id: editing.guardian_id || null,
     };
 
     // 帶 .select()：被 RLS 擋下的寫入不會回錯誤，只會回 0 列（見 OperatingDaysTab 的說明）
@@ -81,6 +143,7 @@ export default function MembersTab({ store }: { store: Store }) {
     } else {
       setEditing(null);
       await load();
+      await loadGuardians();
     }
     setSaving(false);
   }
@@ -93,7 +156,7 @@ export default function MembersTab({ store }: { store: Store }) {
             <label htmlFor="kw">搜尋</label>
             <input
               id="kw" value={keyword} onChange={(e) => setKeyword(e.target.value)}
-              placeholder="姓名或電話"
+              placeholder="會員姓名或聯絡電話"
             />
           </div>
         </div>
@@ -107,16 +170,18 @@ export default function MembersTab({ store }: { store: Store }) {
           <div className="panel-title">{editing.id ? "編輯會員" : "新增會員"}</div>
 
           <div className="field">
-            <label>姓名</label>
+            <label>會員姓名</label>
             <input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
           </div>
+
           <div className="field">
-            <label>電話</label>
+            <label>聯絡電話</label>
             <input
               value={editing.phone ?? ""} type="tel" inputMode="tel"
               onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
             />
           </div>
+
           <div className="field">
             <label>生日（可不填）</label>
             <input
@@ -124,10 +189,33 @@ export default function MembersTab({ store }: { store: Store }) {
               onChange={(e) => setEditing({ ...editing, birthday: e.target.value })}
             />
           </div>
+
           <div className="field">
             <label>介紹人（可不填）</label>
             <input value={editing.referrer ?? ""} onChange={(e) => setEditing({ ...editing, referrer: e.target.value })} />
           </div>
+
+          <div className="field">
+            <label>監護人（未成年才需要）</label>
+            <select
+              value={editing.guardian_id ?? ""}
+              onChange={(e) => setEditing({ ...editing, guardian_id: e.target.value || null })}
+            >
+              <option value="">不設定</option>
+              {guardians
+                .filter((g) => g.id !== editing.id)   // 不能把自己設成自己的監護人
+                .map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}（{g.phone}）
+                  </option>
+                ))}
+            </select>
+            <p className="hint">
+              設定之後，這位會員的預約通知會改發給監護人的 LINE。
+              只列得出已綁定 LINE 的會員——沒綁 LINE 的人當監護人等於沒設。
+            </p>
+          </div>
+
           <div className="field">
             <label>備註（可不填）</label>
             <textarea value={editing.note ?? ""} onChange={(e) => setEditing({ ...editing, note: e.target.value })} />
@@ -135,7 +223,7 @@ export default function MembersTab({ store }: { store: Store }) {
 
           {editing.id && editing.line_user_id && (
             <p className="hint">
-              已綁定 LINE（{editing.line_name || "未取得暱稱"}）。LINE 綁定不能從這裡改。
+              已綁定 LINE（暱稱：{editing.line_name || "未取得"}）。LINE 綁定不能從這裡改。
             </p>
           )}
 
@@ -157,21 +245,44 @@ export default function MembersTab({ store }: { store: Store }) {
 
       {rows && rows.length > 0 && (
         <>
-          <p className="sub" style={{ margin: "0 0 10px" }}>共 {rows.length} 位</p>
+          <p className="sub" style={{ margin: "0 0 10px" }}>總人數：{rows.length} 人</p>
           <div className="rows">
+            {/* 桌面版的表頭。手機上每個欄位自己帶標籤，不需要它，CSS 會藏起來 */}
+            <div className="arow head" aria-hidden="true">
+              <div className="c who">會員姓名</div>
+              <div className="c">身分</div>
+              <div className="c">聯絡電話</div>
+              <div className="c">生日</div>
+              <div className="c">LINE 暱稱</div>
+              <div className="c">介紹人</div>
+              <div className="c">監護人</div>
+              <div className="c acts">操作</div>
+            </div>
             {rows.map((m) => (
               <div className="arow" key={m.id}>
-                <div className="c who" data-label="姓名">
+                <div className="c who" data-label="會員姓名">
                   <b>{m.name}</b>
-                  {m.line_user_id
-                    ? <span className="tag2 line">LINE</span>
-                    : <span className="tag2">手動建立</span>}
                 </div>
-                <div className="c" data-label="電話">
+
+                <div className="c" data-label="身分">
+                  {m.line_user_id
+                    ? <span className="badge up">LINE 會員</span>
+                    : <span className="badge old">手動建立</span>}
+                </div>
+
+                <div className="c" data-label="聯絡電話">
                   <a href={`tel:${m.phone}`}>{m.phone}</a>
                 </div>
+
                 <div className="c" data-label="生日">{m.birthday ?? "—"}</div>
+                <div className="c" data-label="LINE 暱稱">{m.line_name || "—"}</div>
+                <div className="c" data-label="介紹人">{m.referrer || "—"}</div>
+                <div className="c" data-label="監護人">
+                  {m.guardian_id ? (nameById.get(m.guardian_id) ?? "（已刪除）") : "—"}
+                </div>
+
                 {m.note && <div className="c note" data-label="備註">{m.note}</div>}
+
                 <div className="c acts">
                   <button className="slim outline" onClick={() => setEditing(m)}>編輯</button>
                 </div>
