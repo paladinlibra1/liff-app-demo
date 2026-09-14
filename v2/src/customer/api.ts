@@ -65,6 +65,39 @@ export const fetchStore = () => request<StoreInfo>("/api/store");
 export const fetchAvailability = () =>
   request<{ from: string; to: string; days: DayAvailability[] }>("/api/availability");
 
+export interface MyBooking {
+  id: string;
+  date: string;
+  time: string;
+  type: string;
+  name: string;
+  name2: string | null;
+  remark: string | null;
+  status: string;
+}
+
+/**
+ * 我的預約。
+ *
+ * `now` 是**店家時區**的現在時刻，用它來切「即將到來／已過去」——
+ * 不要用手機自己的時間，客人時區設錯就會看到分類錯亂的清單。
+ */
+export const fetchMyBookings = (accessToken: string) =>
+  request<{ now: { date: string; time: string }; bookings: MyBooking[] }>(
+    "/api/my-bookings",
+    { headers: { Authorization: "Bearer " + accessToken } },
+  );
+
+export const cancelBooking = (accessToken: string, id: string) =>
+  request<{ booking: MyBooking }>(`/api/bookings/${id}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + accessToken,
+    },
+    body: JSON.stringify({}),
+  });
+
 export const submitBooking = (accessToken: string, draft: BookingDraft) =>
   request<{ booking: { id: string; date: string; start_time: string } }>("/api/bookings", {
     method: "POST",

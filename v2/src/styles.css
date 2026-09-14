@@ -342,6 +342,54 @@ code.uid {
 .summary .k { color: var(--ink-soft); flex: none; }
 .summary .v { font-weight: 600; text-align: right; }
 
+/* ── 分頁切換（我的預約） ───────────────────────────── */
+
+.tabs {
+  display: flex; gap: 6px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 4px;
+  margin-bottom: 14px; box-shadow: var(--shadow-sm);
+}
+.tabs button {
+  flex: 1; margin: 0; padding: 9px 4px;
+  font-size: 14px; font-weight: 600;
+  color: var(--ink-soft); background: transparent;
+  border-radius: 8px; box-shadow: none;
+}
+.tabs button[aria-pressed="true"] { color: #fff; background: var(--rose); }
+
+/* ── 預約卡片 ───────────────────────────────────────── */
+
+.bk-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px;
+}
+.bk-when .d { font-size: 16px; font-weight: 650; }
+.bk-when .t {
+  display: inline-block; margin-left: 8px;
+  font-size: 16px; font-weight: 650; color: var(--rose-deep);
+  font-variant-numeric: tabular-nums;
+}
+.bk-meta { margin-top: 7px; font-size: 13px; color: var(--ink-soft); }
+.bk-remark {
+  margin-top: 10px; padding: 9px 11px;
+  background: var(--rose-tint); border-radius: 9px;
+  font-size: 13px; color: var(--ink-soft); line-height: 1.6;
+  word-break: break-word;
+}
+
+.badge {
+  flex: none; padding: 4px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 650; white-space: nowrap;
+}
+.badge.up  { background: var(--rose-tint); color: var(--rose-deep); }
+.badge.old { background: #f3eeef; color: var(--muted); }
+
+.empty { text-align: center; padding: 34px 16px; color: var(--ink-soft); }
+.empty .emoji { font-size: 30px; margin-bottom: 10px; }
+.empty p { margin: 0; font-size: 14px; }
+.empty button { max-width: 200px; margin: 18px auto 0; }
+
 /* ── 窄螢幕（~390px 的手機） ────────────────────────── */
 /*
  * 客人端只會在手機開，這個斷點才是常態、桌面才是例外。
