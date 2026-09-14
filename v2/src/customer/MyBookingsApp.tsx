@@ -30,7 +30,7 @@ export default function MyBookingsApp() {
 
     fetchStore().then((s) => !cancelled && setStore(s)).catch(() => { /* 店名拿不到不影響清單 */ });
 
-    initLiff().then(async (state) => {
+    initLiff("my").then(async (state) => {
       if (cancelled) return;
       setLiffState(state);
       if (state.kind !== "ready") return;

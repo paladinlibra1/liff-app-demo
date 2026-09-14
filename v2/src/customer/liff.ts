@@ -26,12 +26,18 @@ export type LiffState =
  * 預覽模式下按送出會被 401 擋掉，拿不到任何資料。
  * 而且這段用 `import.meta.env.DEV` 包住，正式打包根本不會包進去。
  */
-export async function initLiff(): Promise<LiffState> {
-  const liffId = import.meta.env.VITE_LIFF_ID;
+export async function initLiff(which: "booking" | "my"): Promise<LiffState> {
+  // 兩個頁面是兩個獨立的 LIFF 應用程式，各自有 ID。
+  // LIFF 規定：頁面要用「開啟它的那個應用程式」的 ID 去 init，
+  // 拿另一個的 ID 會失敗，所以不能共用一個變數。
+  const liffId =
+    which === "booking"
+      ? import.meta.env.VITE_LIFF_ID_BOOKING
+      : import.meta.env.VITE_LIFF_ID_MY;
 
   if (!liffId) {
     if (import.meta.env.DEV) {
-      return { kind: "preview", reason: "本機沒有設定 VITE_LIFF_ID" };
+      return { kind: "preview", reason: `本機沒有設定 ${which === "booking" ? "VITE_LIFF_ID_BOOKING" : "VITE_LIFF_ID_MY"}` };
     }
     return { kind: "error", message: "系統設定不完整，請聯絡店家" };
   }

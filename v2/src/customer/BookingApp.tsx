@@ -48,7 +48,7 @@ export default function BookingApp() {
   useEffect(() => {
     let cancelled = false;
 
-    initLiff().then((state) => {
+    initLiff("booking").then((state) => {
       if (cancelled) return;
       setLiffState(state);
       // 姓名先帶 LINE 暱稱，客人可以改成本名
