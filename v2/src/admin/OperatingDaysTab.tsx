@@ -163,13 +163,21 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
     return out;
   }, [days]);
 
-  /** 點一格：已營業 → 開封鎖面板；還沒開放 → 加入批次選取（照舊系統） */
+  /** 剛好選了一天、而且那天有營業 → 才給「封鎖時段」按鈕 */
+  const onlyOperatingPick = useMemo(() => {
+    if (selected.size !== 1) return null;
+    const [d] = [...selected];
+    return days[d]?.is_operating ? d : null;
+  }, [selected, days]);
+
+  /**
+   * 點一格 = 加入／移除選取。
+   *
+   * 已經設為營業的日子也能選——不然排錯了就取消不掉，只能一天天改。
+   * 封鎖時段改成「剛好選一天、而且那天有營業」時才出現按鈕，
+   * 因為封鎖本來就是針對單一天的細部設定，跟批次是兩件事。
+   */
   function pick(date: string) {
-    if (days[date]?.is_operating) {
-      setSelected(new Set());
-      setOpenDate(openDate === date ? null : date);
-      return;
-    }
     setOpenDate(null);
     setSelected((prev) => {
       const next = new Set(prev);
@@ -207,7 +215,8 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
   }
 
   return (
-    <>
+    <div className="cols">
+      <div>
       {/* ───────── 營業時間 ───────── */}
       <div className="panel">
         <div className="panel-title">營業時間</div>
@@ -233,14 +242,17 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
 
       {err && <div className="msg err">{err}</div>}
       {ok && <div className="msg ok">{ok}</div>}
+      </div>
 
+      <div>
       {/* ───────── 營業日 ───────── */}
       <div className="panel">
         <div className="panel-title">營業日</div>
         <p className="sub" style={{ marginBottom: 14 }}>
           <b>沒有設定的日子一律當作不營業</b>，客人看不到、也約不到。
-          <br />點「還沒開放」的日子可以連續點很多天（跳著點也行），選好之後一次設定。
-          <br />點「已營業」的日子則是打開那天的封鎖時段。
+          <br />點日期可以連續選很多天（跳著點也行），選好之後一次設為營業或店休。
+          <br />已經設為營業的日子一樣可以選起來改回店休。
+          <br />只選一天、而且那天有營業時，會多出「封鎖時段」可以關掉個別時段。
         </p>
 
         <div className="cal-bar">
@@ -263,9 +275,15 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
             <span>已選 {selected.size} 天</span>
             <div className="batch-btns">
               <button className="slim" disabled={busy !== null}
-                onClick={() => applyBatch(true)}>全部設為營業</button>
+                onClick={() => applyBatch(true)}>設為營業</button>
               <button className="slim outline danger" disabled={busy !== null}
-                onClick={() => applyBatch(false)}>全部設為店休</button>
+                onClick={() => applyBatch(false)}>設為店休</button>
+              {onlyOperatingPick && (
+                <button className="slim outline"
+                  onClick={() => { setOpenDate(onlyOperatingPick); setSelected(new Set()); }}>
+                  封鎖時段
+                </button>
+              )}
               <button className="slim ghost" onClick={() => setSelected(new Set())}>取消選擇</button>
             </div>
           </div>
@@ -303,7 +321,8 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
           })()}
         </div>
       )}
-    </>
+      </div>
+    </div>
   );
 }
 

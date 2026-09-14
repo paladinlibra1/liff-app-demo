@@ -12,6 +12,13 @@ export default function AdminApp() {
   const [store, setStore] = useState<Store | null>(null);
   const [checking, setChecking] = useState(true);
 
+  // 後台換成奶茶色。掛在 body 上而不是某個 div——整頁的底色要跟著換，
+  // 只套在容器上的話四周還是客人端的粉色。
+  useEffect(() => {
+    document.body.classList.add("admin-theme");
+    return () => document.body.classList.remove("admin-theme");
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));

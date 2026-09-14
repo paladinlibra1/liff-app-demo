@@ -270,7 +270,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_store_admin: {
+        Args: { p_email: string; p_role?: string; p_store_id: string }
+        Returns: string
+      }
+      is_store_admin: { Args: { p_store_id: string }; Returns: boolean }
+      is_store_owner: { Args: { p_store_id: string }; Returns: boolean }
+      list_store_admins: {
+        Args: { p_store_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          role: string
+          user_id: string
+        }[]
+      }
+      remove_store_admin: {
+        Args: { p_store_id: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

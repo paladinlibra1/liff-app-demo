@@ -38,6 +38,59 @@
   --shadow-sm:   0 1px 2px rgba(93, 64, 55, .05);
 }
 
+/**
+ * 後台：奶茶色
+ *
+ * 客人端維持櫻花粉（沿用舊系統的品牌識別），後台換成奶茶色——
+ * 店員整天盯著它，暖褐比高彩度的粉紅耐看；顏色不同也讓人一眼分得出
+ * 現在開的是客人看的頁面還是後台。
+ *
+ * 只換 token、不動任何元件樣式，所以整套介面自動跟著變。
+ * 掛在 body 而不是容器上：整頁底色都要換，只套容器的話四周還是粉的。
+ */
+body.admin-theme {
+  --rose:        #b08968;   /* 奶茶 */
+  --rose-deep:   #96745a;
+  --rose-soft:   #d8c3ad;
+  --rose-tint:   #f6f0e8;
+  --rose-wash:   #fdfaf6;
+
+  --ink:         #4a3f35;
+  --ink-soft:    #7d6f62;
+  --muted:       #a89684;
+
+  --line:        #ece0d3;
+  --line-strong: #dccdbb;
+
+  --shadow:      0 1px 2px rgba(74, 63, 53, .04), 0 8px 24px rgba(74, 63, 53, .06);
+  --shadow-sm:   0 1px 2px rgba(74, 63, 53, .05);
+
+  background: var(--rose-tint);
+  color: var(--ink);
+}
+/* 按鈕與選取態的陰影是寫死的粉色，後台要跟著換成奶茶色 */
+body.admin-theme button,
+body.admin-theme .seg button[aria-pressed="true"],
+body.admin-theme .slot[aria-pressed="true"],
+body.admin-theme .cal-cell.sel {
+  box-shadow: 0 2px 8px rgba(176, 137, 104, .28);
+}
+body.admin-theme button.ghost,
+body.admin-theme button.outline,
+body.admin-theme .chip,
+body.admin-theme .seg button,
+body.admin-theme .slot,
+body.admin-theme .cal-cell,
+body.admin-theme .tabs button { box-shadow: none; }
+/* select 的箭頭是 data URI，顏色寫死了，後台換一張 */
+body.admin-theme select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%23a89684' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+body.admin-theme .skeleton {
+  background: linear-gradient(90deg, #ece2d6 25%, #f7f1e9 50%, #ece2d6 75%);
+  background-size: 200% 100%;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -47,7 +100,9 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
+  /* 12pt = 16px。店員與客人年齡層都偏大，這是可讀性的底線 */
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 /* ── 版面 ───────────────────────────────────────────── */
@@ -62,6 +117,18 @@ body {
 /* 客人端只在手機開，窄一點看起來才不會空 */
 .wrap.narrow { max-width: 460px; }
 
+/*
+ * 後台在電腦上要用得滿。880px 的內容配兩側大片留白，資料密集的畫面
+ * 會變得很空——舊系統的後台就是接近整個視窗寬。
+ */
+.wrap.wide { max-width: 1280px; }
+
+/* 兩欄版面：窄螢幕自動堆疊，寬螢幕才並排 */
+.cols > div + div { margin-top: 0; }
+@media (min-width: 1000px) {
+  .cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 16px; align-items: start; }
+}
+
 .center-screen {
   min-height: 100dvh;
   display: flex;
@@ -72,9 +139,9 @@ body {
 
 /* ── 標題 ───────────────────────────────────────────── */
 
-h1 { font-size: 21px; font-weight: 650; margin: 0 0 4px; letter-spacing: .01em; }
-h2 { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
-.sub { color: var(--ink-soft); font-size: 13px; margin: 0 0 20px; line-height: 1.65; }
+h1 { font-size: 23px; font-weight: 650; margin: 0 0 4px; letter-spacing: .01em; }
+h2 { font-size: 17px; font-weight: 650; margin: 26px 0 10px; }
+.sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; line-height: 1.65; }
 
 /* 客人端的頁首：店名置中，下面一條細細的粉線 */
 .brand {
@@ -117,7 +184,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
 
 /* 卡片小標題：手機上一頁塞不下全部，要讓客人一眼知道滑到哪一段了 */
 .panel-title {
-  font-size: 12px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   letter-spacing: .08em; color: var(--rose);
   margin: 0 0 14px;
 }
@@ -126,7 +193,7 @@ h2 { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
 
 label {
   display: block;
-  font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  font-size: 14px; font-weight: 600; color: var(--ink-soft);
   margin: 0 0 7px;
 }
 .field { margin-bottom: 16px; }
@@ -165,7 +232,7 @@ select {
   padding-right: 34px;
 }
 
-.hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.55; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.55; }
 
 /* ── 分段選擇（預約身分） ───────────────────────────── */
 
@@ -173,8 +240,8 @@ select {
 .seg button {
   flex: 1;
   margin: 0;
-  padding: 11px 4px;
-  font-size: 14px; font-weight: 600;
+  padding: 12px 4px;
+  font-size: 15px; font-weight: 600;
   color: var(--ink-soft);
   background: var(--rose-wash);
   border: 1.5px solid var(--line-strong);
@@ -197,8 +264,8 @@ select {
 }
 .slot {
   margin: 0;
-  padding: 11px 2px;
-  font-size: 14px; font-weight: 600;
+  padding: 12px 2px;
+  font-size: 15px; font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   background: var(--rose-wash);
@@ -207,7 +274,7 @@ select {
   box-shadow: none;
   line-height: 1.25;
 }
-.slot .left { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.slot .left { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 2px; }
 .slot[aria-pressed="true"] {
   color: #fff; background: var(--rose); border-color: var(--rose);
   box-shadow: 0 2px 8px rgba(214, 128, 149, .3);
@@ -228,7 +295,7 @@ select {
   border: 1.5px solid var(--line-strong);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 14px; font-weight: 600; color: var(--ink);
+  font-size: 15px; font-weight: 600; color: var(--ink);
 }
 .check input {
   width: 19px; height: 19px; margin: 0; padding: 0;
@@ -242,7 +309,7 @@ button {
   width: 100%;
   margin-top: 18px;
   padding: 13px;
-  font-size: 15px; font-weight: 650;
+  font-size: 16px; font-weight: 650;
   font-family: inherit;
   border: 0;
   border-radius: var(--radius-sm);
@@ -261,7 +328,7 @@ button.ghost {
 }
 button.ghost:active:not(:disabled) { background: var(--rose-tint); }
 
-button.slim { width: auto; padding: 8px 15px; margin: 0; font-size: 13px; }
+button.slim { width: auto; padding: 9px 16px; margin: 0; font-size: 14px; }
 
 button.outline {
   background: #fff; color: var(--rose-deep);
@@ -273,7 +340,7 @@ button.outline {
 .msg {
   margin-top: 14px; padding: 11px 13px;
   border-radius: var(--radius-sm);
-  font-size: 13px; line-height: 1.65;
+  font-size: 14px; line-height: 1.65;
 }
 .msg.err  { background: var(--danger-bg); color: var(--danger); }
 .msg.ok   { background: var(--ok-bg);     color: var(--ok); }
@@ -285,7 +352,7 @@ button.outline {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
 }
-.who { font-size: 13px; color: var(--ink-soft); }
+.who { font-size: 14px; color: var(--ink-soft); }
 
 .stat-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .stat {
@@ -295,12 +362,12 @@ button.outline {
   box-shadow: var(--shadow-sm);
 }
 .stat .n { font-size: 27px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.stat .k { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.stat .k { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
 
 code.uid {
   display: block; margin-top: 10px; padding: 9px 11px;
   background: var(--rose-tint); border: 1px solid var(--line);
-  border-radius: 8px; font-size: 12px; word-break: break-all;
+  border-radius: 8px; font-size: 13px; word-break: break-all;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
@@ -335,8 +402,8 @@ code.uid {
 }
 .summary .row {
   display: flex; justify-content: space-between; gap: 14px;
-  padding: 10px 0; border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  padding: 11px 0; border-bottom: 1px solid var(--line);
+  font-size: 15px;
 }
 .summary .row:last-child { border-bottom: 0; }
 .summary .k { color: var(--ink-soft); flex: none; }
@@ -352,7 +419,7 @@ code.uid {
 }
 .tabs button {
   flex: 1; margin: 0; padding: 9px 4px;
-  font-size: 14px; font-weight: 600;
+  font-size: 15px; font-weight: 600;
   color: var(--ink-soft); background: transparent;
   border-radius: 8px; box-shadow: none;
 }
@@ -370,24 +437,24 @@ code.uid {
   font-size: 16px; font-weight: 650; color: var(--rose-deep);
   font-variant-numeric: tabular-nums;
 }
-.bk-meta { margin-top: 7px; font-size: 13px; color: var(--ink-soft); }
+.bk-meta { margin-top: 7px; font-size: 14px; color: var(--ink-soft); }
 .bk-remark {
   margin-top: 10px; padding: 9px 11px;
   background: var(--rose-tint); border-radius: 9px;
-  font-size: 13px; color: var(--ink-soft); line-height: 1.6;
+  font-size: 14px; color: var(--ink-soft); line-height: 1.6;
   word-break: break-word;
 }
 
 .badge {
-  flex: none; padding: 4px 9px; border-radius: 999px;
-  font-size: 11px; font-weight: 650; white-space: nowrap;
+  flex: none; padding: 5px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 650; white-space: nowrap;
 }
 .badge.up  { background: var(--rose-tint); color: var(--rose-deep); }
 .badge.old { background: #f3eeef; color: var(--muted); }
 
 .empty { text-align: center; padding: 34px 16px; color: var(--ink-soft); }
 .empty .emoji { font-size: 30px; margin-bottom: 10px; }
-.empty p { margin: 0; font-size: 14px; }
+.empty p { margin: 0; font-size: 15px; }
 .empty button { max-width: 200px; margin: 18px auto 0; }
 
 /* ── 後台：篩選列 ───────────────────────────────────── */
@@ -402,8 +469,8 @@ code.uid {
 
 /* 營業時間的時段藥丸，點一下刪除 */
 .chip {
-  width: auto; margin: 0; padding: 7px 11px;
-  font-size: 13px; font-weight: 600;
+  width: auto; margin: 0; padding: 8px 12px;
+  font-size: 14px; font-weight: 600;
   color: var(--ink); background: var(--rose-wash);
   border: 1.5px solid var(--line-strong); border-radius: 999px;
   box-shadow: none;
@@ -427,27 +494,27 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 14px;
   box-shadow: var(--shadow-sm);
-  font-size: 14px;
+  font-size: 16px;
 }
 .arow.off { opacity: .5; }
 .arow.past { opacity: .6; }
 
 .arow .c[data-label]::before {
   content: attr(data-label);
-  display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px;
+  display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px;
 }
-.arow .when b { font-size: 16px; }
-.arow .when .dow { margin-left: 7px; color: var(--ink-soft); font-size: 13px; }
+.arow .when b { font-size: 17px; }
+.arow .when .dow { margin-left: 7px; color: var(--ink-soft); font-size: 14px; }
 .arow .when .tm {
   margin-left: 9px; font-weight: 650; color: var(--rose-deep);
   font-variant-numeric: tabular-nums;
 }
-.arow .who b { font-size: 15px; }
+.arow .who b { font-size: 17px; }
 .arow .tel { margin-top: 3px; }
 .arow a { color: var(--rose-deep); text-decoration: none; font-variant-numeric: tabular-nums; }
 .arow .note {
   background: var(--rose-tint); border-radius: 9px; padding: 9px 11px;
-  font-size: 13px; color: var(--ink-soft); line-height: 1.6; word-break: break-word;
+  font-size: 14px; color: var(--ink-soft); line-height: 1.6; word-break: break-word;
 }
 .arow .note[data-label]::before { margin-bottom: 2px; }
 .arow .acts { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -457,14 +524,14 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 .tag2 {
   display: inline-block; margin-left: 6px; padding: 2px 7px;
   border-radius: 999px; background: #f3eeef; color: var(--muted);
-  font-size: 11px; font-weight: 650; vertical-align: middle;
+  font-size: 12px; font-weight: 650; vertical-align: middle;
 }
 .tag2.line { background: #e8f6ec; color: var(--ok); }
 
 /* 營業／休息開關 */
 .switch {
   display: inline-flex; align-items: center; gap: 8px;
-  margin: 0; cursor: pointer; font-size: 14px; font-weight: 600;
+  margin: 0; cursor: pointer; font-size: 15px; font-weight: 600;
 }
 .switch input { width: 19px; height: 19px; margin: 0; accent-color: var(--rose); flex: none; }
 
@@ -490,7 +557,7 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   display: flex; align-items: center; gap: 8px;
   margin: 4px 0 12px;
 }
-.cal-bar b { font-size: 15px; }
+.cal-bar b { font-size: 17px; }
 .cal-bar button { margin: 0; }
 .cal-bar button:first-child { margin-right: 2px; }
 
@@ -499,7 +566,7 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   margin-bottom: 5px;
 }
 .cal-wd {
-  text-align: center; font-size: 11px; font-weight: 650; color: var(--muted);
+  text-align: center; font-size: 12px; font-weight: 650; color: var(--muted);
   padding: 2px 0;
 }
 /* 週六日用品牌色標出來，跟「假日時段」那組對得起來 */
@@ -509,7 +576,7 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 
 .cal-cell {
   margin: 0; padding: 5px 2px 6px;
-  min-height: 56px;
+  min-height: 64px;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px;
   background: var(--rose-wash);
   border: 1.5px solid var(--line-strong);
@@ -519,14 +586,14 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   font-weight: 500;
 }
 .cal-cell.blank { background: transparent; border-color: transparent; min-height: 0; }
-.cal-cell .n { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.cal-cell .n { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .cal-cell .mark {
-  font-size: 10px; font-weight: 650; line-height: 1.2;
+  font-size: 11px; font-weight: 650; line-height: 1.2;
   padding: 1px 5px; border-radius: 999px;
   background: var(--ok-bg); color: var(--ok);
 }
 .cal-cell .blk {
-  font-size: 10px; font-weight: 650; line-height: 1.2;
+  font-size: 11px; font-weight: 650; line-height: 1.2;
   padding: 1px 5px; border-radius: 999px;
   background: var(--danger-bg); color: var(--danger);
 }
@@ -546,7 +613,7 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   gap: 10px; flex-wrap: wrap;
   margin-top: 14px; padding: 12px 14px;
   background: var(--rose-tint); border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 650;
+  font-size: 15px; font-weight: 650;
 }
 .batch-btns { display: flex; gap: 7px; flex-wrap: wrap; }
 .batch-btns button { margin: 0; }
@@ -575,5 +642,5 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   .field { margin-bottom: 14px; }
   .slots { grid-template-columns: repeat(3, 1fr); gap: 7px; }
   .seg { gap: 6px; }
-  .seg button { padding: 11px 2px; font-size: 13px; }
+  .seg button { padding: 12px 2px; font-size: 14px; }
 }
