@@ -188,6 +188,7 @@ export default function BookingApp() {
       )}
 
       <div className="panel">
+        <div className="panel-title">您的資料</div>
         <div className="field">
           <label>預約身分</label>
           <div className="seg">
@@ -237,9 +238,18 @@ export default function BookingApp() {
             />
           )}
         </div>
+
+        <div className="field">
+          <label htmlFor="remark">備註（可不填）</label>
+          <textarea
+            id="remark" value={remark} onChange={(e) => setRemark(e.target.value)}
+            placeholder="想先讓我們知道的事，例如膚況、想處理的部位"
+          />
+        </div>
       </div>
 
       <div className="panel">
+        <div className="panel-title">選擇時間</div>
         <div className="field">
           <label htmlFor="date">日期</label>
           <select id="date" value={date} onChange={(e) => { setDate(e.target.value); setTime(""); }}>
@@ -280,16 +290,6 @@ export default function BookingApp() {
             )}
           </div>
         )}
-      </div>
-
-      <div className="panel">
-        <div className="field">
-          <label htmlFor="remark">備註（可不填）</label>
-          <textarea
-            id="remark" value={remark} onChange={(e) => setRemark(e.target.value)}
-            placeholder="想先讓我們知道的事，例如膚況、想處理的部位"
-          />
-        </div>
       </div>
 
       {formErr && <div className="msg err">{formErr}</div>}

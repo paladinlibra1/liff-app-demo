@@ -115,6 +115,13 @@ h2 { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
   margin-bottom: 14px;
 }
 
+/* 卡片小標題：手機上一頁塞不下全部，要讓客人一眼知道滑到哪一段了 */
+.panel-title {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .08em; color: var(--rose);
+  margin: 0 0 14px;
+}
+
 /* ── 表單 ───────────────────────────────────────────── */
 
 label {
@@ -334,3 +341,20 @@ code.uid {
 .summary .row:last-child { border-bottom: 0; }
 .summary .k { color: var(--ink-soft); flex: none; }
 .summary .v { font-weight: 600; text-align: right; }
+
+/* ── 窄螢幕（~390px 的手機） ────────────────────────── */
+/*
+ * 客人端只會在手機開，這個斷點才是常態、桌面才是例外。
+ * 左右邊距收一點讓卡片內部空間變大，時段格子維持 3 欄
+ * （每欄約 110px，放得下「12:30」＋下面那行「剩 2 位」）。
+ */
+@media (max-width: 430px) {
+  .wrap { padding: 14px 12px calc(40px + env(safe-area-inset-bottom)); }
+  .panel { padding: 16px 14px; margin-bottom: 12px; }
+  .brand { padding: 16px 0 14px; }
+  .brand::after { margin-top: 11px; }
+  .field { margin-bottom: 14px; }
+  .slots { grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .seg { gap: 6px; }
+  .seg button { padding: 11px 2px; font-size: 13px; }
+}
