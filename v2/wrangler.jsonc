@@ -16,6 +16,7 @@
     // ⚠️ 暫時借用「本店」現有的 LINE provider，之後換成潮州店自己的。
     //    置換時所有 line_user_id 會全部作廢（LINE userId 是 per-provider）。
     "LINE_LOGIN_CHANNEL_ID": "2009018559",
+    "STORE_SLUG": "chaozhou",
     "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
   }
 

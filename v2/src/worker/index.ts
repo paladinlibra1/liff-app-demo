@@ -12,11 +12,14 @@
  */
 
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
+import { getStore, timesForDate, SupabaseError } from "./supabase";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
   ASSETS: Fetcher;
   LINE_LOGIN_CHANNEL_ID: string;
+  /** 這個 Worker 服務哪一家店（stores.slug） */
+  STORE_SLUG: string;
   SUPABASE_URL: string;
   /** sb_secret_... 繞過 RLS，只存在於 Worker secret，絕不外流 */
   SUPABASE_SECRET_KEY: string;
@@ -27,6 +30,17 @@ function json(data: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
+}
+
+/** 把後端例外轉成對外的 JSON 錯誤：對客人講人話，細節只留在 log */
+function errorResponse(err: unknown, fallback: string): Response {
+  if (err instanceof SupabaseError) {
+    console.error(fallback, err.message);
+    // 資料庫的錯誤訊息可能含 schema 細節，不往外送
+    return json({ error: fallback }, 500);
+  }
+  console.error(fallback, err);
+  return json({ error: fallback }, 500);
 }
 
 export default {
@@ -48,6 +62,26 @@ export default {
         // 只回報有沒有設定，不回報值
         hasSupabaseKey: Boolean(env.SUPABASE_SECRET_KEY),
       });
+    }
+
+    // ── 店家設定：店名與營業時段 ────────────────────────
+    // 不需要登入：這些是店門口就看得到的公開資訊，
+    // 而且客人端要先拿到時段才能畫出預約表單。
+    if (path === "/api/store") {
+      try {
+        const store = await getStore(env);
+        return json({
+          name: store.name,
+          timezone: store.timezone,
+          // 平日／假日兩組，店家可在後台自行設定
+          businessHours: {
+            weekday: store.business_hours?.weekday ?? [],
+            weekend: store.business_hours?.weekend ?? [],
+          },
+        });
+      } catch (err) {
+        return errorResponse(err, "讀取店家設定失敗");
+      }
     }
 
     // ── 我是誰：驗證 LIFF token，回傳 LINE 身分 ──────────
