@@ -95,6 +95,18 @@ async function resolveNotifyTarget(env: Env, member: Member): Promise<string | n
 // 建立預約
 // ───────────────────────────────────────────────────────────
 
+export interface CreatedBooking {
+  id: string;
+  date: string;
+  start_time: string;
+  name: string;
+  name2: string | null;
+  phone: string;
+  type: string;
+  remark: string | null;
+  notify_line_user_id: string | null;
+}
+
 export interface BookingInput {
   name?: string;
   name2?: string | null;
@@ -155,9 +167,10 @@ export async function createBooking(
   const notify = await resolveNotifyTarget(env, member);
 
   try {
-    const rows = await sb<{ id: string; date: string; start_time: string }[]>(
+    // 多選幾個欄位是給推播用的，不是給客人看的——回應只會挑其中幾個
+    const rows = await sb<CreatedBooking[]>(
       env,
-      `bookings?select=id,date,start_time`,
+      `bookings?select=id,date,start_time,name,name2,phone,type,remark,notify_line_user_id`,
       {
         method: "POST",
         headers: { Prefer: "return=representation" },

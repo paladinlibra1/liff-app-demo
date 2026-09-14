@@ -20,10 +20,14 @@
     // 否則 userId 對不起來（LINE 的 userId 是 per-provider）。
     "LINE_LOGIN_CHANNEL_ID": "2011603381",
     "STORE_SLUG": "chaozhou",
+    // 推播卡片上「更改或取消預約」按鈕要導去的地方（/my 那個 LIFF）
+    "LIFF_MY_URL": "https://liff.line.me/2011603381-dBGrCXYs",
     "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
   }
 
   // 機密用 `wrangler secret put` 設定，不寫在這裡（repo 是公開的）：
   //   SUPABASE_SECRET_KEY       → sb_secret_... （繞過 RLS，只能待在 Worker）
-  //   LINE_CHANNEL_ACCESS_TOKEN → 推播用（下一階段才需要）
+  //   LINE_CHANNEL_ACCESS_TOKEN → 推播用（已設定）
+  //   STORE_GROUP_ID            → 店家群組，設了才會推給店家（尚未設定，
+  //                               要先把官方帳號拉進群組、由 webhook 取得 id）
 }

@@ -12,6 +12,7 @@ import { sb, type Store } from "./supabase";
 import { todayInStore, timeNowInStore } from "./availability";
 import { BookingError } from "./bookings";
 import type { LineProfile } from "./line";
+import type { NotifyBooking } from "./linePush";
 
 export interface MyBooking {
   id: string;
@@ -34,12 +35,13 @@ interface BookingRow {
   name2: string | null;
   remark: string | null;
   status: string;
+  phone: string;
   member_id: string | null;
   notify_line_user_id: string | null;
 }
 
 const FIELDS =
-  "id,date,start_time,type,name,name2,remark,status,member_id,notify_line_user_id";
+  "id,date,start_time,type,name,name2,phone,remark,status,member_id,notify_line_user_id";
 
 /**
  * 「這個 LINE 使用者看得到哪些預約」的條件。
@@ -150,5 +152,20 @@ export async function cancelMyBooking(
     },
   );
 
-  return toMyBooking(updated[0]);
+  const row = updated[0];
+  return {
+    // 回給客人的：不含 notify_line_user_id，那是內部資訊
+    booking: toMyBooking(row),
+    // 推播要用的：多了電話與收件人
+    notify: {
+      date: row.date,
+      time: row.start_time.slice(0, 5),
+      name: row.name,
+      name2: row.name2,
+      phone: row.phone,
+      type: row.type,
+      remark: row.remark,
+      notifyLineUserId: row.notify_line_user_id,
+    } satisfies NotifyBooking,
+  };
 }

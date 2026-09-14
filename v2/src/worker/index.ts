@@ -16,11 +16,18 @@ import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import { createBooking, BookingError, type BookingInput } from "./bookings";
 import { listMyBookings, cancelMyBooking } from "./myBookings";
+import { notifyBooking } from "./linePush";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
   ASSETS: Fetcher;
   LINE_LOGIN_CHANNEL_ID: string;
+  /** Messaging API 的長效 token，推播用。沒設就不推 */
+  LINE_CHANNEL_ACCESS_TOKEN: string;
+  /** 店家群組的 id，設了才會推給店家。要有 webhook 才拿得到，現在沒設 */
+  STORE_GROUP_ID?: string;
+  /** 「更改或取消預約」按鈕要導去的 LIFF 網址 */
+  LIFF_MY_URL?: string;
   /** 這個 Worker 服務哪一家店（stores.slug） */
   STORE_SLUG: string;
   SUPABASE_URL: string;
@@ -66,7 +73,7 @@ function errorResponse(err: unknown, fallback: string): Response {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -152,6 +159,20 @@ export default {
 
         const store = await getStore(env);
         const booking = await createBooking(env, store, profile, input);
+
+        // 推播丟到背景：客人已經訂到位子了，不該因為 LINE 送不出去而等待或失敗
+        ctx.waitUntil(notifyBooking(env, store.name, {
+          date: booking.date,
+          time: booking.start_time.slice(0, 5),
+          name: booking.name,
+          name2: booking.name2,
+          phone: booking.phone,
+          type: booking.type,
+          remark: booking.remark,
+          notifyLineUserId: booking.notify_line_user_id,
+          lineName: profile.displayName,
+        }, "new"));
+
         return json({ booking }, 201);
       } catch (err) {
         // 欄位沒填、額滿、重複預約 → 直接把訊息給客人看
@@ -194,7 +215,15 @@ export default {
           reason = body?.reason?.trim() || null;
         } catch { /* 沒帶 body 就是沒有原因 */ }
 
-        return json({ booking: await cancelMyBooking(env, store, profile, cancelMatch![1], reason) });
+        const { booking, notify } = await cancelMyBooking(
+          env, store, profile, cancelMatch![1], reason,
+        );
+
+        ctx.waitUntil(notifyBooking(
+          env, store.name, { ...notify, lineName: profile.displayName }, "cancel",
+        ));
+
+        return json({ booking });
       } catch (err) {
         if (err instanceof BookingError) return json({ error: err.message }, err.status);
         if (err instanceof LineAuthError) return json({ error: err.message }, err.status);
