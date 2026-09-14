@@ -1,26 +1,66 @@
+/**
+ * 設計系統 — 客人端與後台共用
+ *
+ * 品牌色沿用舊系統客人端的櫻花粉＋暖棕字（#d68095 / #5d4037）：
+ * 客人在 LINE 裡從舊店換到新店，畫面風格不該整個變一個樣。
+ *
+ * 只有亮色。客人端在 LINE 裡開，舊系統也一直是亮色；
+ * color-scheme: light 是要擋掉瀏覽器自動把表單元件反色。
+ */
+
 :root {
-  --bg: #f5f5f7;
-  --card: #ffffff;
-  --ink: #1d1d1f;
-  --muted: #6e6e73;
-  --line: #e0e0e5;
-  --accent: #0071e3;
-  --danger: #d70015;
-  --ok: #248a3d;
+  color-scheme: light;
+
+  /* 品牌 */
+  --rose:        #d68095;   /* 主色 */
+  --rose-deep:   #c06c82;   /* 按壓 */
+  --rose-soft:   #e8aeb7;   /* 外框、次要強調 */
+  --rose-tint:   #fdf2f5;   /* 極淡粉底 */
+  --rose-wash:   #fff8fa;   /* 輸入框底、比卡片再暖一點 */
+
+  /* 文字：暖棕比純黑柔和，是舊系統就定下的 */
+  --ink:         #5d4037;
+  --ink-soft:    #8d7671;
+  --muted:       #b09090;
+
+  --card:        #ffffff;
+  --line:        #f2e2e6;
+  --line-strong: #e6d0d6;
+
+  --ok:          #3f8f5f;
+  --ok-bg:       #eaf6ee;
+  --danger:      #c9455c;
+  --danger-bg:   #fdecef;
+
+  --radius:      16px;
+  --radius-sm:   11px;
+  --shadow:      0 1px 2px rgba(93, 64, 55, .04), 0 8px 24px rgba(93, 64, 55, .06);
+  --shadow-sm:   0 1px 2px rgba(93, 64, 55, .05);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--rose-tint);
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
-    "Microsoft JhengHei", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
 }
 
-.wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+/* ── 版面 ───────────────────────────────────────────── */
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  /* 底部留白含 iPhone 的安全區域，不然按鈕會被 home indicator 蓋住 */
+  padding: 20px 16px calc(48px + env(safe-area-inset-bottom));
+}
+
+/* 客人端只在手機開，窄一點看起來才不會空 */
+.wrap.narrow { max-width: 460px; }
 
 .center-screen {
   min-height: 100dvh;
@@ -30,68 +70,267 @@ body {
   padding: 24px 16px;
 }
 
+/* ── 標題 ───────────────────────────────────────────── */
+
+h1 { font-size: 21px; font-weight: 650; margin: 0 0 4px; letter-spacing: .01em; }
+h2 { font-size: 15px; font-weight: 650; margin: 26px 0 10px; }
+.sub { color: var(--ink-soft); font-size: 13px; margin: 0 0 20px; line-height: 1.65; }
+
+/* 客人端的頁首：店名置中，下面一條細細的粉線 */
+.brand {
+  text-align: center;
+  padding: 22px 0 18px;
+}
+.brand .name {
+  font-size: 19px; font-weight: 650; letter-spacing: .06em;
+}
+.brand .tag {
+  font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: .1em;
+}
+.brand::after {
+  content: ""; display: block; width: 40px; height: 2px;
+  margin: 14px auto 0; border-radius: 2px;
+  background: linear-gradient(90deg, var(--rose-soft), var(--rose));
+}
+
+/* ── 卡片 ───────────────────────────────────────────── */
+
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 24px;
+  border-radius: var(--radius);
+  padding: 22px;
   width: 100%;
   max-width: 400px;
+  box-shadow: var(--shadow);
 }
 
-h1 { font-size: 20px; margin: 0 0 4px; }
-h2 { font-size: 16px; margin: 24px 0 10px; }
-.sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; line-height: 1.6; }
-
-label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 5px; }
-
-input {
-  width: 100%;
-  padding: 11px 12px;
-  font-size: 16px; /* 16px 以下 iOS Safari 會自動放大頁面 */
+/* 表單用的區塊卡，寬度跟著容器 */
+.panel {
+  background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: #fff;
-  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 14px;
 }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+/* ── 表單 ───────────────────────────────────────────── */
+
+label {
+  display: block;
+  font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  margin: 0 0 7px;
+}
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+
+input, select, textarea {
+  width: 100%;
+  padding: 12px 13px;
+  font-size: 16px; /* 16px 以下 iOS Safari 會自動放大整頁 */
+  font-family: inherit;
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--rose-wash);
+  transition: border-color .15s, background .15s;
+}
+textarea { resize: vertical; min-height: 76px; line-height: 1.6; }
+
+input::placeholder, textarea::placeholder { color: var(--muted); }
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--rose);
+  background: #fff;
+}
+input:disabled, select:disabled {
+  background: #f7f2f3; color: var(--muted); cursor: not-allowed;
+}
+
+select {
+  appearance: none;
+  /* 自己畫箭頭，免得各家瀏覽器長得不一樣 */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%23b09090' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  padding-right: 34px;
+}
+
+.hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.55; }
+
+/* ── 分段選擇（預約身分） ───────────────────────────── */
+
+.seg { display: flex; gap: 7px; }
+.seg button {
+  flex: 1;
+  margin: 0;
+  padding: 11px 4px;
+  font-size: 14px; font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--rose-wash);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.seg button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--rose);
+  border-color: var(--rose);
+  box-shadow: 0 2px 8px rgba(214, 128, 149, .3);
+}
+
+/* ── 時段格子 ───────────────────────────────────────── */
+
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+.slot {
+  margin: 0;
+  padding: 11px 2px;
+  font-size: 14px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--rose-wash);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  line-height: 1.25;
+}
+.slot .left { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.slot[aria-pressed="true"] {
+  color: #fff; background: var(--rose); border-color: var(--rose);
+  box-shadow: 0 2px 8px rgba(214, 128, 149, .3);
+}
+.slot[aria-pressed="true"] .left { color: rgba(255, 255, 255, .85); }
+.slot:disabled {
+  color: var(--muted); background: #f7f2f3;
+  border-color: var(--line); opacity: 1; text-decoration: line-through;
+}
+.slot:disabled .left { text-decoration: none; }
+
+/* ── 核取方塊 ───────────────────────────────────────── */
+
+.check {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 13px;
+  background: var(--rose-wash);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--ink);
+}
+.check input {
+  width: 19px; height: 19px; margin: 0; padding: 0;
+  accent-color: var(--rose); flex: none;
+}
+.check.on { border-color: var(--rose); background: #fff; }
+
+/* ── 按鈕 ───────────────────────────────────────────── */
 
 button {
   width: 100%;
   margin-top: 18px;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 600;
+  padding: 13px;
+  font-size: 15px; font-weight: 650;
+  font-family: inherit;
   border: 0;
-  border-radius: 9px;
-  background: var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--rose);
   color: #fff;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(214, 128, 149, .28);
+  transition: background .15s, transform .06s, box-shadow .15s;
 }
-button:disabled { opacity: .5; cursor: default; }
-button.ghost { background: transparent; color: var(--accent); margin-top: 8px; font-weight: 500; }
-button.slim { width: auto; padding: 7px 14px; margin: 0; font-size: 13px; }
+button:active:not(:disabled) { background: var(--rose-deep); transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: default; box-shadow: none; }
 
-.msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
-.msg.err { background: #ffeaea; color: var(--danger); }
-.msg.ok  { background: #e8f6ec; color: var(--ok); }
+button.ghost {
+  background: transparent; color: var(--rose-deep);
+  margin-top: 8px; font-weight: 600; box-shadow: none;
+}
+button.ghost:active:not(:disabled) { background: var(--rose-tint); }
+
+button.slim { width: auto; padding: 8px 15px; margin: 0; font-size: 13px; }
+
+button.outline {
+  background: #fff; color: var(--rose-deep);
+  border: 1.5px solid var(--rose-soft); box-shadow: none;
+}
+
+/* ── 訊息 ───────────────────────────────────────────── */
+
+.msg {
+  margin-top: 14px; padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; line-height: 1.65;
+}
+.msg.err  { background: var(--danger-bg); color: var(--danger); }
+.msg.ok   { background: var(--ok-bg);     color: var(--ok); }
+.msg.note { background: var(--rose-tint); color: var(--ink-soft); }
+
+/* ── 後台：頂列與統計卡 ─────────────────────────────── */
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
 }
-.who { font-size: 13px; color: var(--muted); }
+.who { font-size: 13px; color: var(--ink-soft); }
 
 .stat-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .stat {
-  flex: 1 1 140px; background: var(--card); border: 1px solid var(--line);
-  border-radius: 12px; padding: 16px;
+  flex: 1 1 140px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
-.stat .n { font-size: 26px; font-weight: 650; }
-.stat .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.stat .n { font-size: 27px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 
 code.uid {
-  display: block; margin-top: 10px; padding: 9px 11px; background: var(--bg);
-  border: 1px solid var(--line); border-radius: 7px;
-  font-size: 12px; word-break: break-all; font-family: ui-monospace, monospace;
+  display: block; margin-top: 10px; padding: 9px 11px;
+  background: var(--rose-tint); border: 1px solid var(--line);
+  border-radius: 8px; font-size: 12px; word-break: break-all;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
+
+/* ── 載入骨架 ───────────────────────────────────────── */
+
+.skeleton {
+  background: linear-gradient(90deg, #f4e9ec 25%, #faf1f3 50%, #f4e9ec 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  button:active:not(:disabled) { transform: none; }
+}
+
+/* ── 完成畫面 ───────────────────────────────────────── */
+
+.done { text-align: center; padding: 12px 4px 4px; }
+.done .mark {
+  width: 60px; height: 60px; margin: 0 auto 16px;
+  border-radius: 50%; background: var(--ok-bg); color: var(--ok);
+  display: flex; align-items: center; justify-content: center; font-size: 29px;
+}
+.summary {
+  margin-top: 18px; border-top: 1px solid var(--line); padding-top: 6px;
+  text-align: left;
+}
+.summary .row {
+  display: flex; justify-content: space-between; gap: 14px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.summary .row:last-child { border-bottom: 0; }
+.summary .k { color: var(--ink-soft); flex: none; }
+.summary .v { font-weight: 600; text-align: right; }

@@ -21,6 +21,7 @@
     "wrangler": "^4.0.0"
   },
   "dependencies": {
+    "@line/liff": "^2.31.0",
     "@supabase/supabase-js": "^2.116.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
