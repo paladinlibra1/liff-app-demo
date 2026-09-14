@@ -484,6 +484,73 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 }
 .gen button { margin-top: 12px; }
 
+/* ── 營業日月曆 ─────────────────────────────────────── */
+
+.cal-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 0 12px;
+}
+.cal-bar b { font-size: 15px; }
+.cal-bar button { margin: 0; }
+.cal-bar button:first-child { margin-right: 2px; }
+
+.cal-week {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+  margin-bottom: 5px;
+}
+.cal-wd {
+  text-align: center; font-size: 11px; font-weight: 650; color: var(--muted);
+  padding: 2px 0;
+}
+/* 週六日用品牌色標出來，跟「假日時段」那組對得起來 */
+.cal-wd:first-child, .cal-wd:last-child { color: var(--rose); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+
+.cal-cell {
+  margin: 0; padding: 5px 2px 6px;
+  min-height: 56px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 2px;
+  background: var(--rose-wash);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  box-shadow: none;
+  color: var(--ink);
+  font-weight: 500;
+}
+.cal-cell.blank { background: transparent; border-color: transparent; min-height: 0; }
+.cal-cell .n { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.cal-cell .mark {
+  font-size: 10px; font-weight: 650; line-height: 1.2;
+  padding: 1px 5px; border-radius: 999px;
+  background: var(--ok-bg); color: var(--ok);
+}
+.cal-cell .blk {
+  font-size: 10px; font-weight: 650; line-height: 1.2;
+  padding: 1px 5px; border-radius: 999px;
+  background: var(--danger-bg); color: var(--danger);
+}
+/* 有營業：整格淡綠，一眼看得出這個月排了哪些天 */
+.cal-cell.on { background: #f3faf5; border-color: #cfe8d7; }
+/* 批次選取中 */
+.cal-cell.sel {
+  background: var(--rose); border-color: var(--rose); color: #fff;
+  box-shadow: 0 2px 8px rgba(214, 128, 149, .3);
+}
+.cal-cell.today { border-color: var(--rose); border-width: 2px; }
+.cal-cell.past { opacity: .45; }
+
+/* 批次操作列 */
+.batch {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  margin-top: 14px; padding: 12px 14px;
+  background: var(--rose-tint); border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 650;
+}
+.batch-btns { display: flex; gap: 7px; flex-wrap: wrap; }
+.batch-btns button { margin: 0; }
+
 /* 桌面：資料列排成一橫列 */
 @media (min-width: 760px) {
   .arow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }

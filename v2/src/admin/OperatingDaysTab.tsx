@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
-
-const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
+import OperatingCalendar, { type DayState } from "./OperatingCalendar";
 
 type Kind = "weekday" | "weekend";
 
@@ -21,6 +20,13 @@ interface DayRow {
 
 function todayStr(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+}
+
+/** `2026-09` 往前／往後 n 個月 */
+function shiftMonth(month: string, n: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 /** `2026-09` → 該月每一天的日期字串 */
@@ -61,8 +67,10 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
-  /** 展開中的日期（編輯封鎖時段用） */
+  /** 打開封鎖時段面板的那一天 */
   const [openDate, setOpenDate] = useState<string | null>(null);
+  /** 批次選取中的日期（照舊系統：跳著點多天，再一次設定） */
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // ── 讀取 ──────────────────────────────────────────
   const loadHours = useCallback(async () => {
@@ -125,23 +133,6 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
   }
 
   // ── 營業日 ────────────────────────────────────────
-  async function toggleDay(date: string, isOperating: boolean) {
-    if (busy) return;
-    setBusy(date); setErr(""); setOk("");
-    const row = days[date];
-    const { data, error } = await supabase.from("operating_days").upsert({
-      store_id: store.id,
-      date,
-      is_operating: isOperating,
-      // 保留原本的封鎖時段，不要因為切換開關就被清掉
-      blocked_times: row?.blocked_times ?? [],
-    }, { onConflict: "store_id,date" }).select("date");
-    if (error) setErr(error.message);
-    else if (!data || data.length === 0) setErr("沒有儲存成功，請確認你的帳號權限。");
-    else await loadDays();
-    setBusy(null);
-  }
-
   async function toggleBlocked(date: string, time: string) {
     if (busy) return;
     setBusy(date); setErr(""); setOk("");
@@ -163,7 +154,57 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
     setBusy(null);
   }
 
-  const monthDays = useMemo(() => daysOfMonth(month), [month]);
+  /** 月曆要的：日期 → 是否營業、封鎖幾個 */
+  const calState = useMemo(() => {
+    const out: Record<string, DayState> = {};
+    for (const [date, r] of Object.entries(days)) {
+      out[date] = { isOperating: r.is_operating, blockedCount: r.blocked_times.length };
+    }
+    return out;
+  }, [days]);
+
+  /** 點一格：已營業 → 開封鎖面板；還沒開放 → 加入批次選取（照舊系統） */
+  function pick(date: string) {
+    if (days[date]?.is_operating) {
+      setSelected(new Set());
+      setOpenDate(openDate === date ? null : date);
+      return;
+    }
+    setOpenDate(null);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date); else next.add(date);
+      return next;
+    });
+  }
+
+  /** 選取的日子一次設定。一個請求送完，不是一天一筆 */
+  async function applyBatch(isOperating: boolean) {
+    if (busy) return;                                  // 防連點
+    const dates = [...selected].sort();
+    if (!confirm(`確定要把選取的 ${dates.length} 天全部設為${isOperating ? "營業" : "店休"}嗎？`)) return;
+
+    setBusy("batch"); setErr(""); setOk("");
+    const rows = dates.map((date) => ({
+      store_id: store.id,
+      date,
+      is_operating: isOperating,
+      // 保留原本的封鎖時段，不要因為批次設定就被清掉
+      blocked_times: days[date]?.blocked_times ?? [],
+    }));
+
+    const { data, error } = await supabase
+      .from("operating_days").upsert(rows, { onConflict: "store_id,date" }).select("date");
+
+    if (error) setErr(error.message);
+    else if (!data || data.length === 0) setErr("沒有儲存成功，請確認你的帳號權限。");
+    else {
+      setSelected(new Set());
+      setOk(`已把 ${dates.length} 天設為${isOperating ? "營業" : "店休"}`);
+      await loadDays();
+    }
+    setBusy(null);
+  }
 
   return (
     <>
@@ -198,84 +239,70 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
         <div className="panel-title">營業日</div>
         <p className="sub" style={{ marginBottom: 14 }}>
           <b>沒有設定的日子一律當作不營業</b>，客人看不到、也約不到。
-          要開放哪一天就把它打開。
+          <br />點「還沒開放」的日子可以連續點很多天（跳著點也行），選好之後一次設定。
+          <br />點「已營業」的日子則是打開那天的封鎖時段。
         </p>
-        <div className="filters">
-          <div className="f">
-            <label htmlFor="month">月份</label>
-            <input id="month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-          </div>
+
+        <div className="cal-bar">
+          <button className="slim outline" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+          <b>{month.replace("-", " 年 ")} 月</b>
+          <button className="slim outline" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+          <button className="slim ghost" onClick={() => setMonth(today.slice(0, 7))}>本月</button>
         </div>
-      </div>
 
-      <div className="rows">
-        {monthDays.map((date) => {
-          const row = days[date];
-          const on = row?.is_operating ?? false;
-          const blocked = row?.blocked_times ?? [];
-          const times = hours?.[kindOf(date)] ?? [];
-          const past = date < today;
+        <OperatingCalendar
+          month={month}
+          today={today}
+          state={calState}
+          selected={selected}
+          onPick={pick}
+        />
 
-          return (
-            <div className={"arow day" + (on ? "" : " off") + (past ? " past" : "")} key={date}>
-              <div className="c when" data-label="日期">
-                <b>{date.slice(5)}</b>
-                <span className="dow">週{WEEK[dow(date)]}</span>
-                <span className="tag2">{kindOf(date) === "weekend" ? "假日" : "平日"}</span>
-              </div>
-
-              <div className="c" data-label="狀態">
-                <label className="switch">
-                  <input
-                    type="checkbox" checked={on} disabled={busy === date}
-                    onChange={(e) => toggleDay(date, e.target.checked)}
-                  />
-                  <span>{on ? "營業" : "休息"}</span>
-                </label>
-              </div>
-
-              <div className="c" data-label="封鎖時段">
-                {on
-                  ? (blocked.length > 0 ? `${blocked.length} 個時段不開放` : "全部開放")
-                  : "—"}
-              </div>
-
-              <div className="c acts">
-                {on && times.length > 0 && (
-                  <button
-                    className="slim outline"
-                    onClick={() => setOpenDate(openDate === date ? null : date)}
-                  >
-                    {openDate === date ? "收合" : "封鎖時段"}
-                  </button>
-                )}
-              </div>
-
-              {openDate === date && on && (
-                <div className="c expand">
-                  <div className="slots">
-                    {times.map((t) => {
-                      const isBlocked = blocked.includes(t);
-                      return (
-                        <button
-                          key={t} type="button" className="slot"
-                          aria-pressed={isBlocked}
-                          disabled={busy === date}
-                          onClick={() => toggleBlocked(date, t)}
-                        >
-                          {t}
-                          <span className="left">{isBlocked ? "不開放" : "開放"}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="hint">點一下切換。被封鎖的時段，客人端會顯示「額滿」。</p>
-                </div>
-              )}
+        {selected.size > 0 && (
+          <div className="batch">
+            <span>已選 {selected.size} 天</span>
+            <div className="batch-btns">
+              <button className="slim" disabled={busy !== null}
+                onClick={() => applyBatch(true)}>全部設為營業</button>
+              <button className="slim outline danger" disabled={busy !== null}
+                onClick={() => applyBatch(false)}>全部設為店休</button>
+              <button className="slim ghost" onClick={() => setSelected(new Set())}>取消選擇</button>
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
+
+      {openDate && (
+        <div className="panel">
+          <div className="panel-title">封鎖時段 — {openDate}</div>
+          {(() => {
+            const times = hours?.[kindOf(openDate)] ?? [];
+            const blocked = days[openDate]?.blocked_times ?? [];
+            if (times.length === 0) {
+              return <p className="hint">這一天適用的營業時間還沒設定，請先在上面設定。</p>;
+            }
+            return (
+              <>
+                <div className="slots">
+                  {times.map((t) => (
+                    <button
+                      key={t} type="button" className="slot"
+                      aria-pressed={blocked.includes(t)}
+                      disabled={busy === openDate}
+                      onClick={() => toggleBlocked(openDate, t)}
+                    >
+                      {t}
+                      <span className="left">{blocked.includes(t) ? "不開放" : "開放"}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="hint">點一下切換。被封鎖的時段，客人端會顯示「額滿」。</p>
+                <button className="ghost" onClick={() => setOpenDate(null)}>關閉</button>
+              </>
+            );
+          })()}
+        </div>
+      )}
     </>
   );
 }
