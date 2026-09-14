@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import Login from "./Login";
-import Dashboard from "./Dashboard";
+import AdminShell from "./AdminShell";
 
 type Store = { id: string; name: string; slug: string };
 
@@ -50,7 +50,7 @@ export default function AdminApp() {
 
   if (!store) return <NotAuthorized session={session} />;
 
-  return <Dashboard session={session} store={store} />;
+  return <AdminShell session={session} store={store} />;
 }
 
 /** 帳號建立了但還沒被加進任何店的名單 */
