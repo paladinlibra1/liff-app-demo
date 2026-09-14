@@ -9,7 +9,12 @@
 import type { Env } from "./index";
 
 export class SupabaseError extends Error {
-  constructor(message: string, readonly status: number = 500) {
+  constructor(
+    message: string,
+    readonly status: number = 500,
+    /** Postgres 的 SQLSTATE，例如 23505（唯一索引衝突）。用來分辨是哪一條規則擋下來的 */
+    readonly code?: string,
+  ) {
     super(message);
   }
 }
@@ -38,11 +43,13 @@ export async function sb<T>(env: Env, path: string, init: RequestInit = {}): Pro
   if (!res.ok) {
     // PostgREST 的錯誤是 JSON，但連不上時可能是 HTML，所以兩種都要能處理
     let detail = text;
+    let code: string | undefined;
     try {
-      const parsed = JSON.parse(text) as { message?: string };
+      const parsed = JSON.parse(text) as { message?: string; code?: string };
       if (parsed.message) detail = parsed.message;
+      code = parsed.code;
     } catch { /* 不是 JSON 就用原文 */ }
-    throw new SupabaseError(detail || `Supabase 回應 ${res.status}`, res.status);
+    throw new SupabaseError(detail || `Supabase 回應 ${res.status}`, res.status, code);
   }
 
   return (text ? JSON.parse(text) : null) as T;

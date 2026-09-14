@@ -14,6 +14,7 @@
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
+import { createBooking, BookingError, type BookingInput } from "./bookings";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
@@ -129,6 +130,37 @@ export default {
         return json({ from, to, days: await getAvailability(env, store, from, to) });
       } catch (err) {
         return errorResponse(err, "讀取可預約時段失敗");
+      }
+    }
+
+    // ── 建立預約 ────────────────────────────────────────
+    // 這支一定要驗身分：預約會綁到會員、之後也要靠 LINE 推播通知。
+    if (path === "/api/bookings" && request.method === "POST") {
+      try {
+        const profile = await verifyLineToken(
+          bearerToken(request),
+          env.LINE_LOGIN_CHANNEL_ID,
+        );
+
+        let input: BookingInput;
+        try {
+          input = (await request.json()) as BookingInput;
+        } catch {
+          return json({ error: "送出的內容格式不正確" }, 400);
+        }
+
+        const store = await getStore(env);
+        const booking = await createBooking(env, store, profile, input);
+        return json({ booking }, 201);
+      } catch (err) {
+        // 欄位沒填、額滿、重複預約 → 直接把訊息給客人看
+        if (err instanceof BookingError) {
+          return json({ error: err.message }, err.status);
+        }
+        if (err instanceof LineAuthError) {
+          return json({ error: err.message }, err.status);
+        }
+        return errorResponse(err, "建立預約失敗");
       }
     }
 
