@@ -15,6 +15,7 @@ import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import { createBooking, BookingError, type BookingInput } from "./bookings";
+import { listMyBookings, cancelMyBooking } from "./myBookings";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
@@ -161,6 +162,43 @@ export default {
           return json({ error: err.message }, err.status);
         }
         return errorResponse(err, "建立預約失敗");
+      }
+    }
+
+    // ── 我的預約：查詢與取消 ────────────────────────────
+    // 兩支都要驗身分，而且「這筆是不是你的」由後端判斷，
+    // 不是前端送一個 id 過來就照做。
+    const cancelMatch = path.match(/^\/api\/bookings\/([0-9a-f-]{36})\/cancel$/i);
+
+    if (path === "/api/my-bookings" || cancelMatch) {
+      const isCancel = Boolean(cancelMatch);
+      if (isCancel ? request.method !== "POST" : request.method !== "GET") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+
+      try {
+        const profile = await verifyLineToken(
+          bearerToken(request),
+          env.LINE_LOGIN_CHANNEL_ID,
+        );
+        const store = await getStore(env);
+
+        if (!isCancel) {
+          return json(await listMyBookings(env, store, profile));
+        }
+
+        // 取消原因可有可無，送壞掉的 JSON 也不該讓取消失敗
+        let reason: string | null = null;
+        try {
+          const body = (await request.json()) as { reason?: string };
+          reason = body?.reason?.trim() || null;
+        } catch { /* 沒帶 body 就是沒有原因 */ }
+
+        return json({ booking: await cancelMyBooking(env, store, profile, cancelMatch![1], reason) });
+      } catch (err) {
+        if (err instanceof BookingError) return json({ error: err.message }, err.status);
+        if (err instanceof LineAuthError) return json({ error: err.message }, err.status);
+        return errorResponse(err, isCancel ? "取消預約失敗" : "讀取預約失敗");
       }
     }
 

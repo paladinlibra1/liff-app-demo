@@ -48,6 +48,16 @@ export function todayInStore(store: Store): string {
   }).format(new Date());
 }
 
+/** 店家時區的現在時刻（`HH:MM`），用來判斷某筆預約是不是已經過去 */
+export function timeNowInStore(store: Store): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: store.timezone || "Asia/Taipei",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
 /** 把 from～to（含兩端）展開成日期字串 */
 function dateRange(from: string, to: string): string[] {
   const out: string[] = [];
