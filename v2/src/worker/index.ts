@@ -12,7 +12,8 @@
  */
 
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
-import { getStore, timesForDate, SupabaseError } from "./supabase";
+import { getStore, SupabaseError } from "./supabase";
+import { getAvailability, todayInStore } from "./availability";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
@@ -30,6 +31,25 @@ function json(data: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
+}
+
+/** 只接受 YYYY-MM-DD，而且要是真的存在的日期（擋掉 2026-02-31） */
+function isDate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(v + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
+function addDays(date: string, n: number): string {
+  const d = new Date(date + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** 含頭含尾的天數 */
+function dayCount(from: string, to: string): number {
+  const ms = new Date(to + "T00:00:00Z").getTime() - new Date(from + "T00:00:00Z").getTime();
+  return Math.floor(ms / 86400000) + 1;
 }
 
 /** 把後端例外轉成對外的 JSON 錯誤：對客人講人話，細節只留在 log */
@@ -81,6 +101,34 @@ export default {
         });
       } catch (err) {
         return errorResponse(err, "讀取店家設定失敗");
+      }
+    }
+
+    // ── 可預約狀況：哪幾天有開、每個時段還剩幾位 ────────
+    // 不含任何客人資料，只回「剩幾位」，所以跟 /api/store 一樣不需要登入。
+    if (path === "/api/availability") {
+      try {
+        const store = await getStore(env);
+        const today = todayInStore(store);
+
+        const from = url.searchParams.get("from") || today;
+        // 預設往後 30 天，剛好夠月曆畫一頁
+        const to = url.searchParams.get("to") || addDays(from, 30);
+
+        if (!isDate(from) || !isDate(to)) {
+          return json({ error: "日期格式要是 YYYY-MM-DD" }, 400);
+        }
+        if (to < from) {
+          return json({ error: "結束日期不能早於開始日期" }, 400);
+        }
+        // 上限擋住「查一整年」這種會把資料庫拖垮的請求
+        if (dayCount(from, to) > 62) {
+          return json({ error: "一次最多查 62 天" }, 400);
+        }
+
+        return json({ from, to, days: await getAvailability(env, store, from, to) });
+      } catch (err) {
+        return errorResponse(err, "讀取可預約時段失敗");
       }
     }
 
