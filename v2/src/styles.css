@@ -875,4 +875,9 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   .slots { grid-template-columns: repeat(3, 1fr); gap: 0.4375rem; }
   .seg { gap: 0.375rem; }
   .seg button { padding: 0.75rem 0.125rem; font-size: 0.875rem; }
+  /*
+   * 客人端的分頁列有三項（即將到來／歷史紀錄／馬上預約），
+   * 在 390px 的手機上用原本的 15px 會擠到換行斷字。
+   */
+  .tabs button { font-size: 0.8125rem; padding: 0.5rem 0.125rem; }
 }
