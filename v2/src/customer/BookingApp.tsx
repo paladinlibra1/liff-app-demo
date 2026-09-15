@@ -51,8 +51,13 @@ export default function BookingApp() {
     initLiff("booking").then((state) => {
       if (cancelled) return;
       setLiffState(state);
-      // 姓名先帶 LINE 暱稱，客人可以改成本名
-      if (state.kind === "ready") setName((n) => n || state.viewer.displayName);
+      /*
+       * 姓名刻意留空，不帶 LINE 暱稱。
+       *
+       * 暱稱常常是綽號、英文名或一串表情符號，先填進去客人多半就直接送出了，
+       * 店家拿到的是一筆認不出是誰的單。留空會逼客人自己打本名，
+       * 而且姓名是後端用電話併會員時的比對依據之一。
+       */
     });
 
     Promise.all([fetchStore(), fetchAvailability()])
