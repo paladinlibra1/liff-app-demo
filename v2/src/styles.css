@@ -39,32 +39,38 @@
 }
 
 /**
- * 後台：完全照舊系統 admin.html 的配色
+ * 後台：底色與中性色照 goyourstudio.com/help 那套暖白
  *
- * 灰底（#f8f8f9）、白卡、近黑主色（#2c2c2c）、邊框 #e5e5e5——
- * 每一個值都是從舊版那份 :root 搬過來的，中間試過奶茶色和淡粉藍都被打回票，
- * 結論是跟舊的一模一樣就好：店員看慣了，換色只會讓人找不到東西。
+ * 他們的 CSS 變數直接對得上我們的 token：
+ *   --gys-bg #fafafa（頁面底）、--gys-card-bg #ffffff（卡片）、
+ *   --gys-text-main #1a1510、--gys-text-sub #655442、--gys-border #dfd3ca、
+ *   --gys-shadow rgba(223,211,202,.4)、--gys-accent #db7374
+ *
+ * 跟先前的灰白版差在「暖」：文字與邊框帶褐，不是中性灰，
+ * 白卡疊在暖白底上比灰底更有層次。
+ *
+ * 主按鈕仍是近黑（舊系統 admin.html 的 #2c2c2c）——那是上一輪指定的，
+ * 而且深色按鈕配暖白底比把 accent 拿來填滿按鈕耐看。accent 留給強調用。
  *
  * 客人端維持櫻花粉（品牌識別），顏色不同也讓人一眼分得出現在開的是哪一邊。
- *
  * 只換 token、不動元件樣式，所以整套介面自動跟著變。
  */
 body.admin-theme {
   --rose:        #2c2c2c;   /* 舊版 --primary-color */
   --rose-deep:   #000000;   /* 舊版 --primary-dark */
-  --rose-soft:   #d6d6da;
-  --rose-tint:   #f8f8f9;   /* 舊版 --bg-color */
-  --rose-wash:   #fafafa;
+  --rose-soft:   #dfd3ca;   /* gys --border */
+  --rose-tint:   #fafafa;   /* gys --bg */
+  --rose-wash:   #f7f4f1;   /* 輸入框底，比卡片再暖一點 */
 
-  --ink:         #2b2b2b;   /* 舊版 --text-color */
-  --ink-soft:    #666666;
-  --muted:       #9a9a9f;
+  --ink:         #1a1510;   /* gys --text-main */
+  --ink-soft:    #655442;   /* gys --text-sub */
+  --muted:       #9c8d80;
 
-  --line:        #e5e5e5;   /* 舊版 --border-color */
-  --line-strong: #dcdcdc;
+  --line:        #eae1d9;
+  --line-strong: #dfd3ca;   /* gys --border */
 
-  --shadow:      0 1px 2px rgba(0, 0, 0, .03), 0 8px 30px rgba(0, 0, 0, .05);
-  --shadow-sm:   0 1px 2px rgba(0, 0, 0, .04);
+  --shadow:      0 1px 2px rgba(223, 211, 202, .4), 0 8px 30px rgba(223, 211, 202, .4);
+  --shadow-sm:   0 1px 2px rgba(223, 211, 202, .4);
 
   background: var(--rose-tint);
   color: var(--ink);
@@ -85,10 +91,10 @@ body.admin-theme .cal-cell,
 body.admin-theme .tabs button { box-shadow: none; }
 /* select 的箭頭是 data URI，顏色寫死了，後台換一張 */
 body.admin-theme select {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%239a9a9f' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%239c8d80' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 }
 body.admin-theme .skeleton {
-  background: linear-gradient(90deg, #e8e8ea 25%, #f4f4f5 50%, #e8e8ea 75%);
+  background: linear-gradient(90deg, #ece4dd 25%, #f7f3ef 50%, #ece4dd 75%);
   background-size: 200% 100%;
 }
 /*
@@ -99,7 +105,12 @@ body.admin-theme .skeleton {
 body.admin-theme .arow .note,
 body.admin-theme .batch,
 body.admin-theme .gen,
-body.admin-theme code.uid { background: #f4f4f5; }
+body.admin-theme code.uid { background: #f5f1ed; }
+
+/* 強調色用他們的 accent（#db7374），時間與電話那種要一眼看到的地方 */
+body.admin-theme .arow .when .tm,
+body.admin-theme .arow a,
+body.admin-theme .panel-title { color: #c2585a; }
 
 /*
  * 資料列的字級照舊系統的表格：內容 14.5px、姓名與日期 16px。
@@ -112,12 +123,12 @@ body.admin-theme .arow .who b { font-size: 1rem; }
 
 /* 灰底藥丸在粉色主題是淡粉的，後台要純灰 */
 body.admin-theme .tag2,
-body.admin-theme .badge.old { background: #f1f1f2; color: var(--muted); }
+body.admin-theme .badge.old { background: #f2ece7; color: var(--muted); }
 /*
  * 分頁列照舊系統：灰色底槽，選中的那個是浮起來的白卡片。
  * 預設主題是「選中＝填滿主色」，在後台會變成一整塊黑，太重。
  */
-body.admin-theme .tabs { background: #eeeeee; border-color: #e5e5e5; }
+body.admin-theme .tabs { background: #f0e9e3; border-color: #e4dbd3; }
 body.admin-theme .tabs button[aria-pressed="true"] {
   background: #ffffff; color: var(--rose-deep);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
@@ -132,12 +143,12 @@ body.admin-theme .tabs button[aria-pressed="true"] {
  * 這條的選擇器比它更明確，不排除的話會把紅色蓋掉。
  */
 body.admin-theme button.outline:not(.danger) {
-  background: #f2f3f5;
-  color: #55595f;
+  background: #f3efeb;
+  color: #655442;
   border-color: transparent;
 }
 body.admin-theme button.outline:not(.danger):active:not(:disabled) {
-  background: #e6e8ec;
+  background: #e8e0d8;
 }
 
 /* ── 隨螢幕縮放 ─────────────────────────────────────── */
