@@ -1,7 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 export default function Login() {
+  /*
+   * 店名。
+   *
+   * 登入畫面拿不到 stores 那一列——那是登入之後才讀得到的（RLS 擋著），
+   * 所以跟客人端一樣打公開的 /api/store。那支本來就給還沒登入的人用。
+   *
+   * 拿不到就顯示「後台」，不要讓一個標題擋住登入。
+   */
+  const [storeName, setStoreName] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/store")
+      .then((r) => r.json() as Promise<{ name?: string }>)
+      .then((d) => { if (!cancelled && d.name) setStoreName(d.name); })
+      .catch(() => { /* 沒有店名照樣能登入 */ });
+    return () => { cancelled = true; };
+  }, []);
+
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +59,7 @@ export default function Login() {
   return (
     <div className="center-screen">
       <div className="card">
-        <h1>潮州店 後台</h1>
+        <h1>{storeName ? `${storeName} 後台` : "後台"}</h1>
         <p className="sub">
           {mode === "signin" ? "請登入以繼續。" : "建立帳號後，還需要管理員把你加入店家名單才看得到資料。"}
         </p>
