@@ -15,6 +15,11 @@ import type { Store } from "./AdminShell";
  *
  * 時段是跟 Worker 的 /api/availability 要的，跟客人看到的是同一份資料，
  * 不另外在後台重算一次；真正的把關在資料庫的 check_slot_capacity() trigger。
+ *
+ * 建立走 `/api/admin/bookings` 而不是直接寫 Supabase——推播的 token 只存在
+ * Worker，不經過它就發不了 LINE。通知對象由 Worker 自己從會員解析，
+ * 前端只送 memberId：前端能指定「通知發給誰」的話，
+ * 等於能拿這支 API 發 LINE 給任意使用者。
  */
 
 /** 沿用舊系統 index.html 的三種預約身分 */
@@ -109,22 +114,6 @@ export default function NewBookingForm({
   // 換日期時清掉已選時段，不然會留著前一天選的那個時間送出去
   useEffect(() => { setTime(""); }, [date]);
 
-  /**
-   * 通知要發給誰的 LINE。
-   *
-   * 跟 Worker 的 resolveNotifyTarget() 同一套規則：綁了監護人就發給監護人。
-   * 下單當下解析好存進預約裡，之後監護人關係改了不影響已送出的通知。
-   * 存起來的另一個用途是前一天的提醒——沒有它，代客預約的客人收不到提醒。
-   */
-  async function resolveNotifyTarget(): Promise<string | null> {
-    if (!member) return null;
-    if (!member.guardian_id) return member.line_user_id;
-
-    const { data } = await supabase
-      .from("members").select("line_user_id").eq("id", member.guardian_id).maybeSingle();
-    return data?.line_user_id ?? member.line_user_id;
-  }
-
   async function save() {
     if (busy) return;                                  // 防連點
     setErr("");
@@ -137,37 +126,44 @@ export default function NewBookingForm({
 
     setBusy(true);
 
-    const payload = {
-      store_id: store.id,
-      member_id: member?.id ?? null,
-      notify_line_user_id: await resolveNotifyTarget(),
-      name: name.trim(),
-      name2: name2.trim() || null,
-      phone: normalizePhone(phone),
-      type,
-      date,
-      start_time: time,
-      remark: remark.trim() || null,
-      booked_by: "admin",
-    };
+    // Worker 要用這個 token 確認「你是這家店的後台人員」
+    const { data: sess } = await supabase.auth.getSession();
+    const token = sess.session?.access_token;
+    if (!token) {
+      setErr("登入已過期，請重新登入後台");
+      setBusy(false);
+      return;
+    }
 
-    // 帶 .select()：被 RLS 擋下的寫入不會回錯誤，只會回 0 列
-    const { data, error } = await supabase.from("bookings").insert(payload).select("id");
+    try {
+      const res = await fetch("/api/admin/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({
+          memberId: member?.id ?? null,
+          name: name.trim(),
+          name2: name2.trim() || null,
+          phone: normalizePhone(phone),
+          type,
+          date,
+          time,
+          remark: remark.trim() || null,
+        }),
+      });
 
-    if (error) {
-      // 資料庫的兩條規則會在這裡擋下來，翻成人話再顯示
-      if (error.message.includes("slot_full")) {
-        setErr("這個時段已經滿了（同一時段最多 2 位），請選別的時間。");
-      } else if (error.code === "23505") {
-        setErr("這位會員當天已經有一筆有效預約了，同一天只能有一筆。");
+      // Worker 的錯誤一律是 { error: "人看得懂的句子" }，直接顯示
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok) {
+        setErr(body?.error || `建立失敗（${res.status}），請稍後再試`);
       } else {
-        setErr(error.message);
+        await onSaved();
+        onClose();
       }
-    } else if (!data || data.length === 0) {
-      setErr("沒有建立成功，請確認你的帳號權限。");
-    } else {
-      await onSaved();
-      onClose();
+    } catch {
+      setErr("連線失敗，請確認網路狀態後再試一次");
     }
     setBusy(false);
   }
@@ -296,8 +292,8 @@ export default function NewBookingForm({
       <button className="ghost" onClick={onClose}>↩️ 取消</button>
 
       <p className="hint">
-        目前代客預約不會即時發 LINE 給客人（後台沒有經過 Worker）。
-        有綁 LINE 的客人仍然收得到前一天的提醒。
+        選了有綁 LINE 的會員，建立後會立刻發 LINE 通知給客人
+        （綁了監護人就發給監護人）。沒選會員的電話客不會收到通知。
       </p>
     </div>
   );

@@ -14,7 +14,11 @@
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
-import { createBooking, BookingError, type BookingInput } from "./bookings";
+import {
+  createBooking, createAdminBooking, BookingError,
+  type BookingInput, type AdminBookingInput,
+} from "./bookings";
+import { verifyAdmin, AdminAuthError } from "./adminAuth";
 import { listMyBookings, cancelMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
 import { sendDailyReminders } from "./reminders";
@@ -183,6 +187,44 @@ export default {
         if (err instanceof LineAuthError) {
           return json({ error: err.message }, err.status);
         }
+        return errorResponse(err, "建立預約失敗");
+      }
+    }
+
+    // ── 代客預約：店家幫客人訂 ──────────────────────────
+    // 後台平常直連 Supabase，只有這支走 Worker——因為要發 LINE，
+    // 而推播的 token 只存在 Worker。身分自己驗一次，不能因為多開一支路徑
+    // 就讓任何人都能用店家名義建預約、順便叫系統發 LINE 給別人。
+    if (path === "/api/admin/bookings" && request.method === "POST") {
+      try {
+        const store = await getStore(env);
+        await verifyAdmin(env, request, store);
+
+        let input: AdminBookingInput;
+        try {
+          input = (await request.json()) as AdminBookingInput;
+        } catch {
+          return json({ error: "送出的內容格式不正確" }, 400);
+        }
+
+        const booking = await createAdminBooking(env, store, input);
+
+        // 推播丟到背景：單子已經建好了，不該因為 LINE 送不出去而失敗
+        ctx.waitUntil(notifyBooking(env, store.name, {
+          date: booking.date,
+          time: booking.start_time.slice(0, 5),
+          name: booking.name,
+          name2: booking.name2,
+          phone: booking.phone,
+          type: booking.type,
+          remark: booking.remark,
+          notifyLineUserId: booking.notify_line_user_id,
+        }, "new"));
+
+        return json({ booking }, 201);
+      } catch (err) {
+        if (err instanceof BookingError) return json({ error: err.message }, err.status);
+        if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
         return errorResponse(err, "建立預約失敗");
       }
     }

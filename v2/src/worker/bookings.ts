@@ -196,6 +196,110 @@ export async function createBooking(
   }
 }
 
+// ───────────────────────────────────────────────────────────
+// 代客預約（店家幫客人訂）
+// ───────────────────────────────────────────────────────────
+
+export interface AdminBookingInput extends BookingInput {
+  /** 綁到哪位會員。不給就是電話客，沒有會員資料也不會發通知 */
+  memberId?: string | null;
+}
+
+/**
+ * 店家幫客人建立預約。
+ *
+ * 跟客人自己訂的差別只有三個：
+ *   1. 身分是後台帳號，不是 LINE（呼叫端已經驗過了）
+ *   2. 會員是店員指定的，不是從 LINE 身分找出來的——所以要自己確認
+ *      那位會員真的屬於這家店，不能前端送什麼 id 就照收
+ *   3. booked_by 記成 admin
+ *
+ * 通知對象一律在這裡重新解析，不接受前端送進來的值：
+ * 前端能指定「通知發給誰」的話，等於能拿這支 API 發 LINE 給任意使用者。
+ */
+export async function createAdminBooking(
+  env: Env,
+  store: Store,
+  input: AdminBookingInput,
+) {
+  const name = (input.name ?? "").trim();
+  const name2 = (input.name2 ?? "").trim();
+  const phoneRaw = (input.phone ?? "").trim();
+  const type = (input.type ?? "").trim();
+  const date = (input.date ?? "").trim();
+  const time = (input.time ?? "").trim();
+  const remark = (input.remark ?? "").trim();
+  const memberId = (input.memberId ?? "").trim();
+
+  if (!name) throw new BookingError("請填預約人姓名");
+  if (!phoneRaw) throw new BookingError("請填聯絡電話");
+  if (!isValidPhone(phoneRaw)) throw new BookingError(PHONE_RULE_MSG);
+  if (!BOOKING_TYPES.includes(type)) throw new BookingError("請選擇預約身分");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BookingError("請選擇日期");
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new BookingError("請選擇時間");
+  if (date < todayInStore(store)) throw new BookingError("不能預約已經過去的日期");
+  if (!timesForDate(store, date).includes(time)) {
+    throw new BookingError("這個時間不在營業時段內");
+  }
+
+  const seats = name2 ? 2 : 1;
+
+  const [day] = await getAvailability(env, store, date, date);
+  if (!day.isOperating) {
+    throw new BookingError("這一天沒有營業，請先到營業日設定把它打開");
+  }
+  const slot = day.slots.find((s) => s.time === time);
+  if (!slot) throw new BookingError("這個時段目前不開放預約");
+  if (slot.remaining < seats) {
+    throw new BookingError(
+      seats === 2 ? "這個時段剩下的位子不足兩位" : "這個時段已經額滿了",
+    );
+  }
+
+  // ── 會員與通知對象 ──────────────────────────────────
+  let member: Member | null = null;
+  if (memberId) {
+    // store_id 一定要一起篩：少了它，別家店的會員 id 也查得到
+    const rows = await sb<Member[]>(
+      env,
+      `members?id=eq.${encodeURIComponent(memberId)}&store_id=eq.${store.id}` +
+        `&select=id,line_user_id,name,phone,guardian_id&limit=1`,
+    );
+    member = rows[0] ?? null;
+    if (!member) throw new BookingError("找不到這位會員", 404);
+  }
+
+  const notify = member ? await resolveNotifyTarget(env, member) : null;
+  const phone = normalizePhone(phoneRaw);
+
+  try {
+    const rows = await sb<CreatedBooking[]>(
+      env,
+      `bookings?select=id,date,start_time,name,name2,phone,type,remark,notify_line_user_id`,
+      {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          store_id: store.id,
+          member_id: member?.id ?? null,
+          notify_line_user_id: notify,
+          name,
+          name2: name2 || null,
+          phone,
+          type,
+          date,
+          start_time: time,
+          remark: remark || null,
+          booked_by: "admin",
+        }),
+      },
+    );
+    return rows[0];
+  } catch (err) {
+    throw translateWriteError(err);
+  }
+}
+
 /**
  * 資料庫擋下來的兩條規則，轉成客人看得懂的話。
  *
