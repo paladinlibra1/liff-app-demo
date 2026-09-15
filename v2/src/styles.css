@@ -56,15 +56,15 @@ body.admin-theme {
   /* 外框按鈕的邊：刻意用中性灰而不是藍，
      不然「今天／未來 7 天」那一排會整排藍框，比內容還搶眼 */
   --rose-soft:   #d6d6da;
-  --rose-tint:   #f5f8fd;   /* 頁面底色：淡粉藍（比第一版再淡一半） */
-  --rose-wash:   #f7fafe;   /* 輸入框底，比卡片再藍一點點 */
+  --rose-tint:   #f9fbfe;   /* 頁面底色：接近白的淡藍 */
+  --rose-wash:   #fbfcfe;   /* 輸入框底，比卡片再藍一點點 */
 
   --ink:         #2b2b2b;   /* 舊版 --text-color */
   --ink-soft:    #5f6b78;
   --muted:       #94a1b0;
 
-  --line:        #e6edf6;
-  --line-strong: #dae3ef;
+  --line:        #e9eef5;
+  --line-strong: #dde4ed;
 
   --shadow:      0 1px 2px rgba(31, 56, 88, .04), 0 8px 30px rgba(31, 56, 88, .07);
   --shadow-sm:   0 1px 2px rgba(31, 56, 88, .05);
@@ -91,20 +91,46 @@ body.admin-theme select {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%2394a1b0' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 }
 body.admin-theme .skeleton {
-  background: linear-gradient(90deg, #e7edf6 25%, #f6f9fd 50%, #e7edf6 75%);
+  background: linear-gradient(90deg, #eaeff7 25%, #f8fafd 50%, #eaeff7 75%);
   background-size: 200% 100%;
 }
+/*
+ * 底色淡到接近白之後，卡片裡拿 --rose-tint 當底的區塊（備註、批次列、
+ * 批次產生面板）在白卡上就沒有對比了，這幾個另外給深一點的藍。
+ */
+body.admin-theme .arow .note,
+body.admin-theme .batch,
+body.admin-theme .gen,
+body.admin-theme code.uid { background: #eff4fa; }
+
 /* 灰底藥丸在粉色主題是淡粉的，後台跟著底色走淡藍 */
 body.admin-theme .tag2,
-body.admin-theme .badge.old { background: #f0f4fa; color: var(--muted); }
+body.admin-theme .badge.old { background: #f1f4f9; color: var(--muted); }
 /*
  * 分頁列照舊系統：灰色底槽，選中的那個是浮起來的白卡片。
  * 預設主題是「選中＝填滿主色」，在後台會變成一整塊黑，太重。
  */
-body.admin-theme .tabs { background: #e9f0f9; border-color: #dae3ef; }
+body.admin-theme .tabs { background: #eef3f9; border-color: #dde4ed; }
 body.admin-theme .tabs button[aria-pressed="true"] {
   background: #ffffff; color: var(--rose-deep);
   box-shadow: 0 2px 8px rgba(31, 56, 88, .12);
+}
+
+/*
+ * 外框按鈕（「今天／未來 7 天」那一排、編輯、封鎖時段…）走灰色，
+ * 照舊系統的 .btn-spa-outline：淺灰底、灰字、無框。
+ * 只留邊框是灰的還不夠——白底白卡上那排按鈕會糊成一片認不出是按鈕。
+ *
+ * :not(.danger) 是必要的：刪除／取消那種紅字按鈕的顏色在後面才設定，
+ * 這條的選擇器比它更明確，不排除的話會把紅色蓋掉。
+ */
+body.admin-theme button.outline:not(.danger) {
+  background: #f2f3f5;
+  color: #55595f;
+  border-color: transparent;
+}
+body.admin-theme button.outline:not(.danger):active:not(:disabled) {
+  background: #e6e8ec;
 }
 
 /* ── 隨螢幕縮放 ─────────────────────────────────────── */
