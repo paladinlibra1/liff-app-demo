@@ -13,6 +13,7 @@ import { sb, SupabaseError, timesForDate, type Store } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import type { LineProfile } from "./line";
 import { normalizePhone, isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
+import { birthdayError } from "../shared/birthday";
 
 /** 舊系統 index.html 的三種預約身分，照搬 */
 const BOOKING_TYPES = ["新客體驗", "一般預約", "複檢"];
@@ -32,7 +33,35 @@ interface Member {
   line_user_id: string | null;
   name: string;
   phone: string;
+  birthday: string | null;
   guardian_id: string | null;
+}
+
+/** 回頭客的表單要靠這些欄位預填，不用每次重打 */
+export interface MyProfile {
+  name: string;
+  phone: string;
+  birthday: string | null;
+}
+
+/**
+ * 這個 LINE 身分已經是會員了嗎。
+ *
+ * 客人端一開頁就問一次，有資料就把姓名、電話、生日先填好。
+ * 只回這三個欄位——會員還有備註、介紹人那些，那是店家記的東西，不是客人的。
+ */
+export async function getMyProfile(
+  env: Env,
+  store: Store,
+  lineUserId: string,
+): Promise<MyProfile | null> {
+  const rows = await sb<MyProfile[]>(
+    env,
+    `members?store_id=eq.${store.id}` +
+      `&line_user_id=eq.${encodeURIComponent(lineUserId)}` +
+      `&select=name,phone,birthday&limit=1`,
+  );
+  return rows[0] ?? null;
 }
 
 /**
@@ -58,8 +87,9 @@ async function findOrCreateMember(
   profile: LineProfile,
   name: string,
   phone: string,
+  birthday: string,
 ): Promise<Member> {
-  const fields = "id,line_user_id,name,phone,guardian_id";
+  const fields = "id,line_user_id,name,phone,birthday,guardian_id";
 
   // ── 1) 這個 LINE 身分已經是會員了 ───────────────────
   const found = await sb<Member[]>(
@@ -94,6 +124,9 @@ async function findOrCreateMember(
         body: JSON.stringify({
           line_user_id: profile.userId,
           line_name: profile.displayName,
+          // 店家手動建檔時常常沒問生日，這裡順手補上；
+          // 原本就有值的不動，客人填錯不該蓋掉店家記的資料
+          ...(target.birthday ? {} : { birthday }),
         }),
       },
     );
@@ -113,6 +146,7 @@ async function findOrCreateMember(
         line_name: profile.displayName,
         name,
         phone,
+        birthday,
       }),
     },
   );
@@ -154,6 +188,8 @@ export interface CreatedBooking {
 
 export interface BookingInput {
   name?: string;
+  /** `YYYY-MM-DD`。存在會員身上，不是存在預約上 */
+  birthday?: string;
   name2?: string | null;
   phone?: string;
   type?: string;
@@ -175,6 +211,7 @@ export async function createBooking(
   const date = (input.date ?? "").trim();
   const time = (input.time ?? "").trim();
   const remark = (input.remark ?? "").trim();
+  const birthday = (input.birthday ?? "").trim();
 
   // ── 欄位檢查 ────────────────────────────────────────
   if (!name) throw new BookingError("請填姓名");
@@ -183,6 +220,12 @@ export async function createBooking(
   if (!BOOKING_TYPES.includes(type)) throw new BookingError("請選擇預約身分");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BookingError("請選擇日期");
   if (!/^\d{2}:\d{2}$/.test(time)) throw new BookingError("請選擇時間");
+
+  // 生日存在會員身上，回頭客的表單會自動帶出來，所以這裡一律要求有值。
+  // 店家要用它做生日優惠與年齡判斷，少一筆就少一個人。
+  if (!birthday) throw new BookingError("請填生日");
+  const bErr = birthdayError(birthday);
+  if (bErr) throw new BookingError(bErr);
 
   // 不能訂過去。用店家時區判斷，不是 UTC——台灣時間晚上用 UTC 會算成昨天。
   if (date < todayInStore(store)) throw new BookingError("不能預約已經過去的日期");
@@ -208,7 +251,7 @@ export async function createBooking(
 
   // ── 寫入 ────────────────────────────────────────────
   const phone = normalizePhone(phoneRaw);
-  const member = await findOrCreateMember(env, store, profile, name, phone);
+  const member = await findOrCreateMember(env, store, profile, name, phone, birthday);
   const notify = await resolveNotifyTarget(env, member);
 
   try {
@@ -308,7 +351,7 @@ export async function createAdminBooking(
     const rows = await sb<Member[]>(
       env,
       `members?id=eq.${encodeURIComponent(memberId)}&store_id=eq.${store.id}` +
-        `&select=id,line_user_id,name,phone,guardian_id&limit=1`,
+        `&select=id,line_user_id,name,phone,birthday,guardian_id&limit=1`,
     );
     member = rows[0] ?? null;
     if (!member) throw new BookingError("找不到這位會員", 404);

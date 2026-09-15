@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  fetchStore, fetchAvailability, submitBooking,
+  fetchStore, fetchAvailability, fetchMe, submitBooking,
   type StoreInfo, type DayAvailability,
 } from "./api";
 import { initLiff, closeLiffWindow, type LiffState } from "./liff";
 import { isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
+import { birthdayError } from "../shared/birthday";
 
 /** 沿用舊系統 index.html 的三種預約身分 */
 const TYPES = ["新客體驗", "一般預約", "複檢"];
@@ -34,6 +35,7 @@ export default function BookingApp() {
   const [type, setType] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [twoPeople, setTwoPeople] = useState(false);
   const [name2, setName2] = useState("");
   const [date, setDate] = useState("");
@@ -52,12 +54,24 @@ export default function BookingApp() {
       if (cancelled) return;
       setLiffState(state);
       /*
-       * 姓名刻意留空，不帶 LINE 暱稱。
+       * 預填：第二次以後的預約直接帶出上次留的姓名、電話、生日。
        *
-       * 暱稱常常是綽號、英文名或一串表情符號，先填進去客人多半就直接送出了，
-       * 店家拿到的是一筆認不出是誰的單。留空會逼客人自己打本名，
-       * 而且姓名是後端用電話併會員時的比對依據之一。
+       * 刻意不帶 LINE 暱稱——暱稱常常是綽號、英文名或一串表情符號，
+       * 先填進去客人多半就直接送出，店家拿到一筆認不出是誰的單。
+       * 第一次來就一律留空，讓客人自己打本名。
+       *
+       * 拿不到會員資料不算錯誤：那只是沒得預填，表單照樣能用，
+       * 所以這裡吞掉例外，不要為了預填失敗就擋住整頁。
        */
+      if (state.kind !== "ready") return;
+      fetchMe(state.viewer.accessToken)
+        .then((me) => {
+          if (cancelled || !me.member) return;
+          setName((v) => v || me.member!.name);
+          setPhone((v) => v || me.member!.phone);
+          setBirthday((v) => v || me.member!.birthday || "");
+        })
+        .catch(() => { /* 沒預填而已，不影響填表 */ });
     });
 
     Promise.all([fetchStore(), fetchAvailability()])
@@ -108,6 +122,11 @@ export default function BookingApp() {
     if (!name.trim()) return setFormErr("請填姓名");
     if (!phone.trim()) return setFormErr("請填聯絡電話");
     if (!isValidPhone(phone)) return setFormErr(PHONE_RULE_MSG);
+    if (!birthday) return setFormErr("請填生日");
+    {
+      const bErr = birthdayError(birthday);
+      if (bErr) return setFormErr(bErr);
+    }
     if (twoPeople && !name2.trim()) return setFormErr("請填第二位的姓名");
     if (!date) return setFormErr("請選擇日期");
     if (!time) return setFormErr("請選擇時間");
@@ -119,7 +138,7 @@ export default function BookingApp() {
     setSubmitting(true);
     try {
       await submitBooking(liffState.viewer.accessToken, {
-        type, name: name.trim(), phone: phone.trim(),
+        type, name: name.trim(), phone: phone.trim(), birthday,
         name2: twoPeople ? name2.trim() : null,
         date, time,
         remark: remark.trim() || null,
@@ -216,6 +235,15 @@ export default function BookingApp() {
             id="name" value={name} onChange={(e) => setName(e.target.value)}
             placeholder="請填真實姓名" autoComplete="name"
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="birthday">生日</label>
+          <input
+            id="birthday" type="date" value={birthday}
+            onChange={(e) => setBirthday(e.target.value)}
+          />
+          <p className="hint">只填一次，下次預約會自動帶出來。</p>
         </div>
 
         <div className="field">

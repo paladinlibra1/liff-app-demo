@@ -15,7 +15,7 @@ import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import {
-  createBooking, createAdminBooking, BookingError,
+  createBooking, createAdminBooking, getMyProfile, BookingError,
   type BookingInput, type AdminBookingInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
@@ -284,10 +284,17 @@ export default {
           bearerToken(request),
           env.LINE_LOGIN_CHANNEL_ID,
         );
+
+        // 第二次以後的預約要用既有資料預填表單，所以順便回會員資料。
+        // 分成兩支 API 的話，客人端一開頁就得打兩次，多一次來回。
+        const store = await getStore(env);
+        const member = await getMyProfile(env, store, profile.userId);
+
         return json({
           lineUserId: profile.userId,
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl ?? null,
+          member,
         });
       } catch (err) {
         if (err instanceof LineAuthError) {

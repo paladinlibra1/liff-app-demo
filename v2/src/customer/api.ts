@@ -24,6 +24,8 @@ export interface DayAvailability {
 
 export interface BookingDraft {
   name: string;
+  /** `YYYY-MM-DD`。存到會員身上，下次來就自動帶出來 */
+  birthday: string;
   name2?: string | null;
   phone: string;
   type: string;
@@ -61,6 +63,29 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const fetchStore = () => request<StoreInfo>("/api/store");
+
+export interface MyProfile {
+  name: string;
+  phone: string;
+  birthday: string | null;
+}
+
+/**
+ * 我是誰 ＋ 我的會員資料。
+ *
+ * `member` 是 null 就代表第一次來（或還沒留過資料），表單一律留空；
+ * 有值就拿來預填，回頭客不用每次重打姓名電話生日。
+ */
+export const fetchMe = (accessToken: string) =>
+  request<{
+    lineUserId: string;
+    displayName: string;
+    pictureUrl: string | null;
+    member: MyProfile | null;
+  }>("/api/auth/me", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + accessToken },
+  });
 
 export const fetchAvailability = () =>
   request<{ from: string; to: string; days: DayAvailability[] }>("/api/availability");
