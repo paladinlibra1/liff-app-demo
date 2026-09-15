@@ -117,7 +117,7 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
         </div>
 
         <button disabled={busy === "add"} onClick={add}>
-          {busy === "add" ? "加入中…" : "加入名單"}
+          {busy === "add" ? "⏳ 加入中…" : "➕ 加入名單"}
         </button>
 
         <p className="hint">
@@ -155,13 +155,13 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
                       className="slim outline" disabled={busy === r.user_id}
                       onClick={() => changeRole(r, r.role === "owner" ? "staff" : "owner")}
                     >
-                      改成{r.role === "owner" ? "店員" : "負責人"}
+                      🔁 改成{r.role === "owner" ? "店員" : "負責人"}
                     </button>
                     <button
                       className="slim outline danger" disabled={busy === r.user_id}
                       onClick={() => remove(r)}
                     >
-                      移除
+                      🗑️ 移除
                     </button>
                   </div>
                 </div>

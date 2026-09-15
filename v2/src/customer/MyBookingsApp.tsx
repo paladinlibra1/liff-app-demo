@@ -105,13 +105,13 @@ export default function MyBookingsApp() {
           type="button" aria-pressed={tab === "upcoming"}
           onClick={() => setTab("upcoming")}
         >
-          即將到來{upcoming.length > 0 && `（${upcoming.length}）`}
+          📅 即將到來{upcoming.length > 0 && `（${upcoming.length}）`}
         </button>
         <button
           type="button" aria-pressed={tab === "past"}
           onClick={() => setTab("past")}
         >
-          歷史紀錄
+          🕘 歷史紀錄
         </button>
       </div>
 
@@ -126,7 +126,7 @@ export default function MyBookingsApp() {
           <div className="emoji">{tab === "upcoming" ? "🌸" : "📖"}</div>
           <p>{tab === "upcoming" ? "目前沒有即將到來的預約" : "還沒有歷史預約紀錄"}</p>
           {tab === "upcoming" && (
-            <button onClick={() => { window.location.href = "/"; }}>去預約</button>
+            <button onClick={() => { window.location.href = "/"; }}>📅 去預約</button>
           )}
         </div>
       )}
@@ -155,7 +155,7 @@ export default function MyBookingsApp() {
               disabled={cancelling === b.id}
               onClick={() => handleCancel(b)}
             >
-              {cancelling === b.id ? "取消中…" : "取消預約"}
+              {cancelling === b.id ? "⏳ 取消中…" : "❌ 取消預約"}
             </button>
           )}
         </div>

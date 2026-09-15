@@ -132,6 +132,7 @@ export type Database = {
           note: string | null
           phone: string
           referrer: string | null
+          role: string | null
           store_id: string
           updated_at: string
         }
@@ -146,6 +147,7 @@ export type Database = {
           note?: string | null
           phone: string
           referrer?: string | null
+          role?: string | null
           store_id: string
           updated_at?: string
         }
@@ -160,6 +162,7 @@ export type Database = {
           note?: string | null
           phone?: string
           referrer?: string | null
+          role?: string | null
           store_id?: string
           updated_at?: string
         }
@@ -244,6 +247,8 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          reminder_enabled: boolean
+          reminder_time: string
           slug: string
           timezone: string
         }
@@ -252,6 +257,8 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          reminder_enabled?: boolean
+          reminder_time?: string
           slug: string
           timezone?: string
         }
@@ -260,6 +267,8 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          reminder_enabled?: boolean
+          reminder_time?: string
           slug?: string
           timezone?: string
         }

@@ -259,18 +259,21 @@ export default {
     return json({ error: "Not found" }, 404);
   },
 
-  // ── 排程：每天固定時間送明天的預約提醒 ────────────────
-  // 觸發時間寫在 wrangler.jsonc 的 triggers.crons（UTC）。
+  // ── 排程：送明天的預約提醒 ──────────────────────────
+  // cron 每半小時觸發一次（wrangler.jsonc），真正「幾點送」由後台設定，
+  // 沒到時間的那幾輪會直接跳過。
   // 這裡沒有對外的 HTTP 入口是刻意的——開一支給人 curl 的網址，
   // 等於任何人都能叫系統重送提醒。本機要測用：
   //   npm run dev:worker -- --test-scheduled
-  //   curl "http://localhost:8788/__scheduled?cron=0+12+*+*+*"
+  //   curl "http://localhost:8788/__scheduled?cron=*/30+*+*+*+*"
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       sendDailyReminders(env)
         .then((r) => {
           console.log(
-            `明日提醒 ${r.date}：符合 ${r.found} 筆，送出 ${r.sent}，失敗 ${r.failed}`,
+            r.skipped
+              ? `明日提醒 ${r.date}：略過（${r.skipped}）`
+              : `明日提醒 ${r.date}：符合 ${r.found} 筆，送出 ${r.sent}，失敗 ${r.failed}`,
           );
         })
         .catch((err) => {

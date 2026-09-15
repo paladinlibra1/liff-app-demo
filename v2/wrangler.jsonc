@@ -25,11 +25,11 @@
     "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
   },
 
-  // 每天送隔天的預約提醒。Cron 一律是 UTC：
-  // 12:00 UTC = 台灣時間 20:00（台灣不實施日光節約，全年固定 +8）。
-  // 要改時間就改這裡，改完要重新 deploy 才生效。
+  // 隔天的預約提醒。每半小時觸發一次，真正「幾點送」是店家在後台設的
+  // （stores.reminder_time），Worker 沒到時間就直接跳過那一輪。
+  // 所以老闆改提醒時間不需要改這裡，也不用重新部署。
   "triggers": {
-    "crons": ["0 12 * * *"]
+    "crons": ["*/30 * * * *"]
   }
 
   // 機密用 `wrangler secret put` 設定，不寫在這裡（repo 是公開的）：

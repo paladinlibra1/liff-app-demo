@@ -147,12 +147,12 @@ export default function BookingApp() {
             <Row k="預約身分" v={done.type} />
             <Row k="姓名" v={done.who} />
           </div>
-          <button onClick={closeLiffWindow}>關閉</button>
+          <button onClick={closeLiffWindow}>✖️ 關閉</button>
           <button
             className="ghost"
             onClick={() => { setDone(null); setDate(""); setTime(""); setRemark(""); reloadAvailability(); }}
           >
-            再預約一筆
+            ➕ 再預約一筆
           </button>
         </div>
       </div>
@@ -295,7 +295,7 @@ export default function BookingApp() {
       {formErr && <div className="msg err">{formErr}</div>}
 
       <button onClick={handleSubmit} disabled={submitting}>
-        {submitting ? "送出中…" : "送出預約"}
+        {submitting ? "⏳ 送出中…" : "✅ 送出預約"}
       </button>
     </div>
   );

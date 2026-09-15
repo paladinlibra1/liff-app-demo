@@ -75,7 +75,7 @@ function NotAuthorized({ session }: { session: Session }) {
         <label>使用者 ID</label>
         <code className="uid">{session.user.id}</code>
         <button className="ghost" onClick={() => supabase.auth.signOut()}>
-          登出
+          🚪 登出
         </button>
       </div>
     </div>

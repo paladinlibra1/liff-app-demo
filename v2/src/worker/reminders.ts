@@ -6,13 +6,14 @@
  *   2. 「已提醒過」用 bookings.reminded_at（timestamptz）而不是布林值，
  *      出問題時看得出來是什麼時候送的
  *
- * 排程由 Cloudflare Cron Triggers 觸發（wrangler.jsonc 的 triggers.crons），
- * 店家不需要做任何設定。
+ * 排程由 Cloudflare Cron Triggers 觸發（wrangler.jsonc 的 triggers.crons）。
+ * cron 每半小時跑一次，「幾點送」是店家在後台設的（stores.reminder_time），
+ * 所以改時間不用改程式碼、也不用重新部署。
  */
 
 import type { Env } from "./index";
 import { sb, getStore, type Store } from "./supabase";
-import { todayInStore } from "./availability";
+import { todayInStore, timeNowInStore } from "./availability";
 import { notifyReminder, type NotifyBooking } from "./linePush";
 
 /** 一次最多提醒幾筆。單日預約量遠低於此，設上限只是為了不讓意外的資料量把排程跑爆 */
@@ -48,6 +49,28 @@ export interface ReminderResult {
   found: number;
   sent: number;
   failed: number;
+  /** 這一輪沒到發送時間（或店家關掉提醒）就會有值，說明為什麼沒送 */
+  skipped?: string;
+}
+
+/** `HH:MM` → 從午夜起算的分鐘數 */
+function toMinutes(hhmm: string): number {
+  return Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+}
+
+/**
+ * 這一輪該不該送。
+ *
+ * 不是「現在剛好等於設定時間」——Cloudflare 的 cron 不保證分秒不差，
+ * 晚個幾分鐘就會整天都不送。改成「設定時間之後的一小時內都算數」：
+ * 重複發送由 reminded_at 擋住，所以窗口開寬一點只會更可靠，不會變成連送兩次。
+ *
+ * 也不能開成「只要過了設定時間就送」，否則深夜才新增的預約會在半夜跳通知。
+ */
+function isDue(store: Store): boolean {
+  const now = toMinutes(timeNowInStore(store));
+  const target = toMinutes(store.reminder_time.slice(0, 5));
+  return now >= target && now < target + 60;
 }
 
 /**
@@ -61,6 +84,17 @@ export interface ReminderResult {
 export async function sendDailyReminders(env: Env): Promise<ReminderResult> {
   const store = await getStore(env);
   const date = tomorrowInStore(store);
+
+  if (!store.reminder_enabled) {
+    return { date, found: 0, sent: 0, failed: 0, skipped: "店家關閉了提醒" };
+  }
+  if (!isDue(store)) {
+    return {
+      date, found: 0, sent: 0, failed: 0,
+      skipped: `還沒到發送時間（設定 ${store.reminder_time.slice(0, 5)}，` +
+        `現在 ${timeNowInStore(store)}）`,
+    };
+  }
 
   const rows = await sb<ReminderRow[]>(
     env,

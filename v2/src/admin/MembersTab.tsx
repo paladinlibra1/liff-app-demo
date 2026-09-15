@@ -11,13 +11,21 @@ interface MemberRow {
   referrer: string | null;
   note: string | null;
   guardian_id: string | null;
+  /** 身分：null 表示一般客人 */
+  role: string | null;
   line_user_id: string | null;
   line_name: string | null;
   created_at: string;
 }
 
 const FIELDS =
-  "id,name,phone,birthday,referrer,note,guardian_id,line_user_id,line_name,created_at";
+  "id,name,phone,birthday,referrer,note,guardian_id,role,line_user_id,line_name,created_at";
+
+/**
+ * 會員身分。沿用舊系統：空白＝一般客人，其餘三種是自己人。
+ * 報表要把自己人排除掉，所以這不只是個標籤，是會影響數字的欄位。
+ */
+const ROLES = ["店家", "助理", "夥伴"];
 
 /** 空字串要存成 null，不然日期欄位會被 Postgres 退回 */
 const orNull = (v: string) => (v.trim() ? v.trim() : null);
@@ -44,6 +52,8 @@ export default function MembersTab({ store }: { store: Store }) {
   const [rows, setRows] = useState<MemberRow[] | null>(null);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  /** 正在刪除的那一筆 id，用來鎖住按鈕防連點 */
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   /** null = 沒在編輯；物件 = 正在編輯（沒有 id 就是新增） */
   const [editing, setEditing] = useState<Partial<MemberRow> | null>(null);
@@ -129,6 +139,8 @@ export default function MembersTab({ store }: { store: Store }) {
       referrer: orNull(editing.referrer ?? ""),
       note: orNull(editing.note ?? ""),
       guardian_id: editing.guardian_id || null,
+      // 空字串代表「客人」，資料庫存 null
+      role: editing.role || null,
     };
 
     // 帶 .select()：被 RLS 擋下的寫入不會回錯誤，只會回 0 列（見 OperatingDaysTab 的說明）
@@ -148,6 +160,40 @@ export default function MembersTab({ store }: { store: Store }) {
     setSaving(false);
   }
 
+  /**
+   * 刪除會員。
+   *
+   * 預約紀錄不會跟著消失：bookings.member_id 是 on delete set null，
+   * 而且單子上的姓名電話是下單當時的快照，所以歷史與報表都還讀得到。
+   */
+  async function remove(m: MemberRow) {
+    if (deleting || saving) return;          // 防連點
+    if (!confirm(
+      `確定要刪除會員「${m.name}」嗎？
+
+` +
+      `他過去的預約紀錄會保留，但會員資料會消失，無法復原。`,
+    )) return;
+
+    setDeleting(m.id); setErr("");
+
+    // 一樣要帶 .select()：被 RLS 擋下的刪除不會回錯誤，只會回 0 列
+    const { data, error } = await supabase
+      .from("members").delete().eq("id", m.id).select("id");
+
+    if (error) {
+      setErr(error.message);
+    } else if (!data || data.length === 0) {
+      setErr("沒有刪除成功，請確認你的帳號權限。");
+    } else {
+      // 正在編輯的就是被刪掉的那位 → 把表單收起來，免得存回一筆幽靈資料
+      if (editing?.id === m.id) setEditing(null);
+      await load();
+      await loadGuardians();
+    }
+    setDeleting(null);
+  }
+
   return (
     <>
       <div className="panel">
@@ -161,7 +207,7 @@ export default function MembersTab({ store }: { store: Store }) {
           </div>
         </div>
         <button className="slim" style={{ marginTop: 12 }} onClick={() => setEditing({})}>
-          ＋ 新增會員
+          ➕ 新增會員
         </button>
       </div>
 
@@ -180,6 +226,20 @@ export default function MembersTab({ store }: { store: Store }) {
               value={editing.phone ?? ""} type="tel" inputMode="tel"
               onChange={(e) => setEditing({ ...editing, phone: e.target.value })}
             />
+          </div>
+
+          <div className="field">
+            <label>身分</label>
+            <select
+              value={editing.role ?? ""}
+              onChange={(e) => setEditing({ ...editing, role: e.target.value || null })}
+            >
+              <option value="">客人</option>
+              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <p className="hint">
+              店家／助理／夥伴不算真實客人，之後的報表會把他們排除掉。一般客人選「客人」就好。
+            </p>
           </div>
 
           <div className="field">
@@ -227,8 +287,8 @@ export default function MembersTab({ store }: { store: Store }) {
             </p>
           )}
 
-          <button disabled={saving} onClick={save}>{saving ? "儲存中…" : "儲存"}</button>
-          <button className="ghost" onClick={() => setEditing(null)}>取消</button>
+          <button disabled={saving} onClick={save}>{saving ? "⏳ 儲存中…" : "💾 儲存"}</button>
+          <button className="ghost" onClick={() => setEditing(null)}>↩️ 取消</button>
         </div>
       )}
 
@@ -251,6 +311,7 @@ export default function MembersTab({ store }: { store: Store }) {
             <div className="arow head" aria-hidden="true">
               <div className="c who">會員姓名</div>
               <div className="c">身分</div>
+              <div className="c">來源</div>
               <div className="c">聯絡電話</div>
               <div className="c">生日</div>
               <div className="c">LINE 暱稱</div>
@@ -265,6 +326,12 @@ export default function MembersTab({ store }: { store: Store }) {
                 </div>
 
                 <div className="c" data-label="身分">
+                  {m.role
+                    ? <span className="badge up">{m.role}</span>
+                    : "客人"}
+                </div>
+
+                <div className="c" data-label="來源">
                   {m.line_user_id
                     ? <span className="badge up">LINE 會員</span>
                     : <span className="badge old">手動建立</span>}
@@ -284,7 +351,14 @@ export default function MembersTab({ store }: { store: Store }) {
                 {m.note && <div className="c note" data-label="備註">{m.note}</div>}
 
                 <div className="c acts">
-                  <button className="slim outline" onClick={() => setEditing(m)}>編輯</button>
+                  <button className="slim outline" onClick={() => setEditing(m)}>✏️ 編輯</button>
+                  <button
+                    className="slim outline danger"
+                    disabled={deleting === m.id}
+                    onClick={() => remove(m)}
+                  >
+                    {deleting === m.id ? "⏳ 刪除中…" : "🗑️ 刪除"}
+                  </button>
                 </div>
               </div>
             ))}

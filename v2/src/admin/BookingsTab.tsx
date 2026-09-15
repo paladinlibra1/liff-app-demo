@@ -115,16 +115,16 @@ export default function BookingsTab({ store }: { store: Store }) {
 
         <div className="chips">
           <button className="slim outline" onClick={() => { setFrom(today); setTo(today); }}>
-            今天
+            📆 今天
           </button>
           <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 6)); }}>
-            未來 7 天
+            🗓️ 未來 7 天
           </button>
           <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 30)); }}>
-            未來 30 天
+            🗓️ 未來 30 天
           </button>
           <button className="slim outline" onClick={() => { setFrom(addDays(today, -30)); setTo(addDays(today, -1)); }}>
-            過去 30 天
+            🕘 過去 30 天
           </button>
         </div>
 
@@ -186,11 +186,11 @@ export default function BookingsTab({ store }: { store: Store }) {
                     <>
                       <button className="slim outline" disabled={busy === r.id}
                         onClick={() => setStatus(r, "completed")}>
-                        完成
+                        ✅ 完成
                       </button>
                       <button className="slim outline danger" disabled={busy === r.id}
                         onClick={() => setStatus(r, "cancelled")}>
-                        取消
+                        ❌ 取消
                       </button>
                     </>
                   )}

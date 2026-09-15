@@ -35,10 +35,10 @@ export default function AdminShell({ session, store }: { session: Session; store
   const isOwner = role === "owner";
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "bookings", label: "預約管理" },
-    { key: "members", label: "會員清單" },
-    { key: "days", label: "營業日設定" },
-    ...(isOwner ? [{ key: "admins" as TabKey, label: "權限管理" }] : []),
+    { key: "bookings", label: "📋 預約管理" },
+    { key: "members", label: "👥 會員清單" },
+    { key: "days", label: "📅 營業日設定" },
+    ...(isOwner ? [{ key: "admins" as TabKey, label: "🔑 權限管理" }] : []),
   ];
 
   return (
@@ -52,7 +52,7 @@ export default function AdminShell({ session, store }: { session: Session; store
           </div>
         </div>
         <button className="slim ghost" onClick={() => supabase.auth.signOut()}>
-          登出
+          🚪 登出
         </button>
       </div>
 

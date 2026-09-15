@@ -72,6 +72,10 @@ export interface Store {
   name: string;
   timezone: string;
   business_hours: Partial<BusinessHours>;
+  /** 要不要在前一天發提醒 */
+  reminder_enabled: boolean;
+  /** 提醒的發送時間，店家時區的 `HH:MM:SS`（資料庫限制只能整點或半點） */
+  reminder_time: string;
 }
 
 /**
@@ -85,7 +89,7 @@ export async function getStore(env: Env): Promise<Store> {
   const rows = await sb<Store[]>(
     env,
     `stores?slug=eq.${encodeURIComponent(env.STORE_SLUG)}` +
-      `&select=id,slug,name,timezone,business_hours&limit=1`,
+      `&select=id,slug,name,timezone,business_hours,reminder_enabled,reminder_time&limit=1`,
   );
 
   const store = rows[0];

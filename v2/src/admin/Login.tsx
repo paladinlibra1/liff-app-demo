@@ -60,7 +60,7 @@ export default function Login() {
           />
 
           <button type="submit" disabled={busy}>
-            {busy ? "處理中…" : mode === "signin" ? "登入" : "建立帳號"}
+            {busy ? "⏳ 處理中…" : mode === "signin" ? "🔑 登入" : "✨ 建立帳號"}
           </button>
         </form>
 
@@ -68,7 +68,7 @@ export default function Login() {
           className="ghost"
           onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErr(""); setInfo(""); }}
         >
-          {mode === "signin" ? "還沒有帳號？建立一個" : "已經有帳號了，回到登入"}
+          {mode === "signin" ? "✨ 還沒有帳號？建立一個" : "↩️ 已經有帳號了，回到登入"}
         </button>
 
         {err && <div className="msg err">{err}</div>}
