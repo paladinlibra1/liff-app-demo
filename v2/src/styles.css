@@ -307,6 +307,26 @@ input, select, textarea {
 }
 textarea { resize: vertical; min-height: 4.75rem; line-height: 1.6; }
 
+/*
+ * 日期輸入框在手機上會超出螢幕。
+ *
+ * iOS Safari 與 Android Chrome 給 input[type=date] 一個內建的最小寬度
+ * （要塞得下 yyyy/mm/dd 加日曆圖示），那個寬度是寫死在瀏覽器裡的，
+ * 比 width: 100% 更優先，所以欄位會把整頁撐開、右邊被切掉。
+ *
+ * min-width: 0 才解得掉那個內建下限；appearance: none 一併拿掉
+ * iOS 自己加的內距與置中，讓它跟其他輸入框長得一樣。
+ * 點下去仍然是系統原生的日期選擇器，不影響操作。
+ */
+input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: left;
+}
+
 input::placeholder, textarea::placeholder { color: var(--muted); }
 
 input:focus, select:focus, textarea:focus {
