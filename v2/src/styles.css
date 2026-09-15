@@ -187,6 +187,15 @@ body {
 
 /* 兩欄版面：窄螢幕自動堆疊，寬螢幕才並排 */
 .cols > div + div { margin-top: 0; }
+/*
+ * 堆疊時把兩欄的順序對調。
+ * 桌面兩欄並排時沒有先後之分，手機上才需要決定誰在上面，
+ * 而「先看到哪個」跟「桌面放左邊還是右邊」本來就是兩件事。
+ * 只有兩個子元素，所以用 column-reverse 就夠，不必逐個設 order。
+ */
+@media (max-width: 999px) {
+  .cols.stack-flip { display: flex; flex-direction: column-reverse; }
+}
 @media (min-width: 1000px) {
   .cols { display: grid; grid-template-columns: 25rem minmax(0, 1fr); gap: 1rem; align-items: start; }
 }
@@ -487,6 +496,34 @@ code.uid {
 }
 .tabs button[aria-pressed="true"] { color: #fff; background: var(--rose); }
 
+/* ── 後台：手機版的漢堡選單 ─────────────────────────── */
+/*
+ * 桌面是一整排分頁，手機是漢堡。兩份 markup 都在畫面上，靠這裡決定顯示哪份。
+ * 只影響後台：客人端的 .tabs（我的預約／歷史紀錄）只有兩個，手機上排得下。
+ */
+.navbar { display: none; position: relative; margin-bottom: 0.875rem; }
+.navbar > button { width: 100%; text-align: left; }
+
+.menu {
+  position: absolute; z-index: 20; top: calc(100% + 0.375rem); left: 0; right: 0;
+  display: flex; flex-direction: column; gap: 0.125rem;
+  padding: 0.375rem;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow);
+}
+.menu button {
+  width: 100%; margin: 0; text-align: left;
+  padding: 0.75rem 0.875rem;
+  background: transparent; color: var(--ink);
+  font-weight: 600; box-shadow: none;
+}
+.menu button[aria-pressed="true"] { background: var(--rose); color: #fff; }
+
+@media (max-width: 760px) {
+  .admin-tabs { display: none; }
+  .navbar { display: block; }
+}
+
 /* ── 預約卡片 ───────────────────────────────────────── */
 
 .bk-head {
@@ -765,6 +802,16 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
  * 左右邊距收一點讓卡片內部空間變大，時段格子維持 3 欄
  * （每欄約 110px，放得下「12:30」＋下面那行「剩 2 位」）。
  */
+/*
+ * 篩選欄在手機上一行只放一個。
+ * 日期輸入框在手機瀏覽器有自己的最小寬度（裡面要塞日曆圖示），
+ * 兩個併排時會各自撐過 flex 分到的寬度而疊在一起。
+ */
+@media (max-width: 560px) {
+  .filters .f { flex: 1 1 100%; }
+  .filters .f input, .filters .f select { max-width: 100%; }
+}
+
 @media (max-width: 430px) {
   .wrap { padding: 0.875rem 0.75rem calc(2.5rem + env(safe-area-inset-bottom)); }
   .panel { padding: 1rem 0.875rem; margin-bottom: 0.75rem; }

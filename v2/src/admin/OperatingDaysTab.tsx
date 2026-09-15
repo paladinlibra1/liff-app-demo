@@ -217,7 +217,16 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
   }
 
   return (
-    <div className="cols">
+    <>
+      {err && <div className="msg err">{err}</div>}
+      {ok && <div className="msg ok">{ok}</div>}
+
+      {/*
+        * stack-flip：手機上「營業日」排在「營業時間」前面。
+        * 店員在店裡最常做的是開關某一天，營業時間是偶爾才調一次的設定，
+        * 不該每次都要先滑過它。桌面是兩欄並排，沒有這個問題。
+        */}
+      <div className="cols stack-flip">
       <div>
       {/* ───────── 營業時間 ───────── */}
       <div className="panel">
@@ -242,8 +251,6 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
           ))}
       </div>
 
-      {err && <div className="msg err">{err}</div>}
-      {ok && <div className="msg ok">{ok}</div>}
       </div>
 
       <div>
@@ -324,7 +331,8 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
         </div>
       )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

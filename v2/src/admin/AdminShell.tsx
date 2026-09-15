@@ -18,6 +18,8 @@ type TabKey = "bookings" | "members" | "days" | "settings" | "admins";
 export default function AdminShell({ session, store }: { session: Session; store: Store }) {
   const [tab, setTab] = useState<TabKey>("bookings");
   const [role, setRole] = useState<string | null>(null);
+  /** 手機版的漢堡選單開著沒。桌面版不會用到這個狀態 */
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // 自己在這家店是什麼身分。權限管理只有負責人看得到——
   // 藏起來只是介面上的事，真正的把關在資料庫函式裡（0007_admin_management.sql）。
@@ -58,7 +60,13 @@ export default function AdminShell({ session, store }: { session: Session; store
         </button>
       </div>
 
-      <div className="tabs">
+      {/*
+        * 分頁有五個，在手機上一排排不下（會擠成兩行還會斷字），
+        * 所以窄螢幕改成漢堡選單、寬螢幕維持一整排。
+        * 兩份 markup 都在，由 CSS 決定顯示哪一份——用 JS 判斷視窗寬度的話，
+        * 轉螢幕方向不會跟著變，而且第一次畫面會閃一下。
+        */}
+      <div className="tabs admin-tabs">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -69,6 +77,31 @@ export default function AdminShell({ session, store }: { session: Session; store
             {t.label}
           </button>
         ))}
+      </div>
+
+      <div className="navbar">
+        <button
+          className="slim outline"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          ☰　{tabs.find((t) => t.key === tab)?.label}
+        </button>
+
+        {menuOpen && (
+          <div className="menu">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                aria-pressed={tab === t.key}
+                onClick={() => { setTab(t.key); setMenuOpen(false); }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {tab === "bookings" && <BookingsTab store={store} />}
