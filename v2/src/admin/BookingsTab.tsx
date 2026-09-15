@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
+import NewBookingForm from "./NewBookingForm";
 
 interface BookingRow {
   id: string;
@@ -47,6 +48,8 @@ export default function BookingsTab({ store }: { store: Store }) {
   const [err, setErr] = useState("");
   /** 正在改的那一筆 id，同時當防連點的鎖 */
   const [busy, setBusy] = useState<string | null>(null);
+  /** 代客預約的表單開著沒 */
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     setErr("");
@@ -101,6 +104,19 @@ export default function BookingsTab({ store }: { store: Store }) {
 
   return (
     <>
+      <div className="panel">
+        <button className="slim" onClick={() => setAdding(true)}>➕ 代客預約</button>
+        <p className="hint">店家幫客人訂。規則跟客人端一樣，只選得到有營業又還有位子的時段。</p>
+      </div>
+
+      {adding && (
+        <NewBookingForm
+          store={store}
+          onSaved={load}
+          onClose={() => setAdding(false)}
+        />
+      )}
+
       <div className="panel">
         <div className="filters">
           <div className="f">

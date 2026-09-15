@@ -639,6 +639,24 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   .toggle input, .toggle input::after { transition: none; }
 }
 
+/* 代客預約：已選定的會員那一列 */
+.picked {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.625rem; flex-wrap: wrap;
+  padding: 0.625rem 0.75rem;
+  background: var(--rose-tint); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+}
+.picked button { margin: 0; }
+
+/* 代客預約：會員搜尋結果，一列一個人 */
+.hits {
+  display: flex; flex-direction: column; gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+.hits button { margin: 0; width: 100%; text-align: left; }
+
 /* 營業時間編輯器 */
 .hours { padding: 0.875rem 0; border-top: 1px solid var(--line); }
 .hours:first-of-type { border-top: 0; padding-top: 0; }
