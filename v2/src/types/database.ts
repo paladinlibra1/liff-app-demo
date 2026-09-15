@@ -42,6 +42,7 @@ export type Database = {
       bookings: {
         Row: {
           booked_by: string
+          booker_line_user_id: string | null
           cancel_reason: string | null
           cancelled_at: string | null
           created_at: string
@@ -63,6 +64,7 @@ export type Database = {
         }
         Insert: {
           booked_by?: string
+          booker_line_user_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
@@ -84,6 +86,7 @@ export type Database = {
         }
         Update: {
           booked_by?: string
+          booker_line_user_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
           created_at?: string

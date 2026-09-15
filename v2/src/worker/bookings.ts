@@ -18,6 +18,15 @@ import { birthdayError } from "../shared/birthday";
 /** 舊系統 index.html 的三種預約身分，照搬 */
 const BOOKING_TYPES = ["新客體驗", "一般預約", "複檢"];
 
+/**
+ * 同一個 LINE 一天最多幾筆（自己的與代訂的合計）。
+ *
+ * ⚠️ 這個數字同時寫在資料庫的 check_daily_booking_limit() trigger 裡。
+ *    真正的把關在資料庫（兩個分頁同時送也擋得住），這裡只是為了
+ *    在正常情況下給一句人看得懂的話。改上限時兩邊都要改。
+ */
+const DAILY_LIMIT = 2;
+
 export class BookingError extends Error {
   constructor(message: string, readonly status: number = 400) {
     super(message);
@@ -304,6 +313,22 @@ export async function createBooking(
     );
   }
 
+  // ── 這個人今天訂幾筆了 ──────────────────────────────
+  // 自己的與幫別人訂的合計。數得出來就先擋，訊息比資料庫丟的例外好懂。
+  const sameDay = await sb<{ id: string }[]>(
+    env,
+    `bookings?store_id=eq.${store.id}&date=eq.${date}&status=eq.active` +
+      `&booker_line_user_id=eq.${encodeURIComponent(profile.userId)}` +
+      `&select=id&limit=${DAILY_LIMIT + 1}`,
+  );
+  if (sameDay.length >= DAILY_LIMIT) {
+    throw new BookingError(
+      `同一天最多只能訂 ${DAILY_LIMIT} 筆（含幫別人訂的）。` +
+        `要改時間請先到「我的預約」取消其中一筆。`,
+      409,
+    );
+  }
+
   // ── 寫入 ────────────────────────────────────────────
   const phone = normalizePhone(phoneRaw);
 
@@ -339,6 +364,9 @@ export async function createBooking(
           store_id: store.id,
           member_id: memberId,
           notify_line_user_id: notify,
+          // 「誰送出來的」，跟 member_id（「這筆是誰的」）是兩回事。
+          // 每日上限靠它算，代訂的單也算在下單者頭上。
+          booker_line_user_id: profile.userId,
           // 下單當下的快照：客人事後改名改電話，不動到歷史單
           name,
           name2: name2 || null,
@@ -473,6 +501,13 @@ function translateWriteError(err: unknown): Error {
   // 23505：唯一索引衝突 → bookings_one_per_member_per_day
   if (err.code === "23505") {
     return new BookingError("您在這一天已經有一筆預約了，要改時間請先取消原本的預約", 409);
+  }
+  // 23514：check_daily_booking_limit() 丟的 daily_limit
+  if (err.message.includes("daily_limit")) {
+    return new BookingError(
+      `同一天最多只能訂 ${DAILY_LIMIT} 筆（含幫別人訂的）`,
+      409,
+    );
   }
   // 23514：check_slot_capacity() 丟的 slot_full
   if (err.code === "23514" || err.message.includes("slot_full")) {
