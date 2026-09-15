@@ -1,23 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  fetchStore, fetchMyBookings, cancelBooking,
-  type StoreInfo, type MyBooking,
+  fetchStore, fetchMe, fetchMyBookings, cancelBooking,
+  type StoreInfo, type MyBooking, type MyProfile,
 } from "./api";
 import { initLiff, type LiffState } from "./liff";
+import { BOOKING_URL } from "./links";
+import RegisterForm from "./RegisterForm";
 
 const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
-
-/**
- * 預約頁的網址。
- *
- * 一定要走 liff.line.me 的連結，不能只跳到本站的 `/`：
- * 預約頁與這一頁是兩個獨立的 LIFF 應用程式，LIFF 規定頁面要用
- * 「開啟它的那個應用程式」的 ID 去 init。直接跳 `/` 會在「我的預約」
- * 這個 LIFF 的環境裡載入預約頁，init 時 ID 對不起來就掛了。
- *
- * ID 從環境變數來，不寫死——換店時只要改 .env。
- */
-const BOOKING_URL = `https://liff.line.me/${import.meta.env.VITE_LIFF_ID_BOOKING}`;
 
 function goBooking() {
   window.location.href = BOOKING_URL;
@@ -38,6 +28,10 @@ export default function MyBookingsApp() {
   const [err, setErr] = useState("");
 
   const [tab, setTab] = useState<Tab>("upcoming");
+  /** 會員資料；null ＝ 還沒綁定，要先擋下來綁 */
+  const [member, setMember] = useState<MyProfile | null>(null);
+  /** 有沒有問過後端「綁了沒」。沒問過之前不能判定成未綁定 */
+  const [checked, setChecked] = useState(false);
   /** 正在取消的那一筆 id；同時當作防連點的鎖 */
   const [cancelling, setCancelling] = useState<string | null>(null);
 
@@ -51,12 +45,23 @@ export default function MyBookingsApp() {
       setLiffState(state);
       if (state.kind !== "ready") return;
       try {
+        /*
+         * 先問「綁了沒」。還沒綁的人一筆預約也不會有，
+         * 但那跟「綁了卻沒有預約」是兩件事，畫面要分得出來——
+         * 前者要請他留資料，後者要請他去訂一筆。
+         */
+        const me = await fetchMe(state.viewer.accessToken);
+        if (cancelled) return;
+        setMember(me.member);
+        setChecked(true);
+        if (!me.member) return;      // 沒綁定就不用查預約了
+
         const data = await fetchMyBookings(state.viewer.accessToken);
         if (cancelled) return;
         setBookings(data.bookings);
         setNow(data.now);
       } catch (e) {
-        if (!cancelled) setErr((e as Error).message);
+        if (!cancelled) { setErr((e as Error).message); setChecked(true); }
       }
     });
 
@@ -116,6 +121,27 @@ export default function MyBookingsApp() {
         </div>
       )}
 
+      {/*
+        * 還沒綁定：整頁換成綁定表單。
+        *
+        * 不用「清單空的順便提示一下」那種做法——沒綁定的人看到一個空清單
+        * 只會以為系統壞了。綁完就地把 member 設起來，接著把預約查回來，
+        * 不用整頁重新載入。
+        */}
+      {checked && liffState?.kind === "ready" && !member && (
+        <RegisterForm
+          accessToken={liffState.viewer.accessToken}
+          onDone={(m) => {
+            setMember(m);
+            fetchMyBookings(liffState.viewer.accessToken)
+              .then((data) => { setBookings(data.bookings); setNow(data.now); })
+              .catch((e: Error) => setErr(e.message));
+          }}
+        />
+      )}
+
+      {(!checked || member || liffState?.kind !== "ready") && (
+      <>
       <div className="tabs">
         <button
           type="button" aria-pressed={tab === "upcoming"}
@@ -129,14 +155,13 @@ export default function MyBookingsApp() {
         >
           🕘 歷史紀錄
         </button>
-        {/*
-          * 這顆不是分頁，是離開這一頁去預約，所以永遠不會是「選中」的狀態。
-          * 放在同一列是因為客人看完自己的預約，下一個動作八成就是再訂一筆。
-          */}
-        <button type="button" onClick={goBooking}>
-          ➕ 馬上預約
-        </button>
       </div>
+
+      {/*
+        * 獨立一排、佔滿寬度。它不是分頁，是離開這一頁去做下一件事——
+        * 擠在分頁列裡既看不出差別，三顆在手機上也排不開。
+        */}
+      <button className="go-book" onClick={goBooking}>➕ 馬上預約</button>
 
       {err && <div className="msg err">{err}</div>}
 
@@ -183,6 +208,8 @@ export default function MyBookingsApp() {
           )}
         </div>
       ))}
+      </>
+      )}
     </div>
   );
 }

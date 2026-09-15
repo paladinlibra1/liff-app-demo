@@ -123,6 +123,25 @@ export const cancelBooking = (accessToken: string, id: string) =>
     body: JSON.stringify({}),
   });
 
+/**
+ * 綁定會員。
+ *
+ * 已經綁過的再送一次不會出錯，後端會直接回現有的資料，
+ * 所以前端不需要先查一次「綁了沒」再決定要不要送。
+ */
+export const registerMember = (
+  accessToken: string,
+  input: { name: string; phone: string; birthday: string },
+) =>
+  request<{ member: MyProfile }>("/api/members", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + accessToken,
+    },
+    body: JSON.stringify(input),
+  });
+
 export const submitBooking = (accessToken: string, draft: BookingDraft) =>
   request<{ booking: { id: string; date: string; start_time: string } }>("/api/bookings", {
     method: "POST",

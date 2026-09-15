@@ -15,8 +15,8 @@ import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import {
-  createBooking, createAdminBooking, getMyProfile, BookingError,
-  type BookingInput, type AdminBookingInput,
+  createBooking, createAdminBooking, getMyProfile, registerMember, BookingError,
+  type BookingInput, type AdminBookingInput, type RegisterInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
 import { listMyBookings, cancelMyBooking } from "./myBookings";
@@ -188,6 +188,33 @@ export default {
           return json({ error: err.message }, err.status);
         }
         return errorResponse(err, "建立預約失敗");
+      }
+    }
+
+    // ── 會員綁定 ────────────────────────────────────────
+    // 客人第一次開「我的預約」會被擋在這一步。已經綁過的再送一次
+    // 也不會出錯，會直接回現有的資料。
+    if (path === "/api/members" && request.method === "POST") {
+      try {
+        const profile = await verifyLineToken(
+          bearerToken(request),
+          env.LINE_LOGIN_CHANNEL_ID,
+        );
+
+        let input: RegisterInput;
+        try {
+          input = (await request.json()) as RegisterInput;
+        } catch {
+          return json({ error: "送出的內容格式不正確" }, 400);
+        }
+
+        const store = await getStore(env);
+        const member = await registerMember(env, store, profile, input);
+        return json({ member }, 201);
+      } catch (err) {
+        if (err instanceof BookingError) return json({ error: err.message }, err.status);
+        if (err instanceof LineAuthError) return json({ error: err.message }, err.status);
+        return errorResponse(err, "綁定會員失敗");
       }
     }
 

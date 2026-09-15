@@ -171,6 +171,50 @@ async function resolveNotifyTarget(env: Env, member: Member): Promise<string | n
 }
 
 // ───────────────────────────────────────────────────────────
+// 會員綁定
+// ───────────────────────────────────────────────────────────
+
+export interface RegisterInput {
+  name?: string;
+  phone?: string;
+  birthday?: string;
+}
+
+/**
+ * 把這個 LINE 身分綁成會員。
+ *
+ * 客人第一次開「我的預約」時會被擋在這一步。綁定與預約分開的好處是：
+ * 店家可以在還沒有任何預約的情況下就先有這個人的資料（生日優惠、名單），
+ * 客人也不用為了看一眼有沒有預約而先訂一筆。
+ *
+ * 已經綁過的再送一次不會出錯——findOrCreateMember 找得到就直接回傳，
+ * 不會重複建檔，也不會拿這次填的內容覆蓋既有資料。
+ */
+export async function registerMember(
+  env: Env,
+  store: Store,
+  profile: LineProfile,
+  input: RegisterInput,
+): Promise<MyProfile> {
+  const name = (input.name ?? "").trim();
+  const phoneRaw = (input.phone ?? "").trim();
+  const birthday = (input.birthday ?? "").trim();
+
+  if (!name) throw new BookingError("請填姓名");
+  if (!phoneRaw) throw new BookingError("請填聯絡電話");
+  if (!isValidPhone(phoneRaw)) throw new BookingError(PHONE_RULE_MSG);
+  if (!birthday) throw new BookingError("請填生日");
+  const bErr = birthdayError(birthday);
+  if (bErr) throw new BookingError(bErr);
+
+  const member = await findOrCreateMember(
+    env, store, profile, name, normalizePhone(phoneRaw), birthday,
+  );
+
+  return { name: member.name, phone: member.phone, birthday: member.birthday };
+}
+
+// ───────────────────────────────────────────────────────────
 // 建立預約
 // ───────────────────────────────────────────────────────────
 
