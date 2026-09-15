@@ -243,7 +243,6 @@ export default function BookingApp() {
             id="birthday" type="date" value={birthday}
             onChange={(e) => setBirthday(e.target.value)}
           />
-          <p className="hint">只填一次，下次預約會自動帶出來。</p>
         </div>
 
         <div className="field">
