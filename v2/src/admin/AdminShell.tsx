@@ -5,6 +5,7 @@ import BookingsTab from "./BookingsTab";
 import MembersTab from "./MembersTab";
 import OperatingDaysTab from "./OperatingDaysTab";
 import AdminsTab from "./AdminsTab";
+import SettingsTab from "./SettingsTab";
 
 export interface Store {
   id: string;
@@ -12,7 +13,7 @@ export interface Store {
   slug: string;
 }
 
-type TabKey = "bookings" | "members" | "days" | "admins";
+type TabKey = "bookings" | "members" | "days" | "settings" | "admins";
 
 export default function AdminShell({ session, store }: { session: Session; store: Store }) {
   const [tab, setTab] = useState<TabKey>("bookings");
@@ -38,6 +39,7 @@ export default function AdminShell({ session, store }: { session: Session; store
     { key: "bookings", label: "📋 預約管理" },
     { key: "members", label: "👥 會員清單" },
     { key: "days", label: "📅 營業日設定" },
+    { key: "settings", label: "⚙️ 設定" },
     ...(isOwner ? [{ key: "admins" as TabKey, label: "🔑 權限管理" }] : []),
   ];
 
@@ -72,6 +74,7 @@ export default function AdminShell({ session, store }: { session: Session; store
       {tab === "bookings" && <BookingsTab store={store} />}
       {tab === "members" && <MembersTab store={store} />}
       {tab === "days" && <OperatingDaysTab store={store} />}
+      {tab === "settings" && <SettingsTab store={store} />}
       {tab === "admins" && isOwner && <AdminsTab store={store} myUserId={session.user.id} />}
     </div>
   );

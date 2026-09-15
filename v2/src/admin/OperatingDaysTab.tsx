@@ -57,21 +57,11 @@ function generate(start: string, end: string, stepMin: number): string[] {
   return out;
 }
 
-/** 提醒時間的選項：整點與半點。資料庫的 check 也只接受這兩種 */
-const REMINDER_CHOICES = generate("08:00", "22:00", 30);
-
-interface Reminder {
-  enabled: boolean;
-  /** `HH:MM` */
-  time: string;
-}
-
 export default function OperatingDaysTab({ store }: { store: Store }) {
   const today = todayStr();
   const [month, setMonth] = useState(today.slice(0, 7));
 
   const [hours, setHours] = useState<Hours | null>(null);
-  const [reminder, setReminder] = useState<Reminder | null>(null);
   const [days, setDays] = useState<Record<string, DayRow>>({});
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
@@ -86,16 +76,11 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
   const loadHours = useCallback(async () => {
     const { data, error } = await supabase
       .from("stores")
-      .select("business_hours,reminder_enabled,reminder_time")
+      .select("business_hours")
       .eq("id", store.id).single();
     if (error) { setErr(error.message); return; }
     const bh = (data.business_hours ?? {}) as Partial<Hours>;
     setHours({ weekday: bh.weekday ?? [], weekend: bh.weekend ?? [] });
-    setReminder({
-      enabled: data.reminder_enabled,
-      // 資料庫回的是 HH:MM:SS
-      time: data.reminder_time.slice(0, 5),
-    });
   }, [store.id]);
 
   const loadDays = useCallback(async () => {
@@ -134,30 +119,6 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
     } else {
       setHours(next);
       setOk("營業時間已儲存");
-    }
-    setBusy(null);
-  }
-
-  // ── 前一天的提醒 ──────────────────────────────────
-  // 排程每半小時跑一次，靠這兩個欄位決定那一輪要不要送，
-  // 所以改完不用重新部署，下一輪就是新設定。
-  async function saveReminder(next: Reminder) {
-    if (busy) return;                                  // 防連點
-    setBusy("reminder"); setErr(""); setOk("");
-
-    // 跟營業時間一樣要帶 .select()：RLS 擋下的 UPDATE 不會回錯誤
-    const { data, error } = await supabase
-      .from("stores")
-      .update({ reminder_enabled: next.enabled, reminder_time: next.time })
-      .eq("id", store.id).select("id");
-
-    if (error) {
-      setErr(error.message);
-    } else if (!data || data.length === 0) {
-      setErr("沒有儲存成功：只有負責人可以修改提醒設定，請聯絡負責人。");
-    } else {
-      setReminder(next);
-      setOk(next.enabled ? `提醒時間已設為 ${next.time}` : "已關閉前一天的提醒");
     }
     setBusy(null);
   }
@@ -279,45 +240,6 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
               onReplace={(list) => void saveHours({ ...hours, [kind]: list })}
             />
           ))}
-      </div>
-
-      {/* ───────── 預約提醒 ───────── */}
-      <div className="panel">
-        <div className="panel-title">預約提醒</div>
-        <p className="sub" style={{ marginBottom: 16 }}>
-          預約的<b>前一天</b>自動用 LINE 提醒客人，每位客人每筆預約只會收到一次。
-          <br />沒有綁定 LINE 的預約不會發送。
-        </p>
-
-        {reminder === null
-          ? <div className="skeleton" style={{ height: 60 }} />
-          : (
-            <div className="hours">
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={reminder.enabled}
-                  disabled={busy !== null}
-                  onChange={(e) => void saveReminder({ ...reminder, enabled: e.target.checked })}
-                />
-                <span>開啟前一天的提醒</span>
-              </label>
-
-              <div className="hours-add" style={{ marginTop: 12 }}>
-                <label className="sub" style={{ margin: 0 }}>發送時間</label>
-                <select
-                  value={reminder.time}
-                  disabled={busy !== null || !reminder.enabled}
-                  onChange={(e) => void saveReminder({ ...reminder, time: e.target.value })}
-                >
-                  {REMINDER_CHOICES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <p className="hint">
-                只能設整點或半點——排程每半小時檢查一次，設 20:15 也要等到 20:30 才送得出去。
-              </p>
-            </div>
-          )}
       </div>
 
       {err && <div className="msg err">{err}</div>}

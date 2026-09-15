@@ -12,11 +12,20 @@ export default function AdminApp() {
   const [store, setStore] = useState<Store | null>(null);
   const [checking, setChecking] = useState(true);
 
-  // 後台換成奶茶色。掛在 body 上而不是某個 div——整頁的底色要跟著換，
-  // 只套在容器上的話四周還是客人端的粉色。
+  /*
+   * 後台換成舊系統那套黑白灰。
+   *
+   * body 與 html 兩邊都要掛：
+   *   body → 整頁底色（只套在容器上的話四周還是客人端的粉色）
+   *   html → 後台縮到 90% 的根字級（rem 看的是根元素，掛 body 沒用）
+   */
   useEffect(() => {
     document.body.classList.add("admin-theme");
-    return () => document.body.classList.remove("admin-theme");
+    document.documentElement.classList.add("admin-theme");
+    return () => {
+      document.body.classList.remove("admin-theme");
+      document.documentElement.classList.remove("admin-theme");
+    };
   }, []);
 
   useEffect(() => {

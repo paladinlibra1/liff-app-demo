@@ -113,6 +113,17 @@ body.admin-theme .tabs button[aria-pressed="true"] {
 html {
   font-size: clamp(16px, 0.48vw + 12.4px, 20px);
 }
+/*
+ * 後台整體再縮到 90%（老闆覺得放大後太大了）。
+ *
+ * 客人端維持原尺寸：它只在 LINE 裡用手機開，再縮下去輸入框會低於 16px，
+ * iOS Safari 一聚焦就把整頁放大，那比字小更難用。
+ *
+ * 縮放要掛在 html 而不是 body——rem 看的是根元素，套在 body 上沒有作用。
+ */
+html.admin-theme {
+  font-size: clamp(14.4px, 0.432vw + 11.16px, 18px);
+}
 
 * { box-sizing: border-box; }
 
