@@ -26,6 +26,8 @@ export interface BookingDraft {
   name: string;
   /** `YYYY-MM-DD`。存到會員身上，下次來就自動帶出來 */
   birthday: string;
+  /** 幫別人訂：姓名電話是對方的，只存成這筆預約的資料 */
+  forOther?: boolean;
   name2?: string | null;
   phone: string;
   type: string;

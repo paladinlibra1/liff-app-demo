@@ -41,6 +41,16 @@ export default function BookingApp() {
   const [member, setMember] = useState<MyProfile | null>(null);
   /** 有沒有問過後端「綁了沒」。沒問過之前不能判定成未綁定 */
   const [checked, setChecked] = useState(false);
+
+  /*
+   * 幫別人訂。
+   *
+   * 對方的姓名電話另外存，不要蓋掉從會員帶出來的那兩欄——
+   * 不然客人切回「訂給自己」時自己的資料就不見了。
+   */
+  const [forOther, setForOther] = useState(false);
+  const [otherName, setOtherName] = useState("");
+  const [otherPhone, setOtherPhone] = useState("");
   const [twoPeople, setTwoPeople] = useState(false);
   const [name2, setName2] = useState("");
   const [date, setDate] = useState("");
@@ -128,12 +138,16 @@ export default function BookingApp() {
     if (submitting) return;          // 防連點：送出期間整支直接擋掉
     setFormErr("");
 
+    // 幫別人訂的時候，要檢查的是對方那兩欄，生日不問
+    const who = forOther ? otherName : name;
+    const tel = forOther ? otherPhone : phone;
+
     if (!type) return setFormErr("請選擇預約身分");
-    if (!name.trim()) return setFormErr("請填姓名");
-    if (!phone.trim()) return setFormErr("請填聯絡電話");
-    if (!isValidPhone(phone)) return setFormErr(PHONE_RULE_MSG);
-    if (!birthday) return setFormErr("請填生日");
-    {
+    if (!who.trim()) return setFormErr(forOther ? "請填對方的姓名" : "請填姓名");
+    if (!tel.trim()) return setFormErr(forOther ? "請填對方的聯絡電話" : "請填聯絡電話");
+    if (!isValidPhone(tel)) return setFormErr(PHONE_RULE_MSG);
+    if (!forOther) {
+      if (!birthday) return setFormErr("請填生日");
       const bErr = birthdayError(birthday);
       if (bErr) return setFormErr(bErr);
     }
@@ -148,14 +162,15 @@ export default function BookingApp() {
     setSubmitting(true);
     try {
       await submitBooking(liffState.viewer.accessToken, {
-        type, name: name.trim(), phone: phone.trim(), birthday,
+        type, name: who.trim(), phone: tel.trim(), birthday,
+        forOther,
         name2: twoPeople ? name2.trim() : null,
         date, time,
         remark: remark.trim() || null,
       });
       setDone({
         date, time, type,
-        who: twoPeople ? `${name.trim()}、${name2.trim()}` : name.trim(),
+        who: twoPeople ? `${who.trim()}、${name2.trim()}` : who.trim(),
       });
     } catch (e) {
       setFormErr((e as Error).message);
@@ -257,36 +272,77 @@ export default function BookingApp() {
           </div>
         </div>
 
-        {/*
-          * 姓名、電話、生日是綁定時留下的會員資料，這裡只顯示不給改。
-          * 每次預約都能改的話，同一個人會留下好幾種寫法的姓名與電話，
-          * 店家事後對不出那是不是同一個人。
-          */}
-        <div className="field">
-          <label htmlFor="name">姓名</label>
-          <input id="name" value={name} disabled />
-        </div>
-
-        <div className="field">
-          <label htmlFor="birthday">生日</label>
-          {/*
-            * 會員資料裡本來就有生日才鎖住。
-            *
-            * 綁定之前建的舊會員有可能沒填過生日，那種情況要讓他補——
-            * 鎖住又必填會直接卡死，客人連預約都送不出去。
-            */}
+        <label className="toggle" style={{ marginBottom: "1rem" }}>
           <input
-            id="birthday" type="date" value={birthday}
-            disabled={Boolean(member?.birthday)}
-            onChange={(e) => setBirthday(e.target.value)}
+            type="checkbox"
+            checked={forOther}
+            onChange={(e) => setForOther(e.target.checked)}
           />
-        </div>
+          這筆是幫別人訂的
+        </label>
 
-        <div className="field">
-          <label htmlFor="phone">聯絡電話</label>
-          <input id="phone" value={phone} type="tel" disabled />
-          <p className="hint">姓名、電話、生日是您綁定時留下的資料，需要修改請聯絡店家。</p>
-        </div>
+        {forOther ? (
+          <>
+            {/*
+              * 幫別人訂：填對方的姓名電話，只當成這筆預約的資料，
+              * 不會變成會員、也不會動到自己的資料。
+              */}
+            <div className="field">
+              <label htmlFor="o-name">對方的姓名</label>
+              <input
+                id="o-name" value={otherName}
+                onChange={(e) => setOtherName(e.target.value)}
+                placeholder="請填對方的真實姓名"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="o-phone">對方的聯絡電話</label>
+              <input
+                id="o-phone" value={otherPhone}
+                onChange={(e) => setOtherPhone(e.target.value)}
+                type="tel" inputMode="tel" maxLength={16}
+                placeholder="0912345678"
+              />
+              <p className="hint">
+                通知會發到<b>您的</b> LINE，這筆預約也會出現在您的「我的預約」裡，
+                要改或取消都由您操作。
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/*
+              * 姓名、電話、生日是綁定時留下的會員資料，這裡只顯示不給改。
+              * 每次預約都能改的話，同一個人會留下好幾種寫法的姓名與電話，
+              * 店家事後對不出那是不是同一個人。
+              */}
+            <div className="field">
+              <label htmlFor="name">姓名</label>
+              <input id="name" value={name} disabled />
+            </div>
+
+            <div className="field">
+              <label htmlFor="birthday">生日</label>
+              {/*
+                * 會員資料裡本來就有生日才鎖住。
+                *
+                * 綁定之前建的舊會員有可能沒填過生日，那種情況要讓他補——
+                * 鎖住又必填會直接卡死，客人連預約都送不出去。
+                */}
+              <input
+                id="birthday" type="date" value={birthday}
+                disabled={Boolean(member?.birthday)}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="phone">聯絡電話</label>
+              <input id="phone" value={phone} type="tel" disabled />
+              <p className="hint">姓名、電話、生日是您綁定時留下的資料，需要修改請聯絡店家。</p>
+            </div>
+          </>
+        )}
 
         <div className="field">
           <label className={"check" + (twoPeople ? " on" : "")}>

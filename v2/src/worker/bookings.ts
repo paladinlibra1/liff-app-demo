@@ -234,6 +234,13 @@ export interface BookingInput {
   name?: string;
   /** `YYYY-MM-DD`。存在會員身上，不是存在預約上 */
   birthday?: string;
+  /**
+   * 這筆是幫別人訂的。
+   *
+   * 為真時姓名電話是「那個人」的，只當成這筆預約的快照，不建會員、
+   * 也不動下單者自己的資料；通知仍然發給下單的人。
+   */
+  forOther?: boolean;
   name2?: string | null;
   phone?: string;
   type?: string;
@@ -256,6 +263,7 @@ export async function createBooking(
   const time = (input.time ?? "").trim();
   const remark = (input.remark ?? "").trim();
   const birthday = (input.birthday ?? "").trim();
+  const forOther = input.forOther === true;
 
   // ── 欄位檢查 ────────────────────────────────────────
   if (!name) throw new BookingError("請填姓名");
@@ -265,11 +273,14 @@ export async function createBooking(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BookingError("請選擇日期");
   if (!/^\d{2}:\d{2}$/.test(time)) throw new BookingError("請選擇時間");
 
-  // 生日存在會員身上，回頭客的表單會自動帶出來，所以這裡一律要求有值。
+  // 生日存在會員身上，回頭客的表單會自動帶出來，所以自己的單一律要求有值。
   // 店家要用它做生日優惠與年齡判斷，少一筆就少一個人。
-  if (!birthday) throw new BookingError("請填生日");
-  const bErr = birthdayError(birthday);
-  if (bErr) throw new BookingError(bErr);
+  // 幫別人訂的不問：那個人不會因為這筆單變成會員，問了也沒地方存。
+  if (!forOther) {
+    if (!birthday) throw new BookingError("請填生日");
+    const bErr = birthdayError(birthday);
+    if (bErr) throw new BookingError(bErr);
+  }
 
   // 不能訂過去。用店家時區判斷，不是 UTC——台灣時間晚上用 UTC 會算成昨天。
   if (date < todayInStore(store)) throw new BookingError("不能預約已經過去的日期");
@@ -295,8 +306,26 @@ export async function createBooking(
 
   // ── 寫入 ────────────────────────────────────────────
   const phone = normalizePhone(phoneRaw);
-  const member = await findOrCreateMember(env, store, profile, name, phone, birthday);
-  const notify = await resolveNotifyTarget(env, member);
+
+  /*
+   * 幫別人訂：不建會員，member_id 留空。
+   *
+   * 不能把它掛在下單者身上——「同一位會員同一天只能有一筆」那條唯一索引
+   * 會讓他沒辦法在同一天既幫朋友訂、又訂自己的。
+   * 通知發給下單的人：他才是要收確認、要在「我的預約」裡管這筆的人
+   * （my-bookings 的查詢本來就把 notify_line_user_id 是自己的算進去）。
+   *
+   * 代價是這種單不受「一天一筆」約束，但時段上限還在，
+   * 而且姓名電話是留給店家聯絡用的，亂填對客人自己沒有好處。
+   */
+  let memberId: string | null = null;
+  let notify: string | null = profile.userId;
+
+  if (!forOther) {
+    const member = await findOrCreateMember(env, store, profile, name, phone, birthday);
+    memberId = member.id;
+    notify = await resolveNotifyTarget(env, member);
+  }
 
   try {
     // 多選幾個欄位是給推播用的，不是給客人看的——回應只會挑其中幾個
@@ -308,7 +337,7 @@ export async function createBooking(
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           store_id: store.id,
-          member_id: member.id,
+          member_id: memberId,
           notify_line_user_id: notify,
           // 下單當下的快照：客人事後改名改電話，不動到歷史單
           name,
