@@ -515,7 +515,17 @@ code.uid {
  * 只影響後台：客人端的 .tabs（我的預約／歷史紀錄）只有兩個，手機上排得下。
  */
 .navbar { display: none; position: relative; margin-bottom: 0.875rem; }
-.navbar > button { width: 100%; text-align: left; }
+/*
+ * 這顆是手機上唯一的導覽入口，做得大一點——手指點得到、也一眼看得見。
+ * 用 .outline 而不是 .slim：slim 是給次要動作的小按鈕，這顆不是次要的。
+ */
+.navbar > button {
+  display: flex; align-items: center; gap: 0.625rem;
+  width: 100%; margin: 0;
+  padding: 0.75rem 0.875rem;
+  font-size: 1rem; text-align: left;
+}
+.navbar .burger { font-size: 1.625rem; line-height: 1; }
 
 .menu {
   position: absolute; z-index: 20; top: calc(100% + 0.375rem); left: 0; right: 0;

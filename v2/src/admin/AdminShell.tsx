@@ -81,11 +81,13 @@ export default function AdminShell({ session, store }: { session: Session; store
 
       <div className="navbar">
         <button
-          className="slim outline"
+          className="outline"
           aria-expanded={menuOpen}
+          aria-label="切換分頁選單"
           onClick={() => setMenuOpen(!menuOpen)}
         >
-          ☰　{tabs.find((t) => t.key === tab)?.label}
+          <span className="burger" aria-hidden="true">☰</span>
+          {tabs.find((t) => t.key === tab)?.label}
         </button>
 
         {menuOpen && (
