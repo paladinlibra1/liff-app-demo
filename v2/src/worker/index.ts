@@ -17,6 +17,7 @@ import { getAvailability, todayInStore } from "./availability";
 import { createBooking, BookingError, type BookingInput } from "./bookings";
 import { listMyBookings, cancelMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
+import { sendDailyReminders } from "./reminders";
 
 export interface Env {
   /** 前端打包後的靜態檔（dist/），非 /api 的路徑一律交給它 */
@@ -256,5 +257,26 @@ export default {
     }
 
     return json({ error: "Not found" }, 404);
+  },
+
+  // ── 排程：每天固定時間送明天的預約提醒 ────────────────
+  // 觸發時間寫在 wrangler.jsonc 的 triggers.crons（UTC）。
+  // 這裡沒有對外的 HTTP 入口是刻意的——開一支給人 curl 的網址，
+  // 等於任何人都能叫系統重送提醒。本機要測用：
+  //   npm run dev:worker -- --test-scheduled
+  //   curl "http://localhost:8788/__scheduled?cron=0+12+*+*+*"
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      sendDailyReminders(env)
+        .then((r) => {
+          console.log(
+            `明日提醒 ${r.date}：符合 ${r.found} 筆，送出 ${r.sent}，失敗 ${r.failed}`,
+          );
+        })
+        .catch((err) => {
+          // 排程失敗不該整個 Worker 掛掉，記 log 就好
+          console.error("明日提醒排程失敗", err);
+        }),
+    );
   },
 } satisfies ExportedHandler<Env>;

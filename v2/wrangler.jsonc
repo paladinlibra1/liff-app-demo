@@ -23,6 +23,13 @@
     // 推播卡片上「更改或取消預約」按鈕要導去的地方（/my 那個 LIFF）
     "LIFF_MY_URL": "https://liff.line.me/2011603381-dBGrCXYs",
     "SUPABASE_URL": "https://pjiswzflpgrallojvxgn.supabase.co"
+  },
+
+  // 每天送隔天的預約提醒。Cron 一律是 UTC：
+  // 12:00 UTC = 台灣時間 20:00（台灣不實施日光節約，全年固定 +8）。
+  // 要改時間就改這裡，改完要重新 deploy 才生效。
+  "triggers": {
+    "crons": ["0 12 * * *"]
   }
 
   // 機密用 `wrangler secret put` 設定，不寫在這裡（repo 是公開的）：
