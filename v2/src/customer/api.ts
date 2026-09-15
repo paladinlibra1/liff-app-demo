@@ -115,6 +115,21 @@ export const fetchMyBookings = (accessToken: string) =>
     { headers: { Authorization: "Bearer " + accessToken } },
   );
 
+/** 改期：只能改日期、時間、備註 */
+export const rescheduleBooking = (
+  accessToken: string,
+  id: string,
+  input: { date: string; time: string; remark: string | null },
+) =>
+  request<{ booking: MyBooking }>(`/api/bookings/${id}/reschedule`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + accessToken,
+    },
+    body: JSON.stringify(input),
+  });
+
 export const cancelBooking = (accessToken: string, id: string) =>
   request<{ booking: MyBooking }>(`/api/bookings/${id}/cancel`, {
     method: "POST",

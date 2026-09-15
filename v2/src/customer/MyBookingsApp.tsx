@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  fetchStore, fetchMe, fetchMyBookings, cancelBooking,
-  type StoreInfo, type MyBooking, type MyProfile,
+  fetchStore, fetchMe, fetchMyBookings, fetchAvailability,
+  cancelBooking, rescheduleBooking,
+  type StoreInfo, type MyBooking, type MyProfile, type DayAvailability,
 } from "./api";
 import { initLiff, type LiffState } from "./liff";
 import { BOOKING_URL } from "./links";
@@ -34,6 +35,19 @@ export default function MyBookingsApp() {
   const [checked, setChecked] = useState(false);
   /** 正在取消的那一筆 id；同時當作防連點的鎖 */
   const [cancelling, setCancelling] = useState<string | null>(null);
+
+  /*
+   * 改期。
+   *
+   * 可預約時段是點「修改」時才去拿的——大部分人開這一頁只是看看，
+   * 沒必要每次都先下載一份月曆資料。
+   */
+  const [editing, setEditing] = useState<MyBooking | null>(null);
+  const [days, setDays] = useState<DayAvailability[] | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editRemark, setEditRemark] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +112,44 @@ export default function MyBookingsApp() {
       setErr((e as Error).message);
     } finally {
       setCancelling(null);
+    }
+  }
+
+  function startEdit(b: MyBooking) {
+    setEditing(b);
+    setEditDate(b.date);
+    setEditTime(b.time);
+    setEditRemark(b.remark ?? "");
+    setErr("");
+    if (!days) {
+      fetchAvailability()
+        .then((a) => setDays(a.days))
+        .catch((e: Error) => setErr(e.message));
+    }
+  }
+
+  async function saveEdit() {
+    if (saving || !editing) return;            // 防連點
+    if (liffState?.kind !== "ready") return;
+    if (!editDate) return setErr("請選擇日期");
+    if (!editTime) return setErr("請選擇時間");
+
+    setSaving(true);
+    setErr("");
+    try {
+      const { booking } = await rescheduleBooking(
+        liffState.viewer.accessToken,
+        editing.id,
+        { date: editDate, time: editTime, remark: editRemark.trim() || null },
+      );
+      setBookings((l) => (l ?? []).map((x) => (x.id === booking.id ? booking : x)));
+      setEditing(null);
+      // 位子被自己搬走了，剩餘數量已經不準
+      fetchAvailability().then((a) => setDays(a.days)).catch(() => { /* 下次再拿 */ });
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -197,14 +249,86 @@ export default function MyBookingsApp() {
 
           {b.remark && <div className="bk-remark">📝 {b.remark}</div>}
 
-          {tab === "upcoming" && (
-            <button
-              className="outline"
-              disabled={cancelling === b.id}
-              onClick={() => handleCancel(b)}
-            >
-              {cancelling === b.id ? "⏳ 取消中…" : "❌ 取消預約"}
-            </button>
+          {tab === "upcoming" && editing?.id !== b.id && (
+            <div className="bk-acts">
+              <button className="slim outline" onClick={() => startEdit(b)}>
+                ✏️ 修改
+              </button>
+              <button
+                className="slim outline danger"
+                disabled={cancelling === b.id}
+                onClick={() => handleCancel(b)}
+              >
+                {cancelling === b.id ? "⏳ 取消中…" : "❌ 取消預約"}
+              </button>
+            </div>
+          )}
+
+          {/* 改期：日期、時間、備註。要改人請取消後重訂 */}
+          {editing?.id === b.id && (
+            <div className="bk-edit">
+              {days === null ? (
+                <div className="skeleton" style={{ height: "6rem" }} />
+              ) : (
+                <>
+                  <div className="field">
+                    <label htmlFor="e-date">日期</label>
+                    <select
+                      id="e-date" value={editDate}
+                      onChange={(e) => { setEditDate(e.target.value); setEditTime(""); }}
+                    >
+                      {/* 原本那天可能已經被設成店休了，還是要列出來當預設值 */}
+                      {!days.some((d) => d.date === editDate) && (
+                        <option value={editDate}>{dateLabel(editDate)}（目前）</option>
+                      )}
+                      {days.filter((d) => d.isOperating && d.slots.length > 0).map((d) => (
+                        <option key={d.date} value={d.date}>{dateLabel(d.date)}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="field">
+                    <label>時間</label>
+                    <div className="slots">
+                      {(days.find((d) => d.date === editDate)?.slots ?? []).map((s) => {
+                        // 自己原本佔的那一格算得出來是滿的，要讓它可以選回去
+                        const mine = editDate === b.date && s.time === b.time;
+                        return (
+                          <button
+                            key={s.time} type="button" className="slot"
+                            disabled={s.remaining <= 0 && !mine}
+                            aria-pressed={editTime === s.time}
+                            onClick={() => setEditTime(s.time)}
+                          >
+                            {s.time}
+                            <span className="left">
+                              {mine ? "目前" : s.remaining <= 0 ? "額滿" : `剩 ${s.remaining} 位`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="e-remark">備註</label>
+                    <textarea
+                      id="e-remark" value={editRemark}
+                      onChange={(e) => setEditRemark(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="bk-acts">
+                    <button className="slim" disabled={saving} onClick={saveEdit}>
+                      {saving ? "⏳ 儲存中…" : "💾 儲存變更"}
+                    </button>
+                    <button className="slim ghost" onClick={() => setEditing(null)}>
+                      ↩️ 取消修改
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       ))}

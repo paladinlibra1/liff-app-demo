@@ -605,6 +605,18 @@ code.uid {
   word-break: break-word;
 }
 
+/* 預約卡片下方的兩顆操作鈕：修改／取消 */
+.bk-acts { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.875rem; }
+.bk-acts button { margin: 0; flex: 1 1 8rem; }
+
+/* 改期面板：跟卡片內容之間拉一條線，看得出是另一段 */
+.bk-edit {
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--line);
+}
+.bk-edit .field:last-of-type { margin-bottom: 0; }
+
 .badge {
   flex: none; padding: 0.3125rem 0.625rem; border-radius: 62.4375rem;
   font-size: 0.75rem; font-weight: 650; white-space: nowrap;

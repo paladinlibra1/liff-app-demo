@@ -12,7 +12,7 @@
 import type { Env } from "./index";
 import type { Store } from "./supabase";
 
-export type NotifyKind = "new" | "cancel";
+export type NotifyKind = "new" | "change" | "cancel";
 
 export interface NotifyBooking {
   date: string;
@@ -146,7 +146,9 @@ export async function notifyBooking(
     const greeting =
       kind === "cancel"
         ? `👋 ${who} 您好\n您的預約已「取消」。期待下次為您服務！`
-        : `👋 ${who} 您好\n您的預約已保留，詳細資訊如下：\n(備註: ${remark})`;
+        : kind === "change"
+          ? `👋 ${who} 您好\n您的預約已「更改」，新的時間如下：\n(備註: ${remark})`
+          : `👋 ${who} 您好\n您的預約已保留，詳細資訊如下：\n(備註: ${remark})`;
 
     await push(env, b.notifyLineUserId, card({
       title: `${storeName}通知`,
@@ -163,9 +165,13 @@ export async function notifyBooking(
   if (groupId) {
     const nick = b.lineName?.trim();
     const shown = nick ? `${who} (${nick})` : who;
-    const title = kind === "cancel" ? "❌ 預約已被取消" : "📲 新增預約 (客人自訂)";
+    const title =
+      kind === "cancel" ? "❌ 預約已被取消"
+        : kind === "change" ? "🔁 預約已更改"
+          : "📲 新增預約 (客人自訂)";
+    const verb = kind === "cancel" ? "取消" : kind === "change" ? "更改" : "新增";
     const greeting =
-      `有一筆預約${kind === "cancel" ? "取消" : "新增"}：\n` +
+      `有一筆預約${verb}：\n` +
       `(${shown} - ${b.type})\n電話：${b.phone}\n備註：${remark}`;
 
     await push(env, groupId, card({

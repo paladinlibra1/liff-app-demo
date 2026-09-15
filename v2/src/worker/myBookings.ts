@@ -9,8 +9,9 @@
 
 import type { Env } from "./index";
 import { sb, type Store } from "./supabase";
-import { todayInStore, timeNowInStore } from "./availability";
+import { todayInStore, timeNowInStore, getAvailability } from "./availability";
 import { BookingError } from "./bookings";
+import { timesForDate } from "./supabase";
 import type { LineProfile } from "./line";
 import type { NotifyBooking } from "./linePush";
 
@@ -105,6 +106,105 @@ export async function listMyBookings(env: Env, store: Store, profile: LineProfil
   return {
     now: { date: todayInStore(store), time: timeNowInStore(store) },
     bookings: rows.map(toMyBooking),
+  };
+}
+
+/**
+ * 改期。
+ *
+ * 只能改日期、時間、備註。姓名電話是下單當下的快照，改了會讓歷史單
+ * 跟著變，那是另一件事；要改人請取消後重訂。
+ *
+ * 檢查跟新訂一筆完全一樣（營業日、時段、額滿），因為對資料庫來說
+ * 這就是把一個位子換到另一個位子。時段上限與每日上限兩個 trigger
+ * 在 UPDATE 時也會跑，而且都排除自己那一列，所以原地不動也不會被自己擋。
+ */
+export async function rescheduleMyBooking(
+  env: Env,
+  store: Store,
+  profile: LineProfile,
+  bookingId: string,
+  input: { date?: string; time?: string; remark?: string | null },
+) {
+  const date = (input.date ?? "").trim();
+  const time = (input.time ?? "").trim();
+  const remark = (input.remark ?? "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BookingError("請選擇日期");
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new BookingError("請選擇時間");
+
+  const rows = await scopedBookings(env, store, profile, `&id=eq.${bookingId}`);
+  const booking = rows[0];
+  if (!booking) throw new BookingError("找不到這筆預約", 404);
+  if (booking.status !== "active") throw new BookingError("這筆預約已經取消了", 409);
+
+  const today = todayInStore(store);
+  const nowTime = timeNowInStore(store);
+
+  // 已經開始的單不能自己改，跟取消同一條規則
+  const started =
+    booking.date < today ||
+    (booking.date === today && booking.start_time.slice(0, 5) <= nowTime);
+  if (started) {
+    throw new BookingError("這個時間已經過了，請直接與店家聯絡", 409);
+  }
+
+  if (date < today) throw new BookingError("不能改到已經過去的日期");
+  if (date === today && time <= nowTime) {
+    throw new BookingError("不能改到已經過去的時間");
+  }
+  if (!timesForDate(store, date).includes(time)) {
+    throw new BookingError("這個時間不在營業時段內");
+  }
+
+  const [day] = await getAvailability(env, store, date, date);
+  if (!day.isOperating) throw new BookingError("這一天沒有營業");
+
+  const slot = day.slots.find((s) => s.time === time);
+  if (!slot) throw new BookingError("這個時段目前不開放預約");
+
+  // 剩餘位子是算過「所有有效預約」的，包含這一筆自己。
+  // 原地改備註或只改時間但位子沒變時，要把自己還回去才不會誤判額滿。
+  const sameSlot = booking.date === date && booking.start_time.slice(0, 5) === time;
+  const seats = booking.name2 ? 2 : 1;
+  const remaining = slot.remaining + (sameSlot ? seats : 0);
+  if (remaining < seats) {
+    throw new BookingError(
+      seats === 2 ? "這個時段剩下的位子不足兩位" : "這個時段已經額滿了",
+      409,
+    );
+  }
+
+  const updated = await sb<BookingRow[]>(
+    env,
+    `bookings?id=eq.${bookingId}&select=${FIELDS}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        date,
+        start_time: time,
+        remark: remark || null,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+
+  const row = updated[0];
+  if (!row) throw new BookingError("更改失敗，請稍後再試", 500);
+
+  return {
+    booking: toMyBooking(row),
+    notify: {
+      date: row.date,
+      time: row.start_time.slice(0, 5),
+      name: row.name,
+      name2: row.name2,
+      phone: row.phone,
+      type: row.type,
+      remark: row.remark,
+      notifyLineUserId: row.notify_line_user_id,
+    } satisfies NotifyBooking,
   };
 }
 

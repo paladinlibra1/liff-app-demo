@@ -19,7 +19,7 @@ import {
   type BookingInput, type AdminBookingInput, type RegisterInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
-import { listMyBookings, cancelMyBooking } from "./myBookings";
+import { listMyBookings, cancelMyBooking, rescheduleMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
 import { handleLineWebhook } from "./lineWebhook";
 import { sendDailyReminders } from "./reminders";
@@ -286,10 +286,14 @@ export default {
     // 兩支都要驗身分，而且「這筆是不是你的」由後端判斷，
     // 不是前端送一個 id 過來就照做。
     const cancelMatch = path.match(/^\/api\/bookings\/([0-9a-f-]{36})\/cancel$/i);
+    const editMatch = path.match(/^\/api\/bookings\/([0-9a-f-]{36})\/reschedule$/i);
 
-    if (path === "/api/my-bookings" || cancelMatch) {
+    if (path === "/api/my-bookings" || cancelMatch || editMatch) {
       const isCancel = Boolean(cancelMatch);
-      if (isCancel ? request.method !== "POST" : request.method !== "GET") {
+      const isEdit = Boolean(editMatch);
+      if ((isCancel || isEdit)
+        ? request.method !== "POST"
+        : request.method !== "GET") {
         return json({ error: "Method not allowed" }, 405);
       }
 
@@ -300,8 +304,28 @@ export default {
         );
         const store = await getStore(env);
 
-        if (!isCancel) {
+        if (!isCancel && !isEdit) {
           return json(await listMyBookings(env, store, profile));
+        }
+
+        // ── 改期 ────────────────────────────────────
+        if (isEdit) {
+          let input: { date?: string; time?: string; remark?: string | null };
+          try {
+            input = (await request.json()) as typeof input;
+          } catch {
+            return json({ error: "送出的內容格式不正確" }, 400);
+          }
+
+          const { booking, notify } = await rescheduleMyBooking(
+            env, store, profile, editMatch![1], input,
+          );
+
+          ctx.waitUntil(notifyBooking(
+            env, store, { ...notify, lineName: profile.displayName }, "change",
+          ));
+
+          return json({ booking });
         }
 
         // 取消原因可有可無，送壞掉的 JSON 也不該讓取消失敗
@@ -323,7 +347,10 @@ export default {
       } catch (err) {
         if (err instanceof BookingError) return json({ error: err.message }, err.status);
         if (err instanceof LineAuthError) return json({ error: err.message }, err.status);
-        return errorResponse(err, isCancel ? "取消預約失敗" : "讀取預約失敗");
+        return errorResponse(
+          err,
+          isCancel ? "取消預約失敗" : isEdit ? "更改預約失敗" : "讀取預約失敗",
+        );
       }
     }
 
