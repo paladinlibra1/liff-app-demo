@@ -53,16 +53,18 @@
 body.admin-theme {
   --rose:        #2c2c2c;   /* 舊版 --primary-color */
   --rose-deep:   #000000;   /* 舊版 --primary-dark */
-  --rose-soft:   #cbd8e6;
-  --rose-tint:   #eaf1fa;   /* 頁面底色：淡粉藍 */
-  --rose-wash:   #f6f9fd;   /* 輸入框底，比卡片再藍一點點 */
+  /* 外框按鈕的邊：刻意用中性灰而不是藍，
+     不然「今天／未來 7 天」那一排會整排藍框，比內容還搶眼 */
+  --rose-soft:   #d6d6da;
+  --rose-tint:   #f5f8fd;   /* 頁面底色：淡粉藍（比第一版再淡一半） */
+  --rose-wash:   #f7fafe;   /* 輸入框底，比卡片再藍一點點 */
 
   --ink:         #2b2b2b;   /* 舊版 --text-color */
   --ink-soft:    #5f6b78;
   --muted:       #94a1b0;
 
-  --line:        #e1e9f3;
-  --line-strong: #d2dded;
+  --line:        #e6edf6;
+  --line-strong: #dae3ef;
 
   --shadow:      0 1px 2px rgba(31, 56, 88, .04), 0 8px 30px rgba(31, 56, 88, .07);
   --shadow-sm:   0 1px 2px rgba(31, 56, 88, .05);
@@ -89,17 +91,17 @@ body.admin-theme select {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' stroke='%2394a1b0' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 }
 body.admin-theme .skeleton {
-  background: linear-gradient(90deg, #dfe8f4 25%, #f0f5fb 50%, #dfe8f4 75%);
+  background: linear-gradient(90deg, #e7edf6 25%, #f6f9fd 50%, #e7edf6 75%);
   background-size: 200% 100%;
 }
 /* 灰底藥丸在粉色主題是淡粉的，後台跟著底色走淡藍 */
 body.admin-theme .tag2,
-body.admin-theme .badge.old { background: #e8eef7; color: var(--muted); }
+body.admin-theme .badge.old { background: #f0f4fa; color: var(--muted); }
 /*
  * 分頁列照舊系統：灰色底槽，選中的那個是浮起來的白卡片。
  * 預設主題是「選中＝填滿主色」，在後台會變成一整塊黑，太重。
  */
-body.admin-theme .tabs { background: #dde7f4; border-color: #d2dded; }
+body.admin-theme .tabs { background: #e9f0f9; border-color: #dae3ef; }
 body.admin-theme .tabs button[aria-pressed="true"] {
   background: #ffffff; color: var(--rose-deep);
   box-shadow: 0 2px 8px rgba(31, 56, 88, .12);
