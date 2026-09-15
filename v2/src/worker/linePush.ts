@@ -10,6 +10,7 @@
  */
 
 import type { Env } from "./index";
+import type { Store } from "./supabase";
 
 export type NotifyKind = "new" | "cancel";
 
@@ -124,15 +125,18 @@ async function push(env: Env, to: string, message: unknown): Promise<boolean> {
 /**
  * 一筆預約的通知：客人一則、店家群組一則。
  *
- * 店家群組要有 STORE_GROUP_ID 才會送——那個 id 得先把官方帳號拉進群組、
- * 由 webhook 事件取得，現在還沒做，所以沒設就自動略過。
+ * 店家群組的 ID 由 webhook 在官方帳號被加進群組時自動寫進資料庫
+ * （見 lineWebhook.ts）。還沒加群組就是 null，那一則直接略過。
+ * 環境變數 STORE_GROUP_ID 仍然可以覆蓋，留給手動指定的情況。
  */
 export async function notifyBooking(
   env: Env,
-  storeName: string,
+  store: Pick<Store, "name" | "line_group_id">,
   b: NotifyBooking,
   kind: NotifyKind,
 ): Promise<void> {
+  const storeName = store.name;
+  const groupId = env.STORE_GROUP_ID || store.line_group_id;
   const who = combinedName(b);
   const remark = b.remark?.trim() || "無";
   const link = env.LIFF_MY_URL || "";
@@ -156,7 +160,7 @@ export async function notifyBooking(
   }
 
   // ── 店家群組 ──────────────────────────────────────
-  if (env.STORE_GROUP_ID) {
+  if (groupId) {
     const nick = b.lineName?.trim();
     const shown = nick ? `${who} (${nick})` : who;
     const title = kind === "cancel" ? "❌ 預約已被取消" : "📲 新增預約 (客人自訂)";
@@ -164,7 +168,7 @@ export async function notifyBooking(
       `有一筆預約${kind === "cancel" ? "取消" : "新增"}：\n` +
       `(${shown} - ${b.type})\n電話：${b.phone}\n備註：${remark}`;
 
-    await push(env, env.STORE_GROUP_ID, card({
+    await push(env, groupId, card({
       title,
       greeting,
       date: b.date,

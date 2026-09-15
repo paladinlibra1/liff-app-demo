@@ -49,15 +49,16 @@
  * 跟先前的灰白版差在「暖」：文字與邊框帶褐，不是中性灰，
  * 白卡疊在暖白底上比灰底更有層次。
  *
- * 主按鈕仍是近黑（舊系統 admin.html 的 #2c2c2c）——那是上一輪指定的，
- * 而且深色按鈕配暖白底比把 accent 拿來填滿按鈕耐看。accent 留給強調用。
+ * 主按鈕用他們的 accent 系。純黑按鈕配暖白底太硬（「加入名單」那顆最明顯），
+ * 但原色 #db7374 配白字的對比只有 3:1 左右，字會糊，所以壓深到 #c2585a——
+ * 同一個色系，對比拉到 4.5:1 才讀得清楚。
  *
  * 客人端維持櫻花粉（品牌識別），顏色不同也讓人一眼分得出現在開的是哪一邊。
  * 只換 token、不動元件樣式，所以整套介面自動跟著變。
  */
 body.admin-theme {
-  --rose:        #2c2c2c;   /* 舊版 --primary-color */
-  --rose-deep:   #000000;   /* 舊版 --primary-dark */
+  --rose:        #c2585a;   /* gys --accent 壓深，確保白字讀得清楚 */
+  --rose-deep:   #a84a4c;   /* 按壓 */
   --rose-soft:   #dfd3ca;   /* gys --border */
   --rose-tint:   #fafafa;   /* gys --bg */
   --rose-wash:   #f7f4f1;   /* 輸入框底，比卡片再暖一點 */
@@ -80,7 +81,7 @@ body.admin-theme button,
 body.admin-theme .seg button[aria-pressed="true"],
 body.admin-theme .slot[aria-pressed="true"],
 body.admin-theme .cal-cell.sel {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+  box-shadow: 0 2px 8px rgba(194, 88, 90, .25);
 }
 body.admin-theme button.ghost,
 body.admin-theme button.outline,
@@ -107,10 +108,10 @@ body.admin-theme .batch,
 body.admin-theme .gen,
 body.admin-theme code.uid { background: #f5f1ed; }
 
-/* 強調色用他們的 accent（#db7374），時間與電話那種要一眼看到的地方 */
+/* 時間、電話、面板標題這種要一眼看到的地方，跟主色同一個 */
 body.admin-theme .arow .when .tm,
 body.admin-theme .arow a,
-body.admin-theme .panel-title { color: #c2585a; }
+body.admin-theme .panel-title { color: var(--rose); }
 
 /*
  * 資料列的字級照舊系統的表格：內容 14.5px、姓名與日期 16px。
@@ -130,7 +131,7 @@ body.admin-theme .badge.old { background: #f2ece7; color: var(--muted); }
  */
 body.admin-theme .tabs { background: #f0e9e3; border-color: #e4dbd3; }
 body.admin-theme .tabs button[aria-pressed="true"] {
-  background: #ffffff; color: var(--rose-deep);
+  background: #ffffff; color: var(--ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
 }
 

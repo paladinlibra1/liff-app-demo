@@ -249,6 +249,7 @@ export type Database = {
           business_hours: Json
           created_at: string
           id: string
+          line_group_id: string | null
           name: string
           reminder_enabled: boolean
           reminder_time: string
@@ -259,6 +260,7 @@ export type Database = {
           business_hours?: Json
           created_at?: string
           id?: string
+          line_group_id?: string | null
           name: string
           reminder_enabled?: boolean
           reminder_time?: string
@@ -269,6 +271,7 @@ export type Database = {
           business_hours?: Json
           created_at?: string
           id?: string
+          line_group_id?: string | null
           name?: string
           reminder_enabled?: boolean
           reminder_time?: string

@@ -21,6 +21,7 @@ import {
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
 import { listMyBookings, cancelMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
+import { handleLineWebhook } from "./lineWebhook";
 import { sendDailyReminders } from "./reminders";
 
 export interface Env {
@@ -29,8 +30,15 @@ export interface Env {
   LINE_LOGIN_CHANNEL_ID: string;
   /** Messaging API 的長效 token，推播用。沒設就不推 */
   LINE_CHANNEL_ACCESS_TOKEN: string;
-  /** 店家群組的 id，設了才會推給店家。要有 webhook 才拿得到，現在沒設 */
+  /**
+   * 店家群組的 id。
+   *
+   * 平常不用設——webhook 會在官方帳號被加進群組時自動寫進
+   * stores.line_group_id。設了這個就蓋過資料庫的值，留給手動指定用。
+   */
   STORE_GROUP_ID?: string;
+  /** Messaging API 的 channel secret，驗 webhook 簽章用 */
+  LINE_CHANNEL_SECRET?: string;
   /** 「更改或取消預約」按鈕要導去的 LIFF 網址 */
   LIFF_MY_URL?: string;
   /** 這個 Worker 服務哪一家店（stores.slug） */
@@ -88,6 +96,23 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
+    // ── LINE 的 webhook ─────────────────────────────────
+    // 只為了取得店家群組的 ID：那個 ID 只有在官方帳號被加進群組時，
+    // LINE 才會送過來，沒有任何介面查得到。
+    if (path === "/api/line/webhook") {
+      if (request.method !== "POST") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+      try {
+        const store = await getStore(env);
+        return await handleLineWebhook(env, request, store);
+      } catch (err) {
+        // 這支不能回錯誤碼給 LINE，否則它會一直重送
+        console.error("webhook 處理失敗", err);
+        return new Response("ok");
+      }
+    }
+
     // ── 健康檢查 ────────────────────────────────────────
     if (path === "/api/health") {
       return json({
@@ -95,6 +120,7 @@ export default {
         lineChannelId: env.LINE_LOGIN_CHANNEL_ID,
         // 只回報有沒有設定，不回報值
         hasSupabaseKey: Boolean(env.SUPABASE_SECRET_KEY),
+        hasLineSecret: Boolean(env.LINE_CHANNEL_SECRET),
       });
     }
 
@@ -166,7 +192,7 @@ export default {
         const booking = await createBooking(env, store, profile, input);
 
         // 推播丟到背景：客人已經訂到位子了，不該因為 LINE 送不出去而等待或失敗
-        ctx.waitUntil(notifyBooking(env, store.name, {
+        ctx.waitUntil(notifyBooking(env, store, {
           date: booking.date,
           time: booking.start_time.slice(0, 5),
           name: booking.name,
@@ -237,7 +263,7 @@ export default {
         const booking = await createAdminBooking(env, store, input);
 
         // 推播丟到背景：單子已經建好了，不該因為 LINE 送不出去而失敗
-        ctx.waitUntil(notifyBooking(env, store.name, {
+        ctx.waitUntil(notifyBooking(env, store, {
           date: booking.date,
           time: booking.start_time.slice(0, 5),
           name: booking.name,
@@ -290,7 +316,7 @@ export default {
         );
 
         ctx.waitUntil(notifyBooking(
-          env, store.name, { ...notify, lineName: profile.displayName }, "cancel",
+          env, store, { ...notify, lineName: profile.displayName }, "cancel",
         ));
 
         return json({ booking });
