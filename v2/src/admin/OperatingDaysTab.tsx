@@ -293,7 +293,7 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
           ? <div className="skeleton" style={{ height: 60 }} />
           : (
             <div className="hours">
-              <label className="switch-row">
+              <label className="toggle">
                 <input
                   type="checkbox"
                   checked={reminder.enabled}

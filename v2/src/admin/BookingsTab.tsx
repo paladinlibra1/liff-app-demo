@@ -128,7 +128,7 @@ export default function BookingsTab({ store }: { store: Store }) {
           </button>
         </div>
 
-        <label className={"check" + (showCancelled ? " on" : "")} style={{ marginTop: 12 }}>
+        <label className="toggle" style={{ marginTop: 14 }}>
           <input
             type="checkbox"
             checked={showCancelled}

@@ -558,15 +558,44 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 }
 .switch input { width: 1.1875rem; height: 1.1875rem; margin: 0; accent-color: var(--rose); flex: none; }
 
-/* 提醒設定的開關列。跟 .switch 一樣，但獨占一行 */
-.switch-row {
+/* ── 開關 ───────────────────────────────────────────── */
+/*
+ * 「開／關」這種只有兩種狀態、而且一按就生效的設定用開關，
+ * 不用核取方塊——核取方塊看起來像「等一下要按送出」。
+ *
+ * 滑塊是 input 自己的 ::after：appearance: none 之後 checkbox 就是一般的
+ * 方塊，不需要額外包 span。全域的 input 樣式（滿寬、內距、邊框、底色）
+ * 在這裡全部要蓋掉，不然會變成一個扁掉的輸入框。
+ */
+.toggle {
   display: flex; align-items: center; gap: 0.625rem;
   margin: 0; cursor: pointer;
   font-size: 0.9375rem; font-weight: 600; color: var(--ink);
 }
-.switch-row input {
-  width: 1.1875rem; height: 1.1875rem; margin: 0;
-  accent-color: var(--rose); flex: none;
+.toggle input {
+  appearance: none; -webkit-appearance: none;
+  position: relative; flex: none;
+  width: 2.75rem; height: 1.625rem;
+  margin: 0; padding: 0;
+  border: 0; border-radius: 999px;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: background .18s;
+}
+.toggle input::after {
+  content: "";
+  position: absolute; top: 0.1875rem; left: 0.1875rem;
+  width: 1.25rem; height: 1.25rem;
+  border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+  transition: transform .18s;
+}
+.toggle input:checked { background: var(--rose); }
+.toggle input:checked::after { transform: translateX(1.125rem); }
+.toggle input:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
+.toggle input:disabled { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .toggle input, .toggle input::after { transition: none; }
 }
 
 /* 營業時間編輯器 */
