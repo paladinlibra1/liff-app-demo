@@ -36,7 +36,18 @@ interface Member {
 }
 
 /**
- * 用 LINE 身分找會員，找不到就建一個。
+ * 用 LINE 身分找會員；找不到就先試著接上店家手動建的那一筆，真的沒有才建新的。
+ *
+ * 為什麼要「接上」：店家會先幫沒有 LINE 的客人手動建檔（電話客、未成年）。
+ * 那個人之後自己從 LINE 訂一次，如果只用 line_user_id 去找，會找不到而另外
+ * 建一筆——同一個人變成兩筆資料，一筆有歷史、一筆有通知，報表也對不起來。
+ *
+ * 比對的規則刻意保守，因為接錯人比多一筆還糟（會把通知發給別人）：
+ *   - 只考慮**沒綁過 LINE** 的會員，已經綁了別人的絕對不動
+ *   - 只考慮**沒有監護人**的會員：家長常拿自己的電話幫小孩建檔，
+ *     那筆是小孩的，不能因為電話一樣就接到家長身上
+ *   - 電話相同且**姓名也相同**優先；沒有同名的，只有在候選剛好一筆時才接
+ *   - 候選超過一筆又都不同名 → 不猜，直接建新的，讓店家自己去合併
  *
  * 刻意**不**拿這次填的姓名電話去覆蓋既有會員資料：客人為了幫別人訂而改了
  * 表單上的名字，不該把自己的會員資料改掉。這次填的內容會另外存成預約的快照。
@@ -48,17 +59,51 @@ async function findOrCreateMember(
   name: string,
   phone: string,
 ): Promise<Member> {
+  const fields = "id,line_user_id,name,phone,guardian_id";
+
+  // ── 1) 這個 LINE 身分已經是會員了 ───────────────────
   const found = await sb<Member[]>(
     env,
     `members?store_id=eq.${store.id}` +
       `&line_user_id=eq.${encodeURIComponent(profile.userId)}` +
-      `&select=id,line_user_id,name,phone,guardian_id&limit=1`,
+      `&select=${fields}&limit=1`,
   );
   if (found[0]) return found[0];
 
+  // ── 2) 店家先手動建過這個人嗎 ───────────────────────
+  const candidates = await sb<Member[]>(
+    env,
+    `members?store_id=eq.${store.id}` +
+      `&phone=eq.${encodeURIComponent(phone)}` +
+      `&line_user_id=is.null&guardian_id=is.null` +
+      `&select=${fields}&order=created_at.asc&limit=5`,
+  );
+
+  const sameName = candidates.find((m) => m.name.trim() === name.trim());
+  const target = sameName ?? (candidates.length === 1 ? candidates[0] : null);
+
+  if (target) {
+    // 再帶一次 line_user_id=is.null：兩個人同時送出時，
+    // 後到的那個不會把先到的那個綁定蓋掉（回 0 列，走下面的建新）
+    const attached = await sb<Member[]>(
+      env,
+      `members?id=eq.${target.id}&line_user_id=is.null&select=${fields}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          line_user_id: profile.userId,
+          line_name: profile.displayName,
+        }),
+      },
+    );
+    if (attached[0]) return attached[0];
+  }
+
+  // ── 3) 真的是新客人 ─────────────────────────────────
   const created = await sb<Member[]>(
     env,
-    `members?select=id,line_user_id,name,phone,guardian_id`,
+    `members?select=${fields}`,
     {
       method: "POST",
       headers: { Prefer: "return=representation" },
