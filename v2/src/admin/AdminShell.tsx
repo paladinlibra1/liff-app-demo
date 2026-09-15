@@ -11,6 +11,10 @@ export interface Store {
   id: string;
   name: string;
   slug: string;
+  /** 後台主色 `#rrggbb`；null 用預設 */
+  theme_primary: string | null;
+  /** 後台底色 `#rrggbb`；null 用預設 */
+  theme_bg: string | null;
 }
 
 type TabKey = "bookings" | "members" | "days" | "settings" | "admins";

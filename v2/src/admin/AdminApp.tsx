@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import Login from "./Login";
+import { applyTheme } from "./theme";
 import AdminShell from "./AdminShell";
 
-type Store = { id: string; name: string; slug: string };
+/*
+ * 店家那一列。型別定義在 AdminShell（畫面都從它拿），這裡直接沿用，
+ * 不要各寫一份——欄位加減時會漏掉其中一邊。
+ */
+import type { Store } from "./AdminShell";
 
 /** 登入狀態的三種可能：未登入 / 已登入但不在任何店的名單裡 / 已授權 */
 export default function AdminApp() {
@@ -47,12 +52,15 @@ export default function AdminApp() {
     setChecking(true);
     supabase
       .from("stores")
-      .select("id, name, slug")
+      .select("id, name, slug, theme_primary, theme_bg")
       .limit(1)
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) console.error("查詢店家失敗", error);
-        setStore(data?.[0] ?? null);
+        const row = data?.[0] ?? null;
+        setStore(row);
+        // 店家自己選的配色。沒設就維持 styles.css 裡的預設
+        applyTheme(row && { primary: row.theme_primary ?? "", bg: row.theme_bg ?? "" });
         setChecking(false);
       });
     return () => { cancelled = true; };

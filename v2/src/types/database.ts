@@ -254,6 +254,8 @@ export type Database = {
           reminder_enabled: boolean
           reminder_time: string
           slug: string
+          theme_bg: string | null
+          theme_primary: string | null
           timezone: string
         }
         Insert: {
@@ -265,6 +267,8 @@ export type Database = {
           reminder_enabled?: boolean
           reminder_time?: string
           slug: string
+          theme_bg?: string | null
+          theme_primary?: string | null
           timezone?: string
         }
         Update: {
@@ -276,6 +280,8 @@ export type Database = {
           reminder_enabled?: boolean
           reminder_time?: string
           slug?: string
+          theme_bg?: string | null
+          theme_primary?: string | null
           timezone?: string
         }
         Relationships: []

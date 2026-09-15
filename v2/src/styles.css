@@ -77,11 +77,15 @@ body.admin-theme {
   color: var(--ink);
 }
 /* 按鈕與選取態的陰影是寫死的粉色，後台要跟著換成中性灰 */
+/*
+ * 按鈕陰影用中性灰，不跟著主色。
+ * 主色是店家自己在設定分頁選的，寫死一個粉紅陰影配到綠色按鈕上會很怪。
+ */
 body.admin-theme button,
 body.admin-theme .seg button[aria-pressed="true"],
 body.admin-theme .slot[aria-pressed="true"],
 body.admin-theme .cal-cell.sel {
-  box-shadow: 0 2px 8px rgba(194, 88, 90, .25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .13);
 }
 body.admin-theme button.ghost,
 body.admin-theme button.outline,
@@ -603,6 +607,42 @@ code.uid {
   background: var(--rose-tint); border-radius: 0.5625rem;
   font-size: 0.875rem; color: var(--ink-soft); line-height: 1.6;
   word-break: break-word;
+}
+
+/* ── 配色設定 ───────────────────────────────────────── */
+
+/* 色票選擇器 ＋ 可以直接貼色碼的欄位 */
+.color-row { display: flex; gap: 0.5rem; align-items: center; }
+.color-row input[type="color"] {
+  width: 3rem; height: 2.75rem; flex: none;
+  padding: 0.1875rem;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  cursor: pointer;
+}
+.color-row input[type="text"], .color-row input:not([type]) {
+  flex: 1 1 auto; min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* 預設配色：一顆一組，左邊是那組的主色 */
+.swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.swatch {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  width: auto; margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--ink); background: var(--rose-wash);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 999px;
+  box-shadow: none;
+}
+.swatch[aria-pressed="true"] { border-color: var(--rose); background: var(--card); }
+.swatch .dot {
+  width: 0.875rem; height: 0.875rem; border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, .12);
+  flex: none;
 }
 
 /* 預約卡片下方的兩顆操作鈕：修改／取消 */
