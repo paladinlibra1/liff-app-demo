@@ -215,6 +215,12 @@ export default function MembersTab({ store }: { store: Store }) {
         <div className="panel">
           <div className="panel-title">{editing.id ? "編輯會員" : "新增會員"}</div>
 
+          {/*
+            * 桌面排成多欄。一欄到底的話，七個欄位要滾兩三個畫面才填得完，
+            * 而店員在電腦上編會員時通常是對著一張紙一次改好幾項。
+            * 窄螢幕自動變回一欄（見 styles.css 的 .form-grid）。
+            */}
+          <div className="form-grid">
           <div className="field">
             <label>會員姓名</label>
             <input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
@@ -255,7 +261,7 @@ export default function MembersTab({ store }: { store: Store }) {
             <input value={editing.referrer ?? ""} onChange={(e) => setEditing({ ...editing, referrer: e.target.value })} />
           </div>
 
-          <div className="field">
+          <div className="field wide">
             <label>監護人（未成年才需要）</label>
             <select
               value={editing.guardian_id ?? ""}
@@ -276,9 +282,10 @@ export default function MembersTab({ store }: { store: Store }) {
             </p>
           </div>
 
-          <div className="field">
+          <div className="field wide">
             <label>備註（可不填）</label>
             <textarea value={editing.note ?? ""} onChange={(e) => setEditing({ ...editing, note: e.target.value })} />
+          </div>
           </div>
 
           {editing.id && editing.line_user_id && (
@@ -287,8 +294,12 @@ export default function MembersTab({ store }: { store: Store }) {
             </p>
           )}
 
-          <button disabled={saving} onClick={save}>{saving ? "⏳ 儲存中…" : "💾 儲存"}</button>
-          <button className="ghost" onClick={() => setEditing(null)}>↩️ 取消</button>
+          <div className="bk-acts">
+            <button className="slim" disabled={saving} onClick={save}>
+              {saving ? "⏳ 儲存中…" : "💾 儲存"}
+            </button>
+            <button className="slim ghost" onClick={() => setEditing(null)}>↩️ 取消</button>
+          </div>
         </div>
       )}
 

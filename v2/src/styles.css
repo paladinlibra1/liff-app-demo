@@ -609,6 +609,21 @@ code.uid {
   word-break: break-word;
 }
 
+/* ── 後台的表單網格 ─────────────────────────────────── */
+/*
+ * 欄位在桌面排成多欄，窄螢幕自動變回一欄。
+ *
+ * 用 auto-fit + minmax 而不是固定欄數：欄位寬度低於 16rem 就塞不下
+ * 「0912-345-678」這種內容，讓瀏覽器自己決定排幾欄比寫死斷點準。
+ * .wide 給多行輸入與帶長說明的欄位，占滿整列。
+ */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0 1rem;
+}
+.form-grid .field.wide { grid-column: 1 / -1; }
+
 /* ── 配色設定 ───────────────────────────────────────── */
 
 /* 色票選擇器 ＋ 可以直接貼色碼的欄位 */
