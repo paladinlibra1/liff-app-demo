@@ -101,6 +101,15 @@ body.admin-theme .batch,
 body.admin-theme .gen,
 body.admin-theme code.uid { background: #f4f4f5; }
 
+/*
+ * 資料列的字級照舊系統的表格：內容 14.5px、姓名與日期 16px。
+ * 預設的 16px 在一列七八欄的畫面上太滿，舊版就是靠這半級的差距
+ * 讓一整頁的單看起來不吵。
+ */
+body.admin-theme .arow { font-size: 0.90625rem; }
+body.admin-theme .arow .when b,
+body.admin-theme .arow .who b { font-size: 1rem; }
+
 /* 灰底藥丸在粉色主題是淡粉的，後台要純灰 */
 body.admin-theme .tag2,
 body.admin-theme .badge.old { background: #f1f1f2; color: var(--muted); }
@@ -142,15 +151,19 @@ html {
   font-size: clamp(16px, 0.48vw + 12.4px, 20px);
 }
 /*
- * 後台整體再縮到 90%（老闆覺得放大後太大了）。
+ * 後台的字級。
  *
- * 客人端維持原尺寸：它只在 LINE 裡用手機開，再縮下去輸入框會低於 16px，
- * iOS Safari 一聚焦就把整頁放大，那比字小更難用。
+ * 電腦版封頂在 16px，跟舊系統 admin.html 一樣——舊版沒有設 body 字級，
+ * 用的就是瀏覽器預設的 16px。放大到 18px 試過，老闆說太大。
+ * 手機版仍然從 14.4px 起跳，大螢幕才長到 16px。
+ *
+ * 客人端不套這條：它只在 LINE 裡用手機開，字級低於 16px 的話
+ * iOS Safari 一聚焦輸入框就把整頁放大，那比字小更難用。
  *
  * 縮放要掛在 html 而不是 body——rem 看的是根元素，套在 body 上沒有作用。
  */
 html.admin-theme {
-  font-size: clamp(14.4px, 0.432vw + 11.16px, 18px);
+  font-size: clamp(14.4px, 0.432vw + 11.16px, 16px);
 }
 
 * { box-sizing: border-box; }
