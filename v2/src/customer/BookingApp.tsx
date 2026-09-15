@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchStore, fetchAvailability, fetchMe, submitBooking,
-  type StoreInfo, type DayAvailability,
+  type StoreInfo, type DayAvailability, type MyProfile,
 } from "./api";
+import RegisterForm from "./RegisterForm";
 import { initLiff, closeLiffWindow, type LiffState } from "./liff";
 import { isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
 import { birthdayError } from "../shared/birthday";
@@ -36,6 +37,10 @@ export default function BookingApp() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
+  /** 會員資料；null ＝ 還沒綁定，要先擋下來綁 */
+  const [member, setMember] = useState<MyProfile | null>(null);
+  /** 有沒有問過後端「綁了沒」。沒問過之前不能判定成未綁定 */
+  const [checked, setChecked] = useState(false);
   const [twoPeople, setTwoPeople] = useState(false);
   const [name2, setName2] = useState("");
   const [date, setDate] = useState("");
@@ -54,24 +59,20 @@ export default function BookingApp() {
       if (cancelled) return;
       setLiffState(state);
       /*
-       * 預填：第二次以後的預約直接帶出上次留的姓名、電話、生日。
+       * 先問「綁了沒」。沒綁的人會被擋在綁定表單前面，綁完才看得到預約表單。
        *
-       * 刻意不帶 LINE 暱稱——暱稱常常是綽號、英文名或一串表情符號，
-       * 先填進去客人多半就直接送出，店家拿到一筆認不出是誰的單。
-       * 第一次來就一律留空，讓客人自己打本名。
-       *
-       * 拿不到會員資料不算錯誤：那只是沒得預填，表單照樣能用，
-       * 所以這裡吞掉例外，不要為了預填失敗就擋住整頁。
+       * 綁定之後姓名、電話、生日就是會員資料，這裡只負責帶出來，不給改——
+       * 每次預約都能改的話，同一個人會留下三種寫法的姓名與電話，
+       * 店家事後根本對不出那是不是同一個人。要改請聯絡店家。
        */
-      if (state.kind !== "ready") return;
+      if (state.kind !== "ready") { setChecked(true); return; }
       fetchMe(state.viewer.accessToken)
         .then((me) => {
-          if (cancelled || !me.member) return;
-          setName((v) => v || me.member!.name);
-          setPhone((v) => v || me.member!.phone);
-          setBirthday((v) => v || me.member!.birthday || "");
+          if (cancelled) return;
+          applyMember(me.member);
         })
-        .catch(() => { /* 沒預填而已，不影響填表 */ });
+        .catch((e: Error) => !cancelled && setLoadErr(e.message))
+        .finally(() => !cancelled && setChecked(true));
     });
 
     Promise.all([fetchStore(), fetchAvailability()])
@@ -84,6 +85,15 @@ export default function BookingApp() {
 
     return () => { cancelled = true; };
   }, []);
+
+  /** 把會員資料填進表單。綁定完成與一開頁查到既有會員都走這裡 */
+  function applyMember(m: MyProfile | null) {
+    setMember(m);
+    if (!m) return;
+    setName(m.name);
+    setPhone(m.phone);
+    setBirthday(m.birthday ?? "");
+  }
 
   const seats = twoPeople ? 2 : 1;
 
@@ -195,6 +205,24 @@ export default function BookingApp() {
     );
   }
 
+  /*
+   * 綁定關卡：還沒綁的人看不到預約表單。
+   *
+   * 擺在載入畫面之後，是因為要等後端回答「綁了沒」才能判定；
+   * 沒問過就先畫綁定表單的話，老客人每次開頁都會閃一下那張表。
+   */
+  if (checked && liffState?.kind === "ready" && !member) {
+    return (
+      <div className="wrap narrow">
+        <Brand store={store} />
+        <RegisterForm
+          accessToken={liffState.viewer.accessToken}
+          onDone={applyMember}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="wrap narrow">
       <Brand store={store} />
@@ -229,29 +257,35 @@ export default function BookingApp() {
           </div>
         </div>
 
+        {/*
+          * 姓名、電話、生日是綁定時留下的會員資料，這裡只顯示不給改。
+          * 每次預約都能改的話，同一個人會留下好幾種寫法的姓名與電話，
+          * 店家事後對不出那是不是同一個人。
+          */}
         <div className="field">
           <label htmlFor="name">姓名</label>
-          <input
-            id="name" value={name} onChange={(e) => setName(e.target.value)}
-            placeholder="請填真實姓名" autoComplete="name"
-          />
+          <input id="name" value={name} disabled />
         </div>
 
         <div className="field">
           <label htmlFor="birthday">生日</label>
+          {/*
+            * 會員資料裡本來就有生日才鎖住。
+            *
+            * 綁定之前建的舊會員有可能沒填過生日，那種情況要讓他補——
+            * 鎖住又必填會直接卡死，客人連預約都送不出去。
+            */}
           <input
             id="birthday" type="date" value={birthday}
+            disabled={Boolean(member?.birthday)}
             onChange={(e) => setBirthday(e.target.value)}
           />
         </div>
 
         <div className="field">
           <label htmlFor="phone">聯絡電話</label>
-          <input
-            id="phone" value={phone} onChange={(e) => setPhone(e.target.value)}
-            type="tel" inputMode="tel" maxLength={16}
-            placeholder="0912345678" autoComplete="tel"
-          />
+          <input id="phone" value={phone} type="tel" disabled />
+          <p className="hint">姓名、電話、生日是您綁定時留下的資料，需要修改請聯絡店家。</p>
         </div>
 
         <div className="field">
