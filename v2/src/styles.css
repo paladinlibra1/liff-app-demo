@@ -950,3 +950,23 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
   .seg { gap: 0.375rem; }
   .seg button { padding: 0.75rem 0.125rem; font-size: 0.875rem; }
 }
+
+/* ── 報表：時段熱度 ─────────────────────────────────── */
+
+/* 手機上 7 欄可能擠不下，讓表格自己橫向捲，不要撐破整頁 */
+.heat-scroll { overflow-x: auto; }
+.heat { border-collapse: separate; border-spacing: 0.1875rem; font-size: 0.8125rem; }
+.heat th {
+  padding: 0.25rem 0.375rem; font-weight: 650; color: var(--muted);
+  text-align: center; white-space: nowrap;
+}
+.heat th.h { text-align: right; padding-right: 0.5rem; }
+.heat td { padding: 0; }
+.heat .cell {
+  width: 2.75rem; height: 2rem; border-radius: 0.375rem;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+@media (max-width: 430px) {
+  .heat .cell { width: 2.25rem; }
+}

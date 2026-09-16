@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import TrendChart, { type Bucket } from "./TrendChart";
+import Heatmap from "./Heatmap";
 
 /**
  * 報表
@@ -23,6 +24,7 @@ type Period = "week" | "month" | "year";
 
 interface Row {
   date: string;
+  start_time: string;
   type: string;
   status: string;
   name: string;
@@ -160,7 +162,7 @@ export default function ReportsTab({ store }: { store: Store }) {
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await supabase
         .from("bookings")
-        .select("date,type,status,name,phone,member_id")
+        .select("date,start_time,type,status,name,phone,member_id")
         .eq("store_id", store.id)
         .order("id")
         .range(from, from + PAGE - 1);
@@ -227,7 +229,7 @@ export default function ReportsTab({ store }: { store: Store }) {
 
     const buckets = buildBuckets(period, start, end, TYPES.filter((t) => picked.has(t)), counted);
 
-    return { total, trial, prevTotal, days, booked, cancelled, trials: trials.length, converted, buckets };
+    return { total, trial, prevTotal, days, booked, cancelled, trials: trials.length, converted, buckets, counted };
   }, [rows, picked, period, start, end]);
 
   function toggle(t: string) {
@@ -346,6 +348,7 @@ export default function ReportsTab({ store }: { store: Store }) {
             types={TYPES.filter((t) => picked.has(t))}
             colors={TYPE_COLORS}
           />
+          <Heatmap rows={stats.counted} />
         </div>
       )}
     </div>
