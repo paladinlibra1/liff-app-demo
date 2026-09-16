@@ -60,7 +60,12 @@ export default function AdminShell({ session, store }: { session: Session; store
           </div>
         </div>
         <button className="slim ghost logout" onClick={() => supabase.auth.signOut()}>
-          <span className="ico" aria-hidden="true">🚪</span>登出
+          <svg className="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+          登出
         </button>
       </div>
 
