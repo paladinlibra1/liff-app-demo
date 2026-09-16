@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import TrendChart, { type Bucket } from "./TrendChart";
 import Heatmap from "./Heatmap";
+import RateTrend, { type RatePoint } from "./RateTrend";
 
 /**
  * 報表
@@ -134,6 +135,78 @@ function buildBuckets(period: Period, start: string, end: string, types: string[
   return buckets;
 }
 
+/**
+ * 新客轉換的底稿：每支電話第一次做新客體驗是哪天、之後有沒有一般預約。
+ * 統計卡和近 12 個月月線都用這份，兩邊數字才對得起來。
+ * 還沒滿 CONVERSION_MATURE_DAYS 天的不放進來。
+ */
+function trialOutcomes(visits: Row[]): { date: string; converted: boolean }[] {
+  const matureBefore = fmt(new Date(toDate(todayStr()).getTime() - CONVERSION_MATURE_DAYS * 86400000));
+  const firstTrial = new Map<string, string>();
+  const lastGeneral = new Map<string, string>();
+  for (const r of visits) {
+    const p = digits(r.phone);
+    if (!p) continue;
+    if (r.type === "新客體驗") {
+      const cur = firstTrial.get(p);
+      if (!cur || r.date < cur) firstTrial.set(p, r.date);
+    } else if (r.type === "一般預約") {
+      const cur = lastGeneral.get(p);
+      if (!cur || r.date > cur) lastGeneral.set(p, r.date);
+    }
+  }
+  return [...firstTrial]
+    .filter(([, d]) => d <= matureBefore)
+    // 體驗「之後」的一般預約才算，同一天的不算；最晚那筆比體驗晚就代表有
+    .map(([p, d]) => ({ date: d, converted: (lastGeneral.get(p) ?? "") > d }));
+}
+
+/** 比率類指標逐日算分母太小、線會亂跳，所以固定看最近 12 個月，不跟著上面的期間切換 */
+const RATE_MONTHS = 12;
+
+function rateTrend(rows: Row[], trials: { date: string; converted: boolean }[]): RatePoint[] {
+  const [y, m] = todayStr().split("-").map(Number);
+  const points: RatePoint[] = [];
+  const index = new Map<string, { p: RatePoint; booked: number; cancelled: number; t: number; c: number }>();
+  for (let i = RATE_MONTHS - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(y, m - 1 - i, 1));
+    const key = fmt(d).slice(0, 7);
+    const p: RatePoint = {
+      label: `${d.getUTCFullYear() % 100}/${d.getUTCMonth() + 1}`,
+      cancelRate: null, convRate: null, cancelNote: "", convNote: "",
+    };
+    points.push(p);
+    index.set(key, { p, booked: 0, cancelled: 0, t: 0, c: 0 });
+  }
+
+  // 取消率：跟統計卡同一套，所有類型、含複檢
+  for (const r of rows) {
+    const b = index.get(r.date.slice(0, 7));
+    if (!b) continue;
+    if (r.status === "cancelled") b.cancelled++; else b.booked++;
+  }
+  for (const t of trials) {
+    const b = index.get(t.date.slice(0, 7));
+    if (!b) continue;
+    b.t++;
+    if (t.converted) b.c++;
+  }
+
+  // 該月沒資料就給 null 讓線斷開，畫成 0% 會誤導
+  for (const { p, booked, cancelled, t, c } of index.values()) {
+    const all = booked + cancelled;
+    if (all > 0) {
+      p.cancelRate = +((cancelled / all) * 100).toFixed(1);
+      p.cancelNote = `取消 ${cancelled} / 共 ${all} 筆`;
+    }
+    if (t > 0) {
+      p.convRate = +((c / t) * 100).toFixed(1);
+      p.convNote = `${c} / ${t} 位`;
+    }
+  }
+  return points;
+}
+
 const digits = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
 const pct = (n: number, d: number) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` : "－");
 
@@ -210,26 +283,17 @@ export default function ReportsTab({ store }: { store: Store }) {
     const cancelled = rows.filter((r) => r.status === "cancelled" && inRange(r, start, end)).length;
 
     // 新客轉換率
-    const matureBefore = fmt(new Date(toDate(todayStr()).getTime() - CONVERSION_MATURE_DAYS * 86400000));
-    const firstTrial = new Map<string, string>();
-    const generals = new Map<string, string[]>();
-    for (const r of visits) {
-      const p = digits(r.phone);
-      if (!p) continue;
-      if (r.type === "新客體驗") {
-        const cur = firstTrial.get(p);
-        if (!cur || r.date < cur) firstTrial.set(p, r.date);
-      } else if (r.type === "一般預約") {
-        generals.set(p, [...(generals.get(p) ?? []), r.date]);
-      }
-    }
-    const trials = [...firstTrial].filter(([, d]) => d >= start && d <= end && d <= matureBefore);
-    // 體驗「之後」的一般預約才算，同一天的不算
-    const converted = trials.filter(([p, d]) => (generals.get(p) ?? []).some((g) => g > d)).length;
+    const trials = trialOutcomes(visits);
+    const inPeriod = trials.filter((t) => t.date >= start && t.date <= end);
+    const converted = inPeriod.filter((t) => t.converted).length;
 
     const buckets = buildBuckets(period, start, end, TYPES.filter((t) => picked.has(t)), counted);
 
-    return { total, trial, prevTotal, days, booked, cancelled, trials: trials.length, converted, buckets, counted };
+    return {
+      total, trial, prevTotal, days, booked, cancelled, converted, buckets, counted,
+      trials: inPeriod.length,
+      rates: rateTrend(rows, trials),
+    };
   }, [rows, picked, period, start, end]);
 
   function toggle(t: string) {
@@ -349,6 +413,7 @@ export default function ReportsTab({ store }: { store: Store }) {
             colors={TYPE_COLORS}
           />
           <Heatmap rows={stats.counted} />
+          <RateTrend points={stats.rates} />
         </div>
       )}
     </div>
