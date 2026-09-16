@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import BookingsTab from "./BookingsTab";
@@ -6,7 +6,9 @@ import MembersTab from "./MembersTab";
 import OperatingDaysTab from "./OperatingDaysTab";
 import AdminsTab from "./AdminsTab";
 import SettingsTab from "./SettingsTab";
-import ReportsTab from "./ReportsTab";
+
+// 報表帶著圖表套件，體積比其他分頁加起來還大，點進去才下載
+const ReportsTab = lazy(() => import("./ReportsTab"));
 
 export interface Store {
   id: string;
@@ -115,7 +117,11 @@ export default function AdminShell({ session, store }: { session: Session; store
       {tab === "bookings" && <BookingsTab store={store} />}
       {tab === "members" && <MembersTab store={store} />}
       {tab === "days" && <OperatingDaysTab store={store} />}
-      {tab === "reports" && <ReportsTab store={store} />}
+      {tab === "reports" && (
+        <Suspense fallback={<div className="skeleton" style={{ height: "8rem" }} />}>
+          <ReportsTab store={store} />
+        </Suspense>
+      )}
       {tab === "settings" && <SettingsTab store={store} />}
       {tab === "admins" && isOwner && <AdminsTab store={store} myUserId={session.user.id} />}
     </div>

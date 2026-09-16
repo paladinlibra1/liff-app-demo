@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
+import TrendChart, { type Bucket } from "./TrendChart";
 
 /**
  * 報表
@@ -93,6 +94,42 @@ function periodLabel(period: Period, start: string, end: string): string {
   }
   if (period === "month") return `${s.getUTCFullYear()} 年 ${s.getUTCMonth() + 1} 月`;
   return `${s.getUTCFullYear()} 年`;
+}
+
+const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
+
+/**
+ * 趨勢圖的格子：年是 12 個月，週／月是每一天。
+ * 每一格先把勾選的類型都補 0，沒有預約的日子才畫得出空位。
+ */
+function buildBuckets(period: Period, start: string, end: string, types: string[], rows: Row[]): Bucket[] {
+  const zero = () => Object.fromEntries(types.map((t) => [t, 0]));
+  const keyOf: (date: string) => string = period === "year" ? (d) => d.slice(5, 7) : (d) => d;
+
+  const buckets: Bucket[] = [];
+  const index = new Map<string, Bucket>();
+  if (period === "year") {
+    for (let m = 1; m <= 12; m++) {
+      const b: Bucket = { label: `${m}月`, ...zero() };
+      buckets.push(b);
+      index.set(String(m).padStart(2, "0"), b);
+    }
+  } else {
+    for (let d = toDate(start); fmt(d) <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+      const label = period === "week"
+        ? `${WEEK[d.getUTCDay()]} ${d.getUTCMonth() + 1}/${d.getUTCDate()}`
+        : `${d.getUTCDate()}`;
+      const b: Bucket = { label, ...zero() };
+      buckets.push(b);
+      index.set(fmt(d), b);
+    }
+  }
+
+  for (const r of rows) {
+    const b = index.get(keyOf(r.date));
+    if (b && r.type in b) b[r.type] = (b[r.type] as number) + 1;
+  }
+  return buckets;
 }
 
 const digits = (p: string | null | undefined) => (p ?? "").replace(/\D/g, "");
@@ -188,7 +225,9 @@ export default function ReportsTab({ store }: { store: Store }) {
     // 體驗「之後」的一般預約才算，同一天的不算
     const converted = trials.filter(([p, d]) => (generals.get(p) ?? []).some((g) => g > d)).length;
 
-    return { total, trial, prevTotal, days, booked, cancelled, trials: trials.length, converted };
+    const buckets = buildBuckets(period, start, end, TYPES.filter((t) => picked.has(t)), counted);
+
+    return { total, trial, prevTotal, days, booked, cancelled, trials: trials.length, converted, buckets };
   }, [rows, picked, period, start, end]);
 
   function toggle(t: string) {
@@ -299,6 +338,16 @@ export default function ReportsTab({ store }: { store: Store }) {
             </div>
           </div>
         )}
+
+      {stats && (
+        <div style={{ marginTop: "0.875rem" }}>
+          <TrendChart
+            buckets={stats.buckets}
+            types={TYPES.filter((t) => picked.has(t))}
+            colors={TYPE_COLORS}
+          />
+        </div>
+      )}
     </div>
   );
 }
