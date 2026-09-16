@@ -6,6 +6,7 @@ import MembersTab from "./MembersTab";
 import OperatingDaysTab from "./OperatingDaysTab";
 import AdminsTab from "./AdminsTab";
 import SettingsTab from "./SettingsTab";
+import ReportsTab from "./ReportsTab";
 
 export interface Store {
   id: string;
@@ -17,7 +18,7 @@ export interface Store {
   theme_bg: string | null;
 }
 
-type TabKey = "bookings" | "members" | "days" | "settings" | "admins";
+type TabKey = "bookings" | "members" | "days" | "reports" | "settings" | "admins";
 
 export default function AdminShell({ session, store }: { session: Session; store: Store }) {
   const [tab, setTab] = useState<TabKey>("bookings");
@@ -45,6 +46,7 @@ export default function AdminShell({ session, store }: { session: Session; store
     { key: "bookings", label: "📋 預約管理" },
     { key: "members", label: "👥 會員清單" },
     { key: "days", label: "📅 營業日設定" },
+    { key: "reports", label: "📊 報表" },
     { key: "settings", label: "⚙️ 設定" },
     ...(isOwner ? [{ key: "admins" as TabKey, label: "🔑 權限管理" }] : []),
   ];
@@ -65,7 +67,7 @@ export default function AdminShell({ session, store }: { session: Session; store
       </div>
 
       {/*
-        * 分頁有五個，在手機上一排排不下（會擠成兩行還會斷字），
+        * 分頁有六個，在手機上一排排不下（會擠成兩行還會斷字），
         * 所以窄螢幕改成漢堡選單、寬螢幕維持一整排。
         * 兩份 markup 都在，由 CSS 決定顯示哪一份——用 JS 判斷視窗寬度的話，
         * 轉螢幕方向不會跟著變，而且第一次畫面會閃一下。
@@ -113,6 +115,7 @@ export default function AdminShell({ session, store }: { session: Session; store
       {tab === "bookings" && <BookingsTab store={store} />}
       {tab === "members" && <MembersTab store={store} />}
       {tab === "days" && <OperatingDaysTab store={store} />}
+      {tab === "reports" && <ReportsTab store={store} />}
       {tab === "settings" && <SettingsTab store={store} />}
       {tab === "admins" && isOwner && <AdminsTab store={store} myUserId={session.user.id} />}
     </div>
