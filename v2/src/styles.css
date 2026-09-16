@@ -73,6 +73,13 @@ body.admin-theme {
   --shadow:      0 1px 2px rgba(223, 211, 202, .4), 0 8px 30px rgba(223, 211, 202, .4);
   --shadow-sm:   0 1px 2px rgba(223, 211, 202, .4);
 
+  /* 分頁列與次要按鈕，設定分頁可以改（src/admin/theme.ts） */
+  --tabs-bg:        #f0e9e3;
+  --tabs-border:    #e4dbd3;
+  --btn2-bg:        #f3efeb;
+  --btn2-bg-active: #e8e0d8;
+  --btn2-ink:       #655442;
+
   background: var(--rose-tint);
   color: var(--ink);
 }
@@ -133,9 +140,9 @@ body.admin-theme .badge.old { background: #f2ece7; color: var(--muted); }
  * 分頁列照舊系統：灰色底槽，選中的那個是浮起來的白卡片。
  * 預設主題是「選中＝填滿主色」，在後台會變成一整塊黑，太重。
  */
-body.admin-theme .tabs { background: #f0e9e3; border-color: #e4dbd3; }
+body.admin-theme .tabs { background: var(--tabs-bg); border-color: var(--tabs-border); }
 body.admin-theme .tabs button[aria-pressed="true"] {
-  background: #ffffff; color: var(--ink);
+  background: var(--card); color: var(--ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
 }
 
@@ -148,12 +155,12 @@ body.admin-theme .tabs button[aria-pressed="true"] {
  * 這條的選擇器比它更明確，不排除的話會把紅色蓋掉。
  */
 body.admin-theme button.outline:not(.danger) {
-  background: #f3efeb;
-  color: #655442;
+  background: var(--btn2-bg);
+  color: var(--btn2-ink);
   border-color: transparent;
 }
 body.admin-theme button.outline:not(.danger):active:not(:disabled) {
-  background: #e8e0d8;
+  background: var(--btn2-bg-active);
 }
 
 /* ── 隨螢幕縮放 ─────────────────────────────────────── */

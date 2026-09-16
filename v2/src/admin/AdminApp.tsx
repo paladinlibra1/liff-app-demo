@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import Login from "./Login";
-import { applyTheme } from "./theme";
+import { applyTheme, themeFromRow } from "./theme";
 import AdminShell from "./AdminShell";
 
 /*
@@ -52,7 +52,7 @@ export default function AdminApp() {
     setChecking(true);
     supabase
       .from("stores")
-      .select("id, name, slug, theme_primary, theme_bg")
+      .select("id, name, slug, theme_primary, theme_bg, theme_ink, theme_ink_soft, theme_card, theme_border, theme_tabs, theme_btn2, theme_btn2_ink")
       .limit(1)
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -60,7 +60,7 @@ export default function AdminApp() {
         const row = data?.[0] ?? null;
         setStore(row);
         // 店家自己選的配色。沒設就維持 styles.css 裡的預設
-        applyTheme(row && { primary: row.theme_primary ?? "", bg: row.theme_bg ?? "" });
+        applyTheme(row && themeFromRow(row));
         setChecking(false);
       });
     return () => { cancelled = true; };

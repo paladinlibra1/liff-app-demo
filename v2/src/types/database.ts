@@ -255,7 +255,14 @@ export type Database = {
           reminder_time: string
           slug: string
           theme_bg: string | null
+          theme_border: string | null
+          theme_btn2: string | null
+          theme_btn2_ink: string | null
+          theme_card: string | null
+          theme_ink: string | null
+          theme_ink_soft: string | null
           theme_primary: string | null
+          theme_tabs: string | null
           timezone: string
         }
         Insert: {
@@ -268,7 +275,14 @@ export type Database = {
           reminder_time?: string
           slug: string
           theme_bg?: string | null
+          theme_border?: string | null
+          theme_btn2?: string | null
+          theme_btn2_ink?: string | null
+          theme_card?: string | null
+          theme_ink?: string | null
+          theme_ink_soft?: string | null
           theme_primary?: string | null
+          theme_tabs?: string | null
           timezone?: string
         }
         Update: {
@@ -281,7 +295,14 @@ export type Database = {
           reminder_time?: string
           slug?: string
           theme_bg?: string | null
+          theme_border?: string | null
+          theme_btn2?: string | null
+          theme_btn2_ink?: string | null
+          theme_card?: string | null
+          theme_ink?: string | null
+          theme_ink_soft?: string | null
           theme_primary?: string | null
+          theme_tabs?: string | null
           timezone?: string
         }
         Relationships: []

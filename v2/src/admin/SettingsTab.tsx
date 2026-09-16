@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import {
-  applyTheme, contrastWithWhite, DEFAULT_THEME, HEX, PRESETS, type Theme,
+  applyTheme, contrast, contrastWithWhite, DEFAULT_THEME, HEX, PRESETS,
+  themeFromRow, themeToRow, type Theme, type ThemeKey,
 } from "./theme";
 
 /**
@@ -28,6 +29,41 @@ interface Reminder {
  * 只到半小時是因為排程每半小時檢查一次，設 20:15 最快也要等到 20:30
  * 才送得出去，介面上卻顯示 20:15 等於騙人。資料庫的 check 也擋著。
  */
+/** 設定分頁上的顏色欄位，依畫面區塊分組 */
+const COLOR_GROUPS: { title: string; fields: { key: ThemeKey; label: string }[] }[] = [
+  {
+    title: "主色與底色",
+    fields: [
+      { key: "primary", label: "主色（按鈕、強調）" },
+      { key: "bg", label: "頁面底色" },
+    ],
+  },
+  {
+    title: "文字",
+    fields: [
+      { key: "ink", label: "主要文字" },
+      { key: "inkSoft", label: "次要文字（說明、標籤）" },
+    ],
+  },
+  {
+    title: "卡片與邊框",
+    fields: [
+      { key: "card", label: "卡片底色" },
+      { key: "border", label: "邊框" },
+    ],
+  },
+  {
+    title: "分頁列與次要按鈕",
+    fields: [
+      { key: "tabs", label: "分頁列底色" },
+      { key: "btn2", label: "次要按鈕底色（編輯、今天…）" },
+      { key: "btn2Ink", label: "次要按鈕文字" },
+    ],
+  },
+];
+
+const THEME_KEYS = Object.keys(DEFAULT_THEME) as ThemeKey[];
+
 const TIME_CHOICES = (() => {
   const pad = (n: number) => String(n).padStart(2, "0");
   const out: string[] = [];
@@ -56,17 +92,15 @@ export default function SettingsTab({ store }: { store: Store }) {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from("stores")
-      .select("reminder_enabled,reminder_time,theme_primary,theme_bg")
+      // 要寫成一整串字面值，supabase-js 才推得出回傳型別
+      .select("reminder_enabled,reminder_time,theme_primary,theme_bg,theme_ink,theme_ink_soft,theme_card,theme_border,theme_tabs,theme_btn2,theme_btn2_ink")
       .eq("id", store.id).single();
     if (error) { setErr(error.message); return; }
     setReminder({
       enabled: data.reminder_enabled,
       time: data.reminder_time.slice(0, 5),   // 資料庫回的是 HH:MM:SS
     });
-    const t: Theme = {
-      primary: data.theme_primary ?? DEFAULT_THEME.primary,
-      bg: data.theme_bg ?? DEFAULT_THEME.bg,
-    };
+    const t = themeFromRow(data);
     setTheme(t);
     setSavedTheme(t);
   }, [store.id]);
@@ -108,7 +142,7 @@ export default function SettingsTab({ store }: { store: Store }) {
 
   async function saveTheme() {
     if (busy) return;                                  // 防連點
-    if (!HEX.test(theme.primary) || !HEX.test(theme.bg)) {
+    if (THEME_KEYS.some((k) => !HEX.test(theme[k]))) {
       setErr("顏色格式要是 #RRGGBB");
       return;
     }
@@ -117,7 +151,7 @@ export default function SettingsTab({ store }: { store: Store }) {
     // 跟提醒設定一樣要帶 .select()：被 RLS 擋下的 UPDATE 不會回錯誤
     const { data, error } = await supabase
       .from("stores")
-      .update({ theme_primary: theme.primary, theme_bg: theme.bg })
+      .update(themeToRow(theme))
       .eq("id", store.id).select("id");
 
     if (error) {
@@ -138,8 +172,18 @@ export default function SettingsTab({ store }: { store: Store }) {
     setOk(""); setErr("");
   }
 
-  const dirty = theme.primary !== savedTheme.primary || theme.bg !== savedTheme.bg;
-  const contrast = contrastWithWhite(theme.primary);
+  const dirty = THEME_KEYS.some((k) => theme[k] !== savedTheme[k]);
+
+  /*
+   * 看不清楚的組合只提醒不擋——顏色是店家的選擇，我們只負責講清楚。
+   * 4.5 是 WCAG 對一般文字的門檻。
+   */
+  const warnings = [
+    { pair: "主色配按鈕上的白字", ratio: contrastWithWhite(theme.primary) },
+    { pair: "主要文字配卡片底色", ratio: contrast(theme.ink, theme.card) },
+    { pair: "次要文字配卡片底色", ratio: contrast(theme.inkSoft, theme.card) },
+    { pair: "次要按鈕的字配按鈕底色", ratio: contrast(theme.btn2Ink, theme.btn2) },
+  ].filter((w) => w.ratio < 4.5);
 
   return (
     <div className="cols">
@@ -191,44 +235,35 @@ export default function SettingsTab({ store }: { store: Store }) {
             <br />改了會立刻套用到畫面上，按儲存才會留下來。
           </p>
 
-          <div className="filters">
-            <div className="f">
-              <label htmlFor="c-primary">主色（按鈕、強調）</label>
-              <div className="color-row">
-                <input
-                  id="c-primary" type="color" value={theme.primary}
-                  onChange={(e) => preview({ ...theme, primary: e.target.value })}
-                />
-                <input
-                  value={theme.primary} spellCheck={false}
-                  onChange={(e) => preview({ ...theme, primary: e.target.value })}
-                />
+          {COLOR_GROUPS.map((g) => (
+            <div className="hours" key={g.title}>
+              <label style={{ fontWeight: 650 }}>{g.title}</label>
+              <div className="filters">
+                {g.fields.map((f) => (
+                  <div className="f" key={f.key}>
+                    <label htmlFor={`c-${f.key}`}>{f.label}</label>
+                    <div className="color-row">
+                      <input
+                        id={`c-${f.key}`} type="color" value={theme[f.key]}
+                        onChange={(e) => preview({ ...theme, [f.key]: e.target.value })}
+                      />
+                      <input
+                        value={theme[f.key]} spellCheck={false} aria-label={`${f.label}色碼`}
+                        onChange={(e) => preview({ ...theme, [f.key]: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          ))}
 
-            <div className="f">
-              <label htmlFor="c-bg">頁面底色</label>
-              <div className="color-row">
-                <input
-                  id="c-bg" type="color" value={theme.bg}
-                  onChange={(e) => preview({ ...theme, bg: e.target.value })}
-                />
-                <input
-                  value={theme.bg} spellCheck={false}
-                  onChange={(e) => preview({ ...theme, bg: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/*
-            * 按鈕是白字。對比低於 4.5 的顏色，字會糊在底色裡。
-            * 只提醒不擋——顏色是店家的選擇，我們只負責講清楚。
-            */}
-          {contrast < 4.5 && (
+          {warnings.length > 0 && (
             <div className="msg note">
-              ⚠️ 這個主色配白字的對比只有 {contrast.toFixed(1)}:1，按鈕上的字會不好讀。
-              建議選深一點的顏色（4.5 以上）。
+              ⚠️ 下面這些組合的對比不夠，字會不好讀（建議 4.5 以上）：
+              {warnings.map((w) => (
+                <div key={w.pair}>・{w.pair}：{w.ratio.toFixed(1)}:1</div>
+              ))}
             </div>
           )}
 
@@ -238,7 +273,7 @@ export default function SettingsTab({ store }: { store: Store }) {
               {PRESETS.map((p) => (
                 <button
                   key={p.name} type="button" className="swatch"
-                  aria-pressed={theme.primary === p.theme.primary && theme.bg === p.theme.bg}
+                  aria-pressed={THEME_KEYS.every((k) => theme[k] === p.theme[k])}
                   onClick={() => preview(p.theme)}
                 >
                   <span className="dot" style={{ background: p.theme.primary }} />
