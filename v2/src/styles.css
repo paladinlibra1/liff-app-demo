@@ -79,6 +79,9 @@ body.admin-theme {
   --btn2-bg:        #f3efeb;
   --btn2-bg-active: #e8e0d8;
   --btn2-ink:       #655442;
+  /* 按鈕邊框：預設跟底色一樣＝看不出框 */
+  --btn-border:     var(--rose);
+  --btn2-border:    var(--btn2-bg);
 
   background: var(--rose-tint);
   color: var(--ink);
@@ -119,10 +122,13 @@ body.admin-theme .batch,
 body.admin-theme .gen,
 body.admin-theme code.uid { background: #f5f1ed; }
 
-/* 時間、電話、面板標題這種要一眼看到的地方，跟主色同一個 */
+/*
+ * 時間、電話、面板標題：跟主要文字同色，靠粗細區分，不再用主色。
+ * 老闆要的——主色只留給按鈕與選取狀態，字一律是文字色。
+ */
 body.admin-theme .arow .when .tm,
 body.admin-theme .arow a,
-body.admin-theme .panel-title { color: var(--rose); }
+body.admin-theme .panel-title { color: var(--ink); }
 
 /*
  * 資料列的字級照舊系統的表格：內容 14.5px、姓名與日期 16px。
@@ -157,7 +163,7 @@ body.admin-theme .tabs button[aria-pressed="true"] {
 body.admin-theme button.outline:not(.danger) {
   background: var(--btn2-bg);
   color: var(--btn2-ink);
-  border-color: transparent;
+  border-color: var(--btn2-border);
 }
 body.admin-theme button.outline:not(.danger):active:not(:disabled) {
   background: var(--btn2-bg-active);
@@ -977,3 +983,30 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 @media (max-width: 430px) {
   .heat .cell { width: 2.25rem; }
 }
+
+/* ── 設定：配色分組 ─────────────────────────────────── */
+/* 手機一組一段往下排；電腦上兩組並排，不要一路長下去 */
+.cgroup { padding: 0.875rem 0; border-top: 1px solid var(--line); }
+.cgroup:first-child { border-top: 0; padding-top: 0; }
+@media (min-width: 1000px) {
+  .cgroups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1.5rem; }
+  /* 第一列兩組都貼頂，不要上框線 */
+  .cgroup:nth-child(2) { border-top: 0; padding-top: 0; }
+}
+
+/* ── 後台：主要按鈕的邊框 ───────────────────────────── */
+/*
+ * 放在檔尾、用 :where() 把優先度壓到跟 `button` 一樣低：
+ * 這樣只會蓋掉上面 `button { border: 0 }`，
+ * 時段格、月曆格、藥丸、色票這些自己有框的元件（class 選擇器）不受影響。
+ * 次要按鈕（.outline）的框在上面的 body.admin-theme 區塊設定。
+ */
+:where(body.admin-theme) button { border: 1.5px solid var(--btn-border); }
+/* 這幾種本來就沒有框，不能跟著主要按鈕長出一圈 */
+body.admin-theme button.ghost,
+body.admin-theme .tabs button,
+body.admin-theme .menu button { border: 0; }
+
+/* 右上角登出：圖示比字大一號，一眼找得到 */
+button.logout { display: inline-flex; align-items: center; gap: 0.375rem; }
+button.logout .ico { font-size: 1.5rem; line-height: 1; }

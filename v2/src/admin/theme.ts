@@ -5,7 +5,7 @@
  * 這裡把它們蓋到 body 的 inline style 上——inline 的優先度高於樣式表，
  * 所以不必動 CSS，也不用重新部署。
  *
- * 開放九個顏色。其餘（按壓色、輸入框底、最淡的提示字、細分隔線）由它們推算：
+ * 開放十一個顏色。其餘（按壓色、輸入框底、最淡的提示字、細分隔線）由它們推算：
  * 那些值本來就跟某個顏色綁在一起，各自獨立設定只會調出不協調的組合。
  */
 
@@ -28,11 +28,24 @@ export interface Theme {
   btn2: string;
   /** 次要按鈕字 */
   btn2Ink: string;
+  /** 主要按鈕邊框；跟 primary 一樣就是看不出框 */
+  btnBorder: string;
+  /** 次要按鈕邊框；跟 btn2 一樣就是看不出框 */
+  btn2Border: string;
 }
 
 export type ThemeKey = keyof Theme;
 
 export const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * 邊框沒設定時跟著哪個顏色走。
+ * 存檔時跟這個顏色一樣就存 null，之後換按鈕底色，邊框才會一起換。
+ */
+export const FOLLOWS: Partial<Record<ThemeKey, ThemeKey>> = {
+  btnBorder: "primary",
+  btn2Border: "btn2",
+};
 
 /** styles.css 裡 body.admin-theme 的預設值，兩邊要一致 */
 export const DEFAULT_THEME: Theme = {
@@ -45,6 +58,8 @@ export const DEFAULT_THEME: Theme = {
   tabs: "#f0e9e3",
   btn2: "#f3efeb",
   btn2Ink: "#655442",
+  btnBorder: "#c2585a",
+  btn2Border: "#f3efeb",
 };
 
 /** 每個顏色存在 stores 的哪一欄 */
@@ -58,6 +73,8 @@ export const THEME_COLUMNS = {
   tabs: "theme_tabs",
   btn2: "theme_btn2",
   btn2Ink: "theme_btn2_ink",
+  btnBorder: "theme_btn_border",
+  btn2Border: "theme_btn2_border",
 } as const satisfies Record<ThemeKey, string>;
 
 type ThemeRow = { [K in (typeof THEME_COLUMNS)[ThemeKey]]: string | null };
@@ -68,6 +85,7 @@ export function themeFromRow(row: Partial<ThemeRow> | null | undefined): Theme {
   for (const k of Object.keys(THEME_COLUMNS) as ThemeKey[]) {
     const v = row?.[THEME_COLUMNS[k]];
     if (v && HEX.test(v)) out[k] = v;
+    else if (FOLLOWS[k]) out[k] = out[FOLLOWS[k]!];
   }
   return out;
 }
@@ -75,7 +93,10 @@ export function themeFromRow(row: Partial<ThemeRow> | null | undefined): Theme {
 /** 完整配色 → 要寫回資料庫的欄位 */
 export function themeToRow(theme: Theme): ThemeRow {
   const out = {} as ThemeRow;
-  for (const k of Object.keys(THEME_COLUMNS) as ThemeKey[]) out[THEME_COLUMNS[k]] = theme[k];
+  for (const k of Object.keys(THEME_COLUMNS) as ThemeKey[]) {
+    const base = FOLLOWS[k];
+    out[THEME_COLUMNS[k]] = base && theme[k].toLowerCase() === theme[base].toLowerCase() ? null : theme[k];
+  }
   return out;
 }
 
@@ -183,10 +204,24 @@ export function applyTheme(theme: Partial<Theme> | null): void {
 
   const btn2Ink = pick("btn2Ink");
   set({ "--btn2-ink": btn2Ink ?? "" }, !!btn2Ink);
+
+  // 邊框：跟底色一樣就不蓋，讓 styles.css 的 var(--rose) / var(--btn2-bg) 接手
+  for (const [k, cssVar] of [["btnBorder", "--btn-border"], ["btn2Border", "--btn2-border"]] as const) {
+    const v = theme?.[k];
+    const base = theme?.[FOLLOWS[k]!];
+    const on = !!v && HEX.test(v) && v.toLowerCase() !== (base ?? DEFAULT_THEME[FOLLOWS[k]!]).toLowerCase();
+    set({ [cssVar]: v ?? "" }, on);
+  }
 }
 
 /** 幾組調好的，省得自己一個一個試 */
-const preset = (t: Partial<Theme>): Theme => ({ ...DEFAULT_THEME, ...t });
+/** 沒特別指定邊框的配色，邊框跟著按鈕底色 */
+const preset = (t: Partial<Theme>): Theme => {
+  const out = { ...DEFAULT_THEME, ...t };
+  if (!t.btnBorder) out.btnBorder = out.primary;
+  if (!t.btn2Border) out.btn2Border = out.btn2;
+  return out;
+};
 
 export const PRESETS: { name: string; theme: Theme }[] = [
   { name: "暖白（預設）", theme: DEFAULT_THEME },

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import {
-  applyTheme, contrast, contrastWithWhite, DEFAULT_THEME, HEX, PRESETS,
+  applyTheme, contrast, contrastWithWhite, DEFAULT_THEME, FOLLOWS, HEX, PRESETS,
   themeFromRow, themeToRow, type Theme, type ThemeKey,
 } from "./theme";
 
@@ -34,14 +34,14 @@ const COLOR_GROUPS: { title: string; fields: { key: ThemeKey; label: string }[] 
   {
     title: "主色與底色",
     fields: [
-      { key: "primary", label: "主色（按鈕、強調）" },
+      { key: "primary", label: "主色（按鈕、選取）" },
       { key: "bg", label: "頁面底色" },
     ],
   },
   {
     title: "文字",
     fields: [
-      { key: "ink", label: "主要文字" },
+      { key: "ink", label: "主要文字（含時間、電話、標題）" },
       { key: "inkSoft", label: "次要文字（說明、標籤）" },
     ],
   },
@@ -53,11 +53,18 @@ const COLOR_GROUPS: { title: string; fields: { key: ThemeKey; label: string }[] 
     ],
   },
   {
-    title: "分頁列與次要按鈕",
+    title: "按鈕",
     fields: [
-      { key: "tabs", label: "分頁列底色" },
+      { key: "btnBorder", label: "主要按鈕邊框" },
       { key: "btn2", label: "次要按鈕底色（編輯、今天…）" },
       { key: "btn2Ink", label: "次要按鈕文字" },
+      { key: "btn2Border", label: "次要按鈕邊框" },
+    ],
+  },
+  {
+    title: "分頁列",
+    fields: [
+      { key: "tabs", label: "分頁列底色" },
     ],
   },
 ];
@@ -93,7 +100,7 @@ export default function SettingsTab({ store }: { store: Store }) {
     const { data, error } = await supabase
       .from("stores")
       // 要寫成一整串字面值，supabase-js 才推得出回傳型別
-      .select("reminder_enabled,reminder_time,theme_primary,theme_bg,theme_ink,theme_ink_soft,theme_card,theme_border,theme_tabs,theme_btn2,theme_btn2_ink")
+      .select("reminder_enabled,reminder_time,theme_primary,theme_bg,theme_ink,theme_ink_soft,theme_card,theme_border,theme_tabs,theme_btn2,theme_btn2_ink,theme_btn_border,theme_btn2_border")
       .eq("id", store.id).single();
     if (error) { setErr(error.message); return; }
     setReminder({
@@ -132,6 +139,19 @@ export default function SettingsTab({ store }: { store: Store }) {
       setOk(next.enabled ? `提醒時間已設為 ${next.time}` : "已關閉前一天的提醒");
     }
     setBusy(false);
+  }
+
+  /**
+   * 改單一個顏色。
+   * 邊框原本跟按鈕底色一樣（＝沒框）的話，改底色時邊框一起換，
+   * 不然換了主色會留下一圈舊顏色。
+   */
+  function change(key: ThemeKey, value: string) {
+    const next = { ...theme, [key]: value };
+    for (const [k, base] of Object.entries(FOLLOWS) as [ThemeKey, ThemeKey][]) {
+      if (base === key && theme[k].toLowerCase() === theme[base].toLowerCase()) next[k] = value;
+    }
+    preview(next);
   }
 
   /** 改一個顏色：畫面立刻跟著變，存檔是另一個動作 */
@@ -226,8 +246,13 @@ export default function SettingsTab({ store }: { store: Store }) {
               </>
             )}
         </div>
+      </div>
 
-        {/* ───────── 配色 ───────── */}
+      {/*
+        * 配色放右邊寬欄。原本跟預約提醒擠在同一欄，
+        * 電腦上只用了左邊 25rem，九個顏色一路往下排得很長。
+        */}
+      <div>
         <div className="panel">
           <div className="panel-title">後台配色</div>
           <p className="sub" style={{ marginBottom: 16 }}>
@@ -235,28 +260,30 @@ export default function SettingsTab({ store }: { store: Store }) {
             <br />改了會立刻套用到畫面上，按儲存才會留下來。
           </p>
 
-          {COLOR_GROUPS.map((g) => (
-            <div className="hours" key={g.title}>
-              <label style={{ fontWeight: 650 }}>{g.title}</label>
-              <div className="filters">
-                {g.fields.map((f) => (
-                  <div className="f" key={f.key}>
-                    <label htmlFor={`c-${f.key}`}>{f.label}</label>
-                    <div className="color-row">
-                      <input
-                        id={`c-${f.key}`} type="color" value={theme[f.key]}
-                        onChange={(e) => preview({ ...theme, [f.key]: e.target.value })}
-                      />
-                      <input
-                        value={theme[f.key]} spellCheck={false} aria-label={`${f.label}色碼`}
-                        onChange={(e) => preview({ ...theme, [f.key]: e.target.value })}
-                      />
+          <div className="cgroups">
+            {COLOR_GROUPS.map((g) => (
+              <div className="cgroup" key={g.title}>
+                <label style={{ fontWeight: 650 }}>{g.title}</label>
+                <div className="filters">
+                  {g.fields.map((f) => (
+                    <div className="f" key={f.key}>
+                      <label htmlFor={`c-${f.key}`}>{f.label}</label>
+                      <div className="color-row">
+                        <input
+                          id={`c-${f.key}`} type="color" value={theme[f.key]}
+                          onChange={(e) => change(f.key, e.target.value)}
+                        />
+                        <input
+                          value={theme[f.key]} spellCheck={false} aria-label={`${f.label}色碼`}
+                          onChange={(e) => change(f.key, e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           {warnings.length > 0 && (
             <div className="msg note">

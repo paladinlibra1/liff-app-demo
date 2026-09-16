@@ -59,8 +59,8 @@ export default function AdminShell({ session, store }: { session: Session; store
             {role && <span className="tag2">{role === "owner" ? "負責人" : "店員"}</span>}
           </div>
         </div>
-        <button className="slim ghost" onClick={() => supabase.auth.signOut()}>
-          🚪 登出
+        <button className="slim ghost logout" onClick={() => supabase.auth.signOut()}>
+          <span className="ico" aria-hidden="true">🚪</span>登出
         </button>
       </div>
 

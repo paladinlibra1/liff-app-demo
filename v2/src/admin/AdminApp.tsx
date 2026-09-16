@@ -52,7 +52,7 @@ export default function AdminApp() {
     setChecking(true);
     supabase
       .from("stores")
-      .select("id, name, slug, theme_primary, theme_bg, theme_ink, theme_ink_soft, theme_card, theme_border, theme_tabs, theme_btn2, theme_btn2_ink")
+      .select("id, name, slug, theme_primary, theme_bg, theme_ink, theme_ink_soft, theme_card, theme_border, theme_tabs, theme_btn2, theme_btn2_ink, theme_btn_border, theme_btn2_border")
       .limit(1)
       .then(({ data, error }) => {
         if (cancelled) return;

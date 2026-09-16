@@ -256,7 +256,9 @@ export type Database = {
           slug: string
           theme_bg: string | null
           theme_border: string | null
+          theme_btn_border: string | null
           theme_btn2: string | null
+          theme_btn2_border: string | null
           theme_btn2_ink: string | null
           theme_card: string | null
           theme_ink: string | null
@@ -276,7 +278,9 @@ export type Database = {
           slug: string
           theme_bg?: string | null
           theme_border?: string | null
+          theme_btn_border?: string | null
           theme_btn2?: string | null
+          theme_btn2_border?: string | null
           theme_btn2_ink?: string | null
           theme_card?: string | null
           theme_ink?: string | null
@@ -296,7 +300,9 @@ export type Database = {
           slug?: string
           theme_bg?: string | null
           theme_border?: string | null
+          theme_btn_border?: string | null
           theme_btn2?: string | null
+          theme_btn2_border?: string | null
           theme_btn2_ink?: string | null
           theme_card?: string | null
           theme_ink?: string | null
