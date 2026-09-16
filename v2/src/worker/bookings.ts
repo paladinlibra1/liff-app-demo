@@ -489,6 +489,99 @@ export async function createAdminBooking(
   }
 }
 
+// ───────────────────────────────────────────────────────────
+// 後台改預約狀態（完成 / 取消）
+// ───────────────────────────────────────────────────────────
+
+/** 後台按鈕只有這兩種結果，其他值一律不收 */
+const ADMIN_STATUSES = ["completed", "cancelled"];
+
+/**
+ * 店家把一筆預約標成已完成或已取消。
+ *
+ * 後台平常直接改 Supabase 就好，這支之所以繞 Worker，是因為店家取消時
+ * 客人要收到 LINE——推播的 token 只存在 Worker。所以這裡只負責「改狀態
+ * 並把推播要用的資料撈齊」，真正要不要發、發給誰由呼叫端決定。
+ */
+export async function adminSetBookingStatus(
+  env: Env,
+  store: Store,
+  bookingId: string,
+  status: string,
+  reason: string | null,
+) {
+  if (!ADMIN_STATUSES.includes(status)) {
+    throw new BookingError("不支援的狀態");
+  }
+
+  // store_id 一起篩：少了它，別家店的預約 id 也改得動
+  const rows = await sb<AdminBookingRow[]>(
+    env,
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&store_id=eq.${store.id}` +
+      `&select=${ADMIN_FIELDS}&limit=1`,
+  );
+  const booking = rows[0];
+  if (!booking) throw new BookingError("找不到這筆預約", 404);
+
+  // 只有還有效的才能改。已取消的再取消一次會重蓋 cancelled_at，
+  // 也會再發一張卡片給客人——兩個店員先後點到同一筆就會發生。
+  if (booking.status !== "active") {
+    throw new BookingError(
+      booking.status === "cancelled"
+        ? "這筆預約已經取消了"
+        : "這筆預約已經標記為完成了",
+      409,
+    );
+  }
+
+  const patch: Record<string, unknown> = { status };
+  if (status === "cancelled") {
+    patch.cancelled_at = new Date().toISOString();
+    patch.cancel_reason = reason || "店家取消";
+  }
+
+  const updated = await sb<AdminBookingRow[]>(
+    env,
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=${ADMIN_FIELDS}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify(patch),
+    },
+  );
+
+  const row = updated[0];
+  return {
+    booking: row,
+    notify: {
+      date: row.date,
+      time: row.start_time.slice(0, 5),
+      name: row.name,
+      name2: row.name2,
+      phone: row.phone,
+      type: row.type,
+      remark: row.remark,
+      notifyLineUserId: row.notify_line_user_id,
+    },
+  };
+}
+
+interface AdminBookingRow {
+  id: string;
+  date: string;
+  start_time: string;
+  name: string;
+  name2: string | null;
+  phone: string;
+  type: string;
+  remark: string | null;
+  status: string;
+  notify_line_user_id: string | null;
+}
+
+const ADMIN_FIELDS =
+  "id,date,start_time,name,name2,phone,type,remark,status,notify_line_user_id";
+
 /**
  * 資料庫擋下來的兩條規則，轉成客人看得懂的話。
  *

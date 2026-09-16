@@ -74,32 +74,52 @@ export default function BookingsTab({ store }: { store: Store }) {
 
   useEffect(() => { void load(); }, [load]);
 
+  /**
+   * 改狀態走 `/api/admin/bookings/:id/status`，不直接改 Supabase——
+   * 店家取消時客人要收到 LINE，而推播的 token 只存在 Worker。
+   */
   async function setStatus(row: BookingRow, status: string) {
     if (busy) return;                       // 防連點
-    const verb = status === "cancelled" ? "取消" : "標記為已完成";
-    if (!confirm(`確定要把 ${row.date} ${row.start_time.slice(0, 5)} ${row.name} 的預約${verb}嗎？`)) {
+    const cancelling = status === "cancelled";
+    const verb = cancelling ? "取消" : "標記為已完成";
+    const who = `${row.date} ${row.start_time.slice(0, 5)} ${row.name}`;
+    const note = cancelling ? "\n\n客人會收到一則取消通知。" : "";
+    if (!confirm(`確定要把 ${who} 的預約${verb}嗎？${note}`)) {
       return;
     }
 
     setBusy(row.id);
     setErr("");
-    const patch: { status: string; cancelled_at?: string; cancel_reason?: string } = { status };
-    if (status === "cancelled") {
-      patch.cancelled_at = new Date().toISOString();
-      patch.cancel_reason = "店家取消";
-    }
+    try {
+      // Worker 要用這個 token 確認「你是這家店的後台人員」
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) {
+        setErr("登入已過期，請重新登入後台");
+        return;
+      }
 
-    // 帶 .select()：被 RLS 擋下的 UPDATE 不會回錯誤，只會回 0 列（見 OperatingDaysTab 的說明）
-    const { data, error } = await supabase
-      .from("bookings").update(patch).eq("id", row.id).select("id");
-    if (error) {
-      setErr(error.message);
-    } else if (!data || data.length === 0) {
-      setErr("沒有更新成功，請確認你的帳號權限。");
-    } else {
-      await load();
+      const res = await fetch(`/api/admin/bookings/${row.id}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      // Worker 的錯誤一律是 { error: "人看得懂的句子" }，直接顯示
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      if (!res.ok) {
+        setErr(body?.error || `${verb}失敗（${res.status}），請稍後再試`);
+      } else {
+        await load();
+      }
+    } catch {
+      setErr("連線失敗，請檢查網路後再試一次");
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   }
 
   return (

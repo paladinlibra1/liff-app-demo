@@ -15,7 +15,8 @@ import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import {
-  createBooking, createAdminBooking, getMyProfile, registerMember, BookingError,
+  createBooking, createAdminBooking, adminSetBookingStatus, getMyProfile,
+  registerMember, BookingError,
   type BookingInput, type AdminBookingInput, type RegisterInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
@@ -279,6 +280,46 @@ export default {
         if (err instanceof BookingError) return json({ error: err.message }, err.status);
         if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
         return errorResponse(err, "建立預約失敗");
+      }
+    }
+
+    // ── 後台改預約狀態：標記完成 / 取消 ─────────────────
+    // 跟代客預約同理，走 Worker 只為了那則 LINE：店家在後台按取消，
+    // 客人如果什麼都沒收到，人就白跑一趟了。
+    const adminStatusMatch = path.match(
+      /^\/api\/admin\/bookings\/([0-9a-f-]{36})\/status$/i,
+    );
+    if (adminStatusMatch) {
+      if (request.method !== "POST") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+      try {
+        const store = await getStore(env);
+        await verifyAdmin(env, request, store);
+
+        let input: { status?: string; reason?: string | null };
+        try {
+          input = (await request.json()) as typeof input;
+        } catch {
+          return json({ error: "送出的內容格式不正確" }, 400);
+        }
+
+        const { booking, notify } = await adminSetBookingStatus(
+          env, store, adminStatusMatch[1],
+          (input.status ?? "").trim(),
+          input.reason?.trim() || null,
+        );
+
+        // 標記完成不用通知任何人——那是店裡自己的紀錄，客人已經來過了
+        if (booking.status === "cancelled") {
+          ctx.waitUntil(notifyBooking(env, store, notify, "cancel"));
+        }
+
+        return json({ booking });
+      } catch (err) {
+        if (err instanceof BookingError) return json({ error: err.message }, err.status);
+        if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
+        return errorResponse(err, "更改預約狀態失敗");
       }
     }
 
