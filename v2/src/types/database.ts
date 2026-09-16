@@ -123,6 +123,192 @@ export type Database = {
           },
         ]
       }
+      inventory_batches: {
+        Row: {
+          created_at: string
+          expiry_date: string | null
+          id: string
+          item_id: string
+          note: string
+          qty: number
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_id: string
+          note?: string
+          qty?: number
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          item_id?: string
+          note?: string
+          qty?: number
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          active: boolean
+          category: string | null
+          code: string
+          created_at: string
+          id: string
+          member_price: number
+          name: string
+          note: string
+          pv: number
+          safety_stock: number | null
+          sort_order: number | null
+          store_id: string
+          type: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          member_price?: number
+          name: string
+          note?: string
+          pv?: number
+          safety_stock?: number | null
+          sort_order?: number | null
+          store_id: string
+          type: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          member_price?: number
+          name?: string
+          note?: string
+          pv?: number
+          safety_stock?: number | null
+          sort_order?: number | null
+          store_id?: string
+          type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_series: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          store_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          store_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          store_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_series_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_stocktakes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          item_count: number
+          items: Json
+          store_id: string
+          total_diff: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          item_count: number
+          items: Json
+          store_id: string
+          total_diff: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          item_count?: number
+          items?: Json
+          store_id?: string
+          total_diff?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_stocktakes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           birthday: string | null
@@ -336,6 +522,10 @@ export type Database = {
       remove_store_admin: {
         Args: { p_store_id: string; p_user_id: string }
         Returns: undefined
+      }
+      submit_stocktake: {
+        Args: { p_date: string; p_items: Json; p_store_id: string }
+        Returns: string
       }
     }
     Enums: {
