@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import NewBookingForm from "./NewBookingForm";
+import EditBookingForm from "./EditBookingForm";
 
 interface BookingRow {
   id: string;
@@ -50,6 +51,8 @@ export default function BookingsTab({ store }: { store: Store }) {
   const [busy, setBusy] = useState<string | null>(null);
   /** 代客預約的表單開著沒 */
   const [adding, setAdding] = useState(false);
+  /** 正在改的那一筆，null 就是沒開編輯表單 */
+  const [editing, setEditing] = useState<BookingRow | null>(null);
 
   const load = useCallback(async () => {
     setErr("");
@@ -125,7 +128,10 @@ export default function BookingsTab({ store }: { store: Store }) {
   return (
     <>
       <div className="panel">
-        <button className="slim" onClick={() => setAdding(true)}>➕ 代客預約</button>
+        {/* 兩張表單同時開著只會讓人搞不清楚在改哪一筆，開一張就關掉另一張 */}
+        <button className="slim" onClick={() => { setEditing(null); setAdding(true); }}>
+          ➕ 代客預約
+        </button>
         <p className="hint">店家幫客人訂。規則跟客人端一樣，只選得到有營業又還有位子的時段。</p>
       </div>
 
@@ -134,6 +140,15 @@ export default function BookingsTab({ store }: { store: Store }) {
           store={store}
           onSaved={load}
           onClose={() => setAdding(false)}
+        />
+      )}
+
+      {editing && (
+        <EditBookingForm
+          store={store}
+          booking={editing}
+          onSaved={load}
+          onClose={() => setEditing(null)}
         />
       )}
 
@@ -220,6 +235,10 @@ export default function BookingsTab({ store }: { store: Store }) {
                 <div className="c acts">
                   {r.status === "active" && (
                     <>
+                      <button className="slim outline" disabled={busy === r.id}
+                        onClick={() => { setAdding(false); setEditing(r); }}>
+                        ✏️ 改時間
+                      </button>
                       <button className="slim outline" disabled={busy === r.id}
                         onClick={() => setStatus(r, "completed")}>
                         ✅ 完成

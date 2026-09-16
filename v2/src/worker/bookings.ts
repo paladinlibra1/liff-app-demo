@@ -10,7 +10,7 @@
 
 import type { Env } from "./index";
 import { sb, SupabaseError, timesForDate, type Store } from "./supabase";
-import { getAvailability, todayInStore } from "./availability";
+import { getAvailability, todayInStore, timeNowInStore } from "./availability";
 import type { LineProfile } from "./line";
 import { normalizePhone, isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
 import { birthdayError } from "../shared/birthday";
@@ -551,6 +551,114 @@ export async function adminSetBookingStatus(
   );
 
   const row = updated[0];
+  return {
+    booking: row,
+    notify: {
+      date: row.date,
+      time: row.start_time.slice(0, 5),
+      name: row.name,
+      name2: row.name2,
+      phone: row.phone,
+      type: row.type,
+      remark: row.remark,
+      notifyLineUserId: row.notify_line_user_id,
+    },
+  };
+}
+
+/**
+ * 店家改一筆預約的時間或備註。
+ *
+ * 規則跟客人自己改幾乎一樣（見 myBookings.ts 的 rescheduleMyBooking），
+ * 兩個差別：
+ *   1. 是不是你的單，由 store_id 決定，不看 LINE 身分
+ *   2. 已經開始的單店家改得動——客人遲到、臨時往後挪，都是店員在處理的事。
+ *      客人自己改則擋掉，請他打電話給店家。
+ *
+ * 一樣不能改到已經過去的時間：那會送一張「您的預約已更改」卡片、
+ * 上面寫著昨天，客人只會更混亂。要補正歷史紀錄請走取消。
+ */
+export async function adminRescheduleBooking(
+  env: Env,
+  store: Store,
+  bookingId: string,
+  input: { date?: string; time?: string; remark?: string | null },
+) {
+  const date = (input.date ?? "").trim();
+  const time = (input.time ?? "").trim();
+  const remark = (input.remark ?? "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BookingError("請選擇日期");
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new BookingError("請選擇時間");
+
+  const rows = await sb<AdminBookingRow[]>(
+    env,
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&store_id=eq.${store.id}` +
+      `&select=${ADMIN_FIELDS}&limit=1`,
+  );
+  const booking = rows[0];
+  if (!booking) throw new BookingError("找不到這筆預約", 404);
+  if (booking.status !== "active") {
+    throw new BookingError(
+      booking.status === "cancelled"
+        ? "這筆預約已經取消了，請重新建一筆"
+        : "這筆預約已經標記為完成了",
+      409,
+    );
+  }
+
+  const today = todayInStore(store);
+  const nowTime = timeNowInStore(store);
+  if (date < today) throw new BookingError("不能改到已經過去的日期");
+  if (date === today && time <= nowTime) {
+    throw new BookingError("不能改到已經過去的時間");
+  }
+  if (!timesForDate(store, date).includes(time)) {
+    throw new BookingError("這個時間不在營業時段內");
+  }
+
+  const [day] = await getAvailability(env, store, date, date);
+  if (!day.isOperating) {
+    throw new BookingError("這一天沒有營業，請先到營業日設定把它打開");
+  }
+  const slot = day.slots.find((s) => s.time === time);
+  if (!slot) throw new BookingError("這個時段目前不開放預約");
+
+  // 剩餘位子算過所有有效預約，包含這一筆自己。原地改備註、或時間沒變時
+  // 要把自己還回去，不然會誤判額滿（跟客人端同一個陷阱）。
+  const sameSlot = booking.date === date && booking.start_time.slice(0, 5) === time;
+  const seats = booking.name2 ? 2 : 1;
+  const remaining = slot.remaining + (sameSlot ? seats : 0);
+  if (remaining < seats) {
+    throw new BookingError(
+      seats === 2 ? "這個時段剩下的位子不足兩位" : "這個時段已經額滿了",
+      409,
+    );
+  }
+
+  let updated: AdminBookingRow[];
+  try {
+    updated = await sb<AdminBookingRow[]>(
+      env,
+      `bookings?id=eq.${encodeURIComponent(bookingId)}&select=${ADMIN_FIELDS}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          date,
+          start_time: time,
+          remark: remark || null,
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  } catch (err) {
+    throw translateWriteError(err);
+  }
+
+  const row = updated[0];
+  if (!row) throw new BookingError("更改失敗，請稍後再試", 500);
+
   return {
     booking: row,
     notify: {

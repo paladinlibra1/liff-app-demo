@@ -15,8 +15,8 @@ import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
 import { getAvailability, todayInStore } from "./availability";
 import {
-  createBooking, createAdminBooking, adminSetBookingStatus, getMyProfile,
-  registerMember, BookingError,
+  createBooking, createAdminBooking, adminSetBookingStatus, adminRescheduleBooking,
+  getMyProfile, registerMember, BookingError,
   type BookingInput, type AdminBookingInput, type RegisterInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
@@ -283,13 +283,17 @@ export default {
       }
     }
 
-    // ── 後台改預約狀態：標記完成 / 取消 ─────────────────
-    // 跟代客預約同理，走 Worker 只為了那則 LINE：店家在後台按取消，
+    // ── 後台動既有預約：標記完成 / 取消 / 改時間 ────────
+    // 跟代客預約同理，走 Worker 只為了那則 LINE：店家在後台按取消或改時間，
     // 客人如果什麼都沒收到，人就白跑一趟了。
     const adminStatusMatch = path.match(
       /^\/api\/admin\/bookings\/([0-9a-f-]{36})\/status$/i,
     );
-    if (adminStatusMatch) {
+    const adminEditMatch = path.match(
+      /^\/api\/admin\/bookings\/([0-9a-f-]{36})\/reschedule$/i,
+    );
+    if (adminStatusMatch || adminEditMatch) {
+      const isEdit = Boolean(adminEditMatch);
       if (request.method !== "POST") {
         return json({ error: "Method not allowed" }, 405);
       }
@@ -297,15 +301,29 @@ export default {
         const store = await getStore(env);
         await verifyAdmin(env, request, store);
 
-        let input: { status?: string; reason?: string | null };
+        let input: {
+          status?: string;
+          reason?: string | null;
+          date?: string;
+          time?: string;
+          remark?: string | null;
+        };
         try {
           input = (await request.json()) as typeof input;
         } catch {
           return json({ error: "送出的內容格式不正確" }, 400);
         }
 
+        if (isEdit) {
+          const { booking, notify } = await adminRescheduleBooking(
+            env, store, adminEditMatch![1], input,
+          );
+          ctx.waitUntil(notifyBooking(env, store, notify, "change"));
+          return json({ booking });
+        }
+
         const { booking, notify } = await adminSetBookingStatus(
-          env, store, adminStatusMatch[1],
+          env, store, adminStatusMatch![1],
           (input.status ?? "").trim(),
           input.reason?.trim() || null,
         );
@@ -319,7 +337,7 @@ export default {
       } catch (err) {
         if (err instanceof BookingError) return json({ error: err.message }, err.status);
         if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
-        return errorResponse(err, "更改預約狀態失敗");
+        return errorResponse(err, isEdit ? "更改預約失敗" : "更改預約狀態失敗");
       }
     }
 
