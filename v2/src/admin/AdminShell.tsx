@@ -6,6 +6,7 @@ import MembersTab from "./MembersTab";
 import OperatingDaysTab from "./OperatingDaysTab";
 import AdminsTab from "./AdminsTab";
 import SettingsTab from "./SettingsTab";
+import InventoryTab from "./InventoryTab";
 
 // 報表帶著圖表套件，體積比其他分頁加起來還大，點進去才下載
 const ReportsTab = lazy(() => import("./ReportsTab"));
@@ -16,7 +17,7 @@ export interface Store {
   slug: string;
 }
 
-type TabKey = "bookings" | "members" | "days" | "reports" | "settings" | "admins";
+type TabKey = "bookings" | "members" | "days" | "reports" | "inventory" | "settings" | "admins";
 
 export default function AdminShell({ session, store }: { session: Session; store: Store }) {
   const [tab, setTab] = useState<TabKey>("bookings");
@@ -45,6 +46,7 @@ export default function AdminShell({ session, store }: { session: Session; store
     { key: "members", label: "👥 會員清單" },
     { key: "days", label: "📅 營業日設定" },
     { key: "reports", label: "📊 報表" },
+    { key: "inventory", label: "📦 庫存" },
     { key: "settings", label: "⚙️ 設定" },
     ...(isOwner ? [{ key: "admins" as TabKey, label: "🔑 權限管理" }] : []),
   ];
@@ -123,6 +125,7 @@ export default function AdminShell({ session, store }: { session: Session; store
           <ReportsTab store={store} />
         </Suspense>
       )}
+      {tab === "inventory" && <InventoryTab store={store} />}
       {tab === "settings" && <SettingsTab store={store} />}
       {tab === "admins" && isOwner && <AdminsTab store={store} myUserId={session.user.id} />}
     </div>

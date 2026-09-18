@@ -716,6 +716,11 @@ code.uid {
   box-shadow: none;
 }
 .chip .x { color: var(--muted); margin-left: 0.125rem; }
+/*
+ * 同一顆藥丸也拿來當篩選鈕（庫存的系列）。選中就填主色——
+ * 篩選是有「現在選哪個」的狀態的，時段藥丸沒有。
+ */
+.chip[aria-pressed="true"] { background: var(--rose); border-color: var(--rose); color: #fff; }
 .chip:active:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 
 button.danger { color: var(--danger); border-color: #f0c9d0; }
