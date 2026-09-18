@@ -62,3 +62,30 @@ export function itemComparator(order: string[]) {
     a.code.localeCompare(b.code, "zh-Hant") ||
     a.name.localeCompare(b.name, "zh-Hant");
 }
+
+export interface Batch {
+  id: string;
+  item_id: string;
+  expiry_date: string | null;
+  qty: number;
+  note: string;
+}
+
+export const BATCH_FIELDS = "id,item_id,expiry_date,qty,note";
+
+/** 快到期的定義：90 天內。沿用舊系統，盤點時看到黃色就知道要先出這一批 */
+export const EXPIRY_WARN_DAYS = 90;
+
+export function expiryLevel(date: string | null | undefined): "" | "warn" | "danger" {
+  if (!date) return "";
+  const days = (new Date(date + "T00:00:00").getTime() - Date.now()) / 86400000;
+  if (days < 0) return "danger";
+  if (days <= EXPIRY_WARN_DAYS) return "warn";
+  return "";
+}
+
+/** 今天，YYYY-MM-DD（用本地時間，不是 UTC——台灣早上八點前會差一天） */
+export function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

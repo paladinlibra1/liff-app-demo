@@ -793,6 +793,102 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 }
 .drag-handle:active { cursor: grabbing; }
 
+/* ── 後台：盤點作業 ─────────────────────────────────── */
+/*
+ * 盤點是站在櫃子前面單手拿手機做的，所以不管螢幕多窄，
+ * 「商品｜數量」都維持一行，展開的批次才換行佔滿整列。
+ */
+.arow.stock { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
+.arow.stock .c { margin: 0; }
+.arow.stock .c.grow { flex: 1 1 auto; min-width: 0; }
+.arow.stock .c.qty { flex: 0 0 auto; display: flex; align-items: center; gap: 0.5rem; }
+.arow.stock .expand { flex: 0 0 100%; }
+.arow.stock .caret { color: var(--muted); font-size: 0.75rem; }
+
+/* 總數量：一眼要看得到，過期或低於安全庫存直接用顏色講 */
+.qty-total {
+  display: inline-block; min-width: 2.5rem; padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem; background: var(--rose-tint);
+  font-size: 1.125rem; font-weight: 700; text-align: right;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.qty-total.low { background: #fdf3e2; color: #9a6b12; }
+.qty-total.bad { background: var(--danger-bg); color: var(--danger); }
+
+.badge.warn { background: #fdf3e2; color: #9a6b12; }
+.badge.bad  { background: var(--danger-bg); color: var(--danger); }
+
+/* 一個批次一塊：上排效期、下排帳面／實際／差異 */
+.batch {
+  background: var(--rose-tint); border-radius: 0.625rem;
+  padding: 0.625rem; margin-bottom: 0.5rem;
+}
+.batch-top { display: flex; align-items: center; gap: 0.5rem; }
+.batch-top input { flex: 1 1 auto; min-width: 0; }
+.batch-top .x { color: var(--danger); padding: 0.5rem 0.625rem; }
+.batch-qty { display: flex; align-items: center; gap: 0.625rem; margin-top: 0.5rem; }
+.batch-qty .book { color: var(--ink-soft); font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+
+/* 實際數量：唯讀欄位，點了叫九宮格鍵盤（做成按鈕，手指才知道可以點） */
+.qty-btn {
+  width: auto; margin: 0; padding: 0.5rem 0.875rem;
+  background: var(--card); color: var(--ink-soft);
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm);
+  font-size: 0.875rem; font-weight: 600; box-shadow: none;
+}
+.qty-btn b { font-size: 1.125rem; color: var(--ink); margin-left: 0.25rem; font-variant-numeric: tabular-nums; }
+
+.diff { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.diff.zero { color: var(--muted); }
+.diff.pos  { color: var(--ok); }
+.diff.neg  { color: var(--danger); }
+.diff.new  { color: var(--ink-soft); font-size: 0.8125rem; font-weight: 600; }
+
+/* 送出列黏在畫面底下，盤到一半不用捲回最上面 */
+.stock-bar {
+  position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; gap: 0.625rem;
+  max-width: 88rem; margin: 0 auto;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--card); border-top: 1px solid var(--line);
+  box-shadow: 0 -0.25rem 1rem rgba(0, 0, 0, .06);
+}
+.stock-bar .info { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; }
+.stock-bar .info .sub { display: block; font-size: 0.75rem; }
+.stock-bar input { width: auto; flex: 0 1 9.5rem; }
+
+/* ── 後台：數字鍵盤 ─────────────────────────────────── */
+.keypad-back {
+  position: fixed; z-index: 60; inset: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(0, 0, 0, .35);
+}
+.keypad {
+  width: 100%; max-width: 24rem;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: var(--card);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 -0.5rem 1.5rem rgba(0, 0, 0, .18);
+}
+.keypad-head {
+  display: flex; align-items: baseline; gap: 0.75rem;
+  padding-bottom: 0.75rem; margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.keypad-head .k-label { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); font-size: 0.875rem; }
+.keypad-head .k-value { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+/* 按鍵做大顆：單手數東西時手指不會準到哪裡去 */
+.keypad-grid .k {
+  margin: 0; padding: 0.875rem 0;
+  font-size: 1.375rem; font-weight: 650;
+  background: var(--rose-wash); color: var(--ink);
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.keypad-grid .k.ghost { background: var(--card); color: var(--ink-soft); font-size: 1.125rem; }
+
 .tag2 {
   display: inline-block; margin-left: 0.375rem; padding: 0.125rem 0.4375rem;
   border-radius: 62.4375rem; background: #f3eeef; color: var(--muted);
