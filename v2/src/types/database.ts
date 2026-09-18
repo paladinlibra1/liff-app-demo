@@ -561,6 +561,18 @@ export type Database = {
       }
       is_store_admin: { Args: { p_store_id: string }; Returns: boolean }
       is_store_owner: { Args: { p_store_id: string }; Returns: boolean }
+      deny_store_user: {
+        Args: { p_store_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      list_denied_users: {
+        Args: { p_store_id: string }
+        Returns: {
+          user_id: string
+          email: string
+          denied_at: string
+        }[]
+      }
       list_pending_users: {
         Args: { p_store_id: string }
         Returns: {
@@ -583,6 +595,10 @@ export type Database = {
         Returns: undefined
       }
       remove_store_admin: {
+        Args: { p_store_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      undeny_store_user: {
         Args: { p_store_id: string; p_user_id: string }
         Returns: undefined
       }

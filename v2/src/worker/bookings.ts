@@ -458,8 +458,28 @@ export async function createAdminBooking(
     if (!member) throw new BookingError("找不到這位會員", 404);
   }
 
-  const notify = member ? await resolveNotifyTarget(env, member) : null;
   const phone = normalizePhone(phoneRaw);
+
+  /*
+   * 沒挑會員就用電話對一次。
+   *
+   * 後台那個「會員」欄位是可不選的，店員忙起來多半直接打姓名電話就送出，
+   * 結果那筆預約跟客人的 LINE 毫無關聯——客人在「我的預約」裡看不到自己的單，
+   * 也收不到通知，還以為沒訂到。
+   *
+   * 只在「剛好一位會員用這支電話」時才接上：兩位以上代表號碼重複（家人共用），
+   * 猜錯會把單掛到別人名下，寧可不接。
+   */
+  if (!member && phone) {
+    const hits = await sb<Member[]>(
+      env,
+      `members?store_id=eq.${store.id}&phone=eq.${encodeURIComponent(phone)}` +
+        `&select=id,line_user_id,name,phone,birthday,guardian_id&limit=2`,
+    );
+    if (hits.length === 1) member = hits[0];
+  }
+
+  const notify = member ? await resolveNotifyTarget(env, member) : null;
 
   try {
     const rows = await sb<CreatedBooking[]>(

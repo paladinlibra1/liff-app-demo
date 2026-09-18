@@ -16,6 +16,13 @@ interface PendingRow {
   created_at: string;
 }
 
+/** 被移除或被忽略的人。記著才不會一直跳回待審核 */
+interface DeniedRow {
+  user_id: string;
+  email: string;
+  denied_at: string;
+}
+
 /**
  * 權限管理
  *
@@ -26,6 +33,8 @@ interface PendingRow {
 export default function AdminsTab({ store, myUserId }: { store: Store; myUserId: string }) {
   const [rows, setRows] = useState<AdminRow[] | null>(null);
   const [pending, setPending] = useState<PendingRow[] | null>(null);
+  const [denied, setDenied] = useState<DeniedRow[]>([]);
+  const [showDenied, setShowDenied] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,15 +44,17 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
 
   const load = useCallback(async () => {
     setErr("");
-    const [a, p] = await Promise.all([
+    const [a, p, d] = await Promise.all([
       supabase.rpc("list_store_admins", { p_store_id: store.id }),
       supabase.rpc("list_pending_users", { p_store_id: store.id }),
+      supabase.rpc("list_denied_users", { p_store_id: store.id }),
     ]);
     if (a.error) { setErr(a.error.message); return; }
     setRows((a.data ?? []) as AdminRow[]);
-    // 待審核只有負責人查得到；不是負責人本來就看不到這個分頁，
+    // 這兩份只有負責人查得到；不是負責人本來就看不到這個分頁，
     // 真的出錯也不該擋住上面的名單
     setPending(p.error ? [] : ((p.data ?? []) as PendingRow[]));
+    setDenied(d.error ? [] : ((d.data ?? []) as DeniedRow[]));
   }, [store.id]);
 
   useEffect(() => { void load(); }, [load]);
@@ -80,6 +91,30 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
     });
     if (error) setErr(error.message);
     else { setOk(`已通過 ${row.email}（${asRole === "owner" ? "負責人" : "店員"}）`); await load(); }
+    setBusy(null);
+  }
+
+  /** 忽略：不通過，而且以後不要再出現在待審核 */
+  async function deny(row: PendingRow) {
+    if (busy) return;                        // 防連點
+    setBusy(row.user_id); setErr(""); setOk("");
+    const { error } = await supabase.rpc("deny_store_user", {
+      p_store_id: store.id, p_user_id: row.user_id,
+    });
+    if (error) setErr(error.message);
+    else { setOk(`已忽略 ${row.email}，不會再出現在待審核`); await load(); }
+    setBusy(null);
+  }
+
+  /** 收回忽略，讓他回到待審核（按錯了要救得回來） */
+  async function undeny(row: DeniedRow) {
+    if (busy) return;
+    setBusy(row.user_id); setErr(""); setOk("");
+    const { error } = await supabase.rpc("undeny_store_user", {
+      p_store_id: store.id, p_user_id: row.user_id,
+    });
+    if (error) setErr(error.message);
+    else { setOk(`${row.email} 已放回待審核`); await load(); }
     setBusy(null);
   }
 
@@ -149,13 +184,19 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
                   >
                     👑 通過（負責人）
                   </button>
+                  <button
+                    className="slim outline danger" disabled={busy === r.user_id}
+                    onClick={() => deny(r)}
+                  >
+                    🚫 忽略
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
           <p className="hint">
-            不認識的人就別按——放著不管他就一直進不來。
+            不認識的人按「忽略」，他就不會再出現在這裡（也一樣進不了後台）。
             要徹底刪掉那個帳號要到 Supabase 的 Authentication → Users。
           </p>
         </div>
@@ -239,6 +280,43 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
             })}
           </div>
         </>
+      )}
+
+      {denied.length > 0 && (
+        <div className="panel">
+          <div className="panel-title">
+            🚫 已忽略（{denied.length}）
+            <button className="linkish" onClick={() => setShowDenied(!showDenied)}>
+              {showDenied ? "收合" : "展開"}
+            </button>
+          </div>
+          <p className="hint" style={{ marginTop: 0 }}>
+            被你移除或忽略的人。他們不會再出現在「等待通過」，也進不了後台。
+          </p>
+
+          {showDenied && (
+            <div className="rows">
+              {denied.map((r) => (
+                <div className="arow" key={r.user_id}>
+                  <div className="c who" data-label="信箱">
+                    <b style={{ wordBreak: "break-all" }}>{r.email}</b>
+                    <div className="sub" style={{ margin: "0.1875rem 0 0" }}>
+                      {new Date(r.denied_at).toLocaleString("zh-TW", { hour12: false })}
+                    </div>
+                  </div>
+                  <div className="c acts">
+                    <button
+                      className="slim outline" disabled={busy === r.user_id}
+                      onClick={() => undeny(r)}
+                    >
+                      ↩️ 放回待審核
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </>
   );
