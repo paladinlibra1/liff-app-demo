@@ -4,6 +4,7 @@ import type { Store } from "./AdminShell";
 import TrendChart, { type Bucket } from "./TrendChart";
 import Heatmap from "./Heatmap";
 import RateTrend, { type RatePoint } from "./RateTrend";
+import RetentionPanel, { type MemberRow } from "./RetentionPanel";
 
 /**
  * 報表
@@ -212,6 +213,9 @@ const pct = (n: number, d: number) => (d > 0 ? `${((n / d) * 100).toFixed(1)}%` 
 
 export default function ReportsTab({ store }: { store: Store }) {
   const [rows, setRows] = useState<Row[] | null>(null);
+  /** 客戶回訪要靠會員資料認人與算年齡 */
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [view, setView] = useState<"overview" | "retention">("overview");
   const [err, setErr] = useState("");
 
   const [period, setPeriod] = useState<Period>("week");
@@ -222,14 +226,20 @@ export default function ReportsTab({ store }: { store: Store }) {
   const load = useCallback(async () => {
     setErr("");
 
-    // 有設身分的會員：用 id、電話、姓名三種方式認，
-    // 沒接上會員的預約（手打的、舊資料）也擋得掉
-    const { data: staff, error: e1 } = await supabase
+    /*
+     * 會員清單整份撈回來：自己人（有設身分的）要拿來排除，
+     * 客戶回訪那邊還要靠它認人與算年齡。分兩次查等於同一份資料撈兩遍。
+     */
+    const { data: all_members, error: e1 } = await supabase
       .from("members")
-      .select("id,name,phone")
-      .eq("store_id", store.id)
-      .not("role", "is", null);
+      .select("id,name,phone,birthday,role")
+      .eq("store_id", store.id);
     if (e1) { setErr(e1.message); return; }
+    setMembers(all_members as MemberRow[]);
+
+    // 自己人：用 id、電話、姓名三種方式認，
+    // 沒接上會員的預約（手打的、舊資料）也擋得掉
+    const staff = all_members.filter((m) => m.role !== null);
 
     const all: Row[] = [];
     for (let from = 0; ; from += PAGE) {
@@ -320,6 +330,22 @@ export default function ReportsTab({ store }: { store: Store }) {
 
   return (
     <div>
+      <div className="tabs">
+        <button type="button" aria-pressed={view === "overview"} onClick={() => setView("overview")}>
+          📊 營運概況
+        </button>
+        <button type="button" aria-pressed={view === "retention"} onClick={() => setView("retention")}>
+          💗 客戶回訪
+        </button>
+      </div>
+
+      {view === "retention" && (
+        rows === null
+          ? <div className="panel"><div className="skeleton" style={{ height: "8rem" }} /></div>
+          : <RetentionPanel rows={rows} members={members} />
+      )}
+
+      {view === "overview" && <>
       <div className="panel">
         <div className="seg">
           {([["week", "週"], ["month", "月"], ["year", "年"]] as const).map(([k, label]) => (
@@ -416,6 +442,7 @@ export default function ReportsTab({ store }: { store: Store }) {
           <RateTrend points={stats.rates} />
         </div>
       )}
+      </>}
     </div>
   );
 }
