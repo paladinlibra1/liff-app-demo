@@ -564,9 +564,9 @@ export type Database = {
       list_pending_users: {
         Args: { p_store_id: string }
         Returns: {
-          user_id: string
-          email: string
           created_at: string
+          email: string
+          user_id: string
         }[]
       }
       list_store_admins: {
