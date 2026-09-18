@@ -34,9 +34,10 @@ if (!key.client_email || !key.private_key) {
 }
 
 const put = (name, value) => {
-  // shell: true 是 Windows 上跑 npx 必要的（npx 是 .cmd）
-  const r = spawnSync("npx", ["wrangler", "secret", "put", name], {
-    input: value, stdio: ["pipe", "inherit", "inherit"], shell: true,
+  // Windows 上 npx 是 .cmd，要指名；用 shell: true 會被 Node 警告參數沒跳脫
+  const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+  const r = spawnSync(npx, ["wrangler", "secret", "put", name], {
+    input: value, stdio: ["pipe", "inherit", "inherit"],
   });
   if (r.status !== 0) {
     console.error(`設定 ${name} 失敗`);
