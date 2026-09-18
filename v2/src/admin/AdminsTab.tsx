@@ -9,6 +9,13 @@ interface AdminRow {
   created_at: string;
 }
 
+/** 已經註冊、但還不在這家店名單裡的人 */
+interface PendingRow {
+  user_id: string;
+  email: string;
+  created_at: string;
+}
+
 /**
  * 權限管理
  *
@@ -18,6 +25,7 @@ interface AdminRow {
  */
 export default function AdminsTab({ store, myUserId }: { store: Store; myUserId: string }) {
   const [rows, setRows] = useState<AdminRow[] | null>(null);
+  const [pending, setPending] = useState<PendingRow[] | null>(null);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -27,9 +35,15 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
 
   const load = useCallback(async () => {
     setErr("");
-    const { data, error } = await supabase.rpc("list_store_admins", { p_store_id: store.id });
-    if (error) setErr(error.message);
-    else setRows((data ?? []) as AdminRow[]);
+    const [a, p] = await Promise.all([
+      supabase.rpc("list_store_admins", { p_store_id: store.id }),
+      supabase.rpc("list_pending_users", { p_store_id: store.id }),
+    ]);
+    if (a.error) { setErr(a.error.message); return; }
+    setRows((a.data ?? []) as AdminRow[]);
+    // 待審核只有負責人查得到；不是負責人本來就看不到這個分頁，
+    // 真的出錯也不該擋住上面的名單
+    setPending(p.error ? [] : ((p.data ?? []) as PendingRow[]));
   }, [store.id]);
 
   useEffect(() => { void load(); }, [load]);
@@ -52,6 +66,20 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
       setEmail("");
       await load();
     }
+    setBusy(null);
+  }
+
+  /** 通過待審核的人。底層跟手動加人是同一支函式，只是信箱不用自己打 */
+  async function approve(row: PendingRow, asRole: string) {
+    if (busy) return;                        // 防連點
+    setBusy(row.user_id); setErr(""); setOk("");
+    const { error } = await supabase.rpc("add_store_admin", {
+      p_store_id: store.id,
+      p_email: row.email,
+      p_role: asRole,
+    });
+    if (error) setErr(error.message);
+    else { setOk(`已通過 ${row.email}（${asRole === "owner" ? "負責人" : "店員"}）`); await load(); }
     setBusy(null);
   }
 
@@ -91,8 +119,50 @@ export default function AdminsTab({ store, myUserId }: { store: Store; myUserId:
 
   return (
     <>
+      {pending && pending.length > 0 && (
+        <div className="panel">
+          <div className="panel-title">🔔 等待通過（{pending.length}）</div>
+          <p className="sub" style={{ marginBottom: 14 }}>
+            這些人已經註冊過了，但還沒被加入名單，所以進來只會看到「帳號尚未授權」。
+            確認是你認識的人再按通過。
+          </p>
+
+          <div className="rows">
+            {pending.map((r) => (
+              <div className="arow" key={r.user_id}>
+                <div className="c who" data-label="信箱">
+                  <b style={{ wordBreak: "break-all" }}>{r.email}</b>
+                  <div className="sub" style={{ margin: "0.1875rem 0 0" }}>
+                    註冊於 {new Date(r.created_at).toLocaleString("zh-TW", { hour12: false })}
+                  </div>
+                </div>
+                <div className="c acts">
+                  <button
+                    className="slim" disabled={busy === r.user_id}
+                    onClick={() => approve(r, "staff")}
+                  >
+                    {busy === r.user_id ? "⏳ 處理中…" : "✅ 通過（店員）"}
+                  </button>
+                  <button
+                    className="slim outline" disabled={busy === r.user_id}
+                    onClick={() => approve(r, "owner")}
+                  >
+                    👑 通過（負責人）
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="hint">
+            不認識的人就別按——放著不管他就一直進不來。
+            要徹底刪掉那個帳號要到 Supabase 的 Authentication → Users。
+          </p>
+        </div>
+      )}
+
       <div className="panel">
-        <div className="panel-title">加入管理員</div>
+        <div className="panel-title">手動加入（對方註冊過就會自己出現在上面，通常用不到）</div>
         <p className="sub" style={{ marginBottom: 14 }}>
           對方要<b>先自己到這個後台網址註冊一次</b>，你才加得進來——
           這裡不會幫別人建帳號，密碼只能由本人設定。

@@ -43,6 +43,7 @@ export type Database = {
         Row: {
           booked_by: string
           booker_line_user_id: string | null
+          calendar_event_id: string | null
           cancel_reason: string | null
           cancelled_at: string | null
           created_at: string
@@ -65,6 +66,7 @@ export type Database = {
         Insert: {
           booked_by?: string
           booker_line_user_id?: string | null
+          calendar_event_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
@@ -87,6 +89,7 @@ export type Database = {
         Update: {
           booked_by?: string
           booker_line_user_id?: string | null
+          calendar_event_id?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
@@ -558,6 +561,14 @@ export type Database = {
       }
       is_store_admin: { Args: { p_store_id: string }; Returns: boolean }
       is_store_owner: { Args: { p_store_id: string }; Returns: boolean }
+      list_pending_users: {
+        Args: { p_store_id: string }
+        Returns: {
+          user_id: string
+          email: string
+          created_at: string
+        }[]
+      }
       list_store_admins: {
         Args: { p_store_id: string }
         Returns: {
