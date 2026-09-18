@@ -372,6 +372,51 @@ export type Database = {
           },
         ]
       }
+      member_followups: {
+        Row: {
+          excluded: boolean
+          last_sent_at: string | null
+          member_id: string
+          note: string
+          sent_count: number
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          excluded?: boolean
+          last_sent_at?: string | null
+          member_id: string
+          note?: string
+          sent_count?: number
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          excluded?: boolean
+          last_sent_at?: string | null
+          member_id?: string
+          note?: string
+          sent_count?: number
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_followups_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_followups_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operating_days: {
         Row: {
           blocked_times: string[]
@@ -434,6 +479,7 @@ export type Database = {
         Row: {
           business_hours: Json
           created_at: string
+          dormant_message: string
           id: string
           line_group_id: string | null
           name: string
@@ -456,6 +502,7 @@ export type Database = {
         Insert: {
           business_hours?: Json
           created_at?: string
+          dormant_message?: string
           id?: string
           line_group_id?: string | null
           name: string
@@ -478,6 +525,7 @@ export type Database = {
         Update: {
           business_hours?: Json
           created_at?: string
+          dormant_message?: string
           id?: string
           line_group_id?: string | null
           name?: string
@@ -521,6 +569,10 @@ export type Database = {
       }
       remove_store_admin: {
         Args: { p_store_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      record_followup: {
+        Args: { p_member_id: string; p_store_id: string }
         Returns: undefined
       }
       submit_stocktake: {

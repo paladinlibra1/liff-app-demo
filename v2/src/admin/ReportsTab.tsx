@@ -342,7 +342,7 @@ export default function ReportsTab({ store }: { store: Store }) {
       {view === "retention" && (
         rows === null
           ? <div className="panel"><div className="skeleton" style={{ height: "8rem" }} /></div>
-          : <RetentionPanel rows={rows} members={members} />
+          : <RetentionPanel store={store} rows={rows} members={members} />
       )}
 
       {view === "overview" && <>

@@ -20,6 +20,7 @@ import {
   type BookingInput, type AdminBookingInput, type RegisterInput,
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
+import { sendFollowUps, FollowUpError } from "./followups";
 import { listMyBookings, cancelMyBooking, rescheduleMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
 import { handleLineWebhook } from "./lineWebhook";
@@ -280,6 +281,39 @@ export default {
         if (err instanceof BookingError) return json({ error: err.message }, err.status);
         if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
         return errorResponse(err, "建立預約失敗");
+      }
+    }
+
+    // ── 後台發沉睡客關懷訊息 ────────────────────────────
+    // 一樣是為了那則 LINE 才走 Worker。名單是前端算的，但「發給誰」
+    // 由這裡再查一次會員決定，不照單全收。
+    if (path === "/api/admin/followups/send") {
+      if (request.method !== "POST") {
+        return json({ error: "Method not allowed" }, 405);
+      }
+      try {
+        const store = await getStore(env);
+        await verifyAdmin(env, request, store);
+
+        let input: { member_ids?: unknown };
+        try {
+          input = (await request.json()) as typeof input;
+        } catch {
+          return json({ error: "送出的內容格式不正確" }, 400);
+        }
+        const ids = Array.isArray(input.member_ids)
+          ? input.member_ids.filter((x): x is string => typeof x === "string")
+          : [];
+
+        /*
+         * 這一支刻意「等它送完」才回應，跟預約通知的 waitUntil 不一樣：
+         * 店家按下去就是為了發訊息，要當場知道誰成功誰失敗。
+         */
+        return json(await sendFollowUps(env, store, ids));
+      } catch (err) {
+        if (err instanceof FollowUpError) return json({ error: err.message }, err.status);
+        if (err instanceof AdminAuthError) return json({ error: err.message }, err.status);
+        return errorResponse(err, "發送關懷訊息失敗");
       }
     }
 

@@ -214,3 +214,15 @@ export async function notifyReminder(env: Env, b: NotifyBooking): Promise<boolea
     link: env.LIFF_MY_URL || "",
   }));
 }
+
+/**
+ * 純文字訊息。
+ *
+ * 沉睡客關懷用的是店家自己寫的一段話，不是系統通知，
+ * 所以不套 Flex 卡片——那個版型是給「你有一筆預約」這種結構化訊息的。
+ *
+ * 回傳有沒有送出去：呼叫端要靠它決定該不該記成「已發送」。
+ */
+export async function pushText(env: Env, to: string, text: string): Promise<boolean> {
+  return push(env, to, { type: "text", text: text.slice(0, 4900) });
+}
