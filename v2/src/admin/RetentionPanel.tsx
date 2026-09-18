@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -28,7 +28,12 @@ export interface MemberRow {
   phone: string;
   birthday: string | null;
   role: string | null;
+  /** 沒綁 LINE 就發不了訊息，名單上要標出來 */
+  line_user_id: string | null;
 }
+
+/** 幾天沒來就算沉睡客。沿用舊系統 */
+const DORMANT_DAYS = 90;
 
 /** 年齡級距，每 5 歲一級 */
 const BAND = 5;
@@ -55,6 +60,11 @@ export default function RetentionPanel({
   rows: VisitRow[];
   members: MemberRow[];
 }) {
+  /** 兩份名單共用同一塊，用按鈕切換——分開放的話報表會拉得很長 */
+  const [list, setList] = useState<"dormant" | "never">("dormant");
+  /** 沒綁 LINE 的人發不了訊息，預設收起來，但要留一個看得見的入口 */
+  const [showNoLine, setShowNoLine] = useState(false);
+
   const data = useMemo(() => {
     const byPhone = new Map<string, MemberRow>();
     for (const m of members) {
@@ -115,7 +125,36 @@ export default function RetentionPanel({
       }
     }
 
-    return { total: all.length, fresh, returning, frequent, chart, missing, odd, known: all.length - missing - odd };
+    /*
+     * 😴 沉睡客：最近一次到店超過 DORMANT_DAYS 天。
+     * 久的排前面——越久沒來越該先關心。
+     */
+    const today = new Date();
+    const dormant = all
+      .filter((p) => p.last)
+      .map((p) => ({
+        ...p,
+        days: Math.round((today.getTime() - new Date(p.last + "T00:00:00").getTime()) / 86400000),
+      }))
+      .filter((p) => p.days > DORMANT_DAYS)
+      .sort((a, b) => b.days - a.days);
+
+    /*
+     * 🆕 已加會員但從未預約：會員清單裡找不到任何預約的人。
+     * 只列身分是「客人」的（店家／助理／夥伴不算），姓名含「卡」的也不算
+     * ——那是舊系統留下來的儲值卡紀錄，不是人。
+     */
+    const bookedIds = new Set(all.map((p) => p.member?.id).filter(Boolean));
+    const bookedPhones = new Set(rows.map((r) => digits(r.phone)).filter(Boolean));
+    const never = members
+      .filter((m) => !m.role && !m.name.includes("卡"))
+      .filter((m) => !bookedIds.has(m.id) && !bookedPhones.has(digits(m.phone)))
+      .sort((a, b) => a.name.localeCompare(b.name, "zh-Hant"));
+
+    return {
+      total: all.length, fresh, returning, frequent, chart, missing, odd,
+      known: all.length - missing - odd, dormant, never,
+    };
   }, [rows, members]);
 
   return (
@@ -173,6 +212,99 @@ export default function RetentionPanel({
           </div>
         )}
       </div>
+
+      <FollowUpLists
+        list={list} setList={setList}
+        showNoLine={showNoLine} setShowNoLine={setShowNoLine}
+        dormant={data.dormant} never={data.never}
+      />
     </>
+  );
+}
+
+/** 沉睡客／從未預約兩份名單 */
+function FollowUpLists({
+  list, setList, showNoLine, setShowNoLine, dormant, never,
+}: {
+  list: "dormant" | "never";
+  setList: (v: "dormant" | "never") => void;
+  showNoLine: boolean;
+  setShowNoLine: (v: boolean) => void;
+  dormant: { key: string; name: string; count: number; last: string; days: number; member: MemberRow | null }[];
+  never: MemberRow[];
+}) {
+  const isDormant = list === "dormant";
+  const noLineOf = (m: MemberRow | null) => !m?.line_user_id;
+
+  const shownDormant = dormant.filter((p) => showNoLine || !noLineOf(p.member));
+  const shownNever = never.filter((m) => showNoLine || !noLineOf(m));
+  const count = isDormant ? shownDormant.length : shownNever.length;
+  const noLineCount = isDormant
+    ? dormant.filter((p) => noLineOf(p.member)).length
+    : never.filter((m) => noLineOf(m)).length;
+
+  return (
+    <div className="panel">
+      <div className="seg" style={{ marginBottom: "0.875rem" }}>
+        <button type="button" aria-pressed={isDormant} onClick={() => setList("dormant")}>
+          😴 沉睡客
+        </button>
+        <button type="button" aria-pressed={!isDormant} onClick={() => setList("never")}>
+          🆕 從未預約
+        </button>
+      </div>
+
+      <div className="panel-title" style={{ margin: 0 }}>
+        {isDormant
+          ? `😴 沉睡客名單（最近一次到店超過 ${DORMANT_DAYS} 天）`
+          : "🆕 已加會員但從未預約（只列身分為客人）"}
+      </div>
+      <p className="hint">
+        共 {count} 位
+        {noLineCount > 0 && (
+          <>
+            {" "}·{" "}💬 {noLineCount} 位沒綁 LINE
+            <button
+              className="linkish" onClick={() => setShowNoLine(!showNoLine)}
+            >
+              {showNoLine ? "隱藏" : "顯示"}
+            </button>
+          </>
+        )}
+      </p>
+
+      {count === 0 ? (
+        <p className="hint">{isDormant ? "目前沒有沉睡客。" : "沒有從未預約的會員。"}</p>
+      ) : (
+        <div className="rows" style={{ marginTop: "0.625rem" }}>
+          {isDormant
+            ? shownDormant.map((p) => (
+              <div className="arow stock" key={p.key}>
+                <div className="c grow">
+                  <b>{p.name || "（沒有姓名）"}</b>
+                  {noLineOf(p.member)
+                    ? <span className="badge old">沒綁 LINE</span>
+                    : <span className="tag2 line">LINE</span>}
+                  <div className="sub" style={{ marginTop: "0.1875rem" }}>
+                    上次到店 {p.last}（{p.days} 天前）· 累計 {p.count} 次
+                    {p.member?.phone && ` · ${p.member.phone}`}
+                  </div>
+                </div>
+              </div>
+            ))
+            : shownNever.map((m) => (
+              <div className="arow stock" key={m.id}>
+                <div className="c grow">
+                  <b>{m.name}</b>
+                  {noLineOf(m)
+                    ? <span className="badge old">沒綁 LINE</span>
+                    : <span className="tag2 line">LINE</span>}
+                  <div className="sub" style={{ marginTop: "0.1875rem" }}>{m.phone}</div>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
   );
 }

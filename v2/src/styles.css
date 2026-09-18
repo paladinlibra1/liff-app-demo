@@ -1174,3 +1174,11 @@ button.logout .ico {
 .snap-row .qt { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 .snap-row .qt.zero { color: var(--muted); }
 .snap-row .diff { margin-left: 0; min-width: 2.5rem; text-align: right; }
+
+/* 內文裡的小連結按鈕（名單的「顯示／隱藏沒綁 LINE 的人」） */
+button.linkish {
+  width: auto; margin: 0 0 0 0.25rem; padding: 0;
+  background: none; border: none; box-shadow: none;
+  color: var(--rose-deep); font-size: inherit; font-weight: 650;
+  text-decoration: underline;
+}

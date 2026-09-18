@@ -232,7 +232,7 @@ export default function ReportsTab({ store }: { store: Store }) {
      */
     const { data: all_members, error: e1 } = await supabase
       .from("members")
-      .select("id,name,phone,birthday,role")
+      .select("id,name,phone,birthday,role,line_user_id")
       .eq("store_id", store.id);
     if (e1) { setErr(e1.message); return; }
     setMembers(all_members as MemberRow[]);
