@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import QtyKeypad from "./QtyKeypad";
+import InventoryAlerts from "./InventoryAlerts";
 import {
   BATCH_FIELDS, ITEM_FIELDS, ITEM_TYPES, UNCATEGORIZED,
   expiryLevel, itemComparator, seriesNames, todayStr,
@@ -59,6 +60,8 @@ export default function InventoryStocktake({ store }: { store: Store }) {
   const [date, setDate] = useState(todayStr());
 
   const [items, setItems] = useState<Item[] | null>(null);
+  /** 資料庫裡目前的批次。草稿是拿它建的，提醒那一塊也直接看它 */
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [series, setSeries] = useState<Series[]>([]);
   const [draft, setDraft] = useState<Draft>({});
   const [openId, setOpenId] = useState<string | null>(null);
@@ -80,9 +83,11 @@ export default function InventoryStocktake({ store }: { store: Store }) {
       return;
     }
     const list = i.data as Item[];
+    const rows = b.data as Batch[];
     setItems(list);
+    setBatches(rows);
     setSeries(s.data as Series[]);
-    setDraft(buildDraft(list, b.data as Batch[]));
+    setDraft(buildDraft(list, rows));
     setOpenId(null);
   }, [store.id]);
 
@@ -181,6 +186,8 @@ export default function InventoryStocktake({ store }: { store: Store }) {
 
   return (
     <>
+      {items && <InventoryAlerts items={items} batches={batches} />}
+
       <div className="panel">
         <label>類型</label>
         <div className="seg">

@@ -1142,3 +1142,35 @@ button.logout .ico {
   fill: none; stroke: currentColor; stroke-width: 2;
   stroke-linecap: round; stroke-linejoin: round;
 }
+
+/* ── 後台：庫存提醒與盤點快照 ───────────────────────── */
+/*
+ * 提醒平常只佔一行，展開才列清單——一進盤點作業就被十幾行警告擋住，
+ * 反而會讓人直接忽略它。
+ */
+.alerts { padding: 0.5rem 0.75rem; }
+.alerts .head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.625rem;
+  width: 100%; padding: 0.5rem 0.25rem; text-align: left;
+  color: var(--ink); font-weight: 650;
+}
+.alerts .head .caret { color: var(--muted); font-size: 0.75rem; }
+.alert-body { padding: 0.25rem 0.25rem 0.5rem; }
+.alert-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.625rem;
+  padding: 0.4375rem 0; border-top: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+
+/* 盤點紀錄的明細表。手機上欄位一樣排一行，數字靠右對齊才好比對 */
+.snap { display: flex; flex-direction: column; }
+.snap-row {
+  display: flex; align-items: center; gap: 0.625rem;
+  padding: 0.4375rem 0; border-top: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.snap-row .nm { flex: 1 1 auto; min-width: 0; }
+.snap-row .ex { color: var(--muted); font-size: 0.8125rem; }
+.snap-row .qt { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.snap-row .qt.zero { color: var(--muted); }
+.snap-row .diff { margin-left: 0; min-width: 2.5rem; text-align: right; }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Store } from "./AdminShell";
 import InventoryItems from "./InventoryItems";
 import InventoryStocktake from "./InventoryStocktake";
+import InventoryHistory from "./InventoryHistory";
 
 /*
  * 庫存盤點。舊系統是另一個網頁（inventory.html），從後台用連結跳過去；
@@ -9,11 +10,12 @@ import InventoryStocktake from "./InventoryStocktake";
  *
  * 子分頁的順序照實際做事的順序：平常開的是盤點作業，商品管理是偶爾才進去的。
  */
-type SubKey = "stocktake" | "items";
+type SubKey = "stocktake" | "items" | "history";
 
 const SUBS: { key: SubKey; label: string }[] = [
   { key: "stocktake", label: "📋 盤點作業" },
   { key: "items", label: "🏷️ 商品管理" },
+  { key: "history", label: "🕘 盤點歷史" },
 ];
 
 export default function InventoryTab({ store }: { store: Store }) {
@@ -33,6 +35,7 @@ export default function InventoryTab({ store }: { store: Store }) {
 
       {sub === "stocktake" && <InventoryStocktake store={store} />}
       {sub === "items" && <InventoryItems store={store} />}
+      {sub === "history" && <InventoryHistory store={store} />}
     </>
   );
 }
