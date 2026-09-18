@@ -21,6 +21,7 @@ import {
 } from "./bookings";
 import { verifyAdmin, AdminAuthError } from "./adminAuth";
 import { sendFollowUps, FollowUpError } from "./followups";
+import { syncCalendar } from "./calendar";
 import { listMyBookings, cancelMyBooking, rescheduleMyBooking } from "./myBookings";
 import { notifyBooking } from "./linePush";
 import { handleLineWebhook } from "./lineWebhook";
@@ -48,6 +49,15 @@ export interface Env {
   SUPABASE_URL: string;
   /** sb_secret_... 繞過 RLS，只存在於 Worker secret，絕不外流 */
   SUPABASE_SECRET_KEY: string;
+  /*
+   * Google 日曆同步。三個都要設才會動，少一個就整個跳過——
+   * 沒設定不是錯誤狀態，是「這家店不同步日曆」。
+   */
+  GOOGLE_SA_EMAIL?: string;
+  /** 服務帳戶金鑰的 PEM 全文 */
+  GOOGLE_SA_PRIVATE_KEY?: string;
+  /** 要寫進哪個日曆，而且那本日曆要分享給上面那個服務帳戶信箱 */
+  GOOGLE_CALENDAR_ID?: string;
 }
 
 function json(data: unknown, status = 200): Response {
@@ -205,6 +215,7 @@ export default {
           notifyLineUserId: booking.notify_line_user_id,
           lineName: profile.displayName,
         }, "new"));
+        ctx.waitUntil(syncCalendar(env, store, booking.id, "new"));
 
         return json({ booking }, 201);
       } catch (err) {
@@ -275,6 +286,7 @@ export default {
           remark: booking.remark,
           notifyLineUserId: booking.notify_line_user_id,
         }, "new"));
+        ctx.waitUntil(syncCalendar(env, store, booking.id, "new"));
 
         return json({ booking }, 201);
       } catch (err) {
@@ -353,6 +365,7 @@ export default {
             env, store, adminEditMatch![1], input,
           );
           ctx.waitUntil(notifyBooking(env, store, notify, "change"));
+          ctx.waitUntil(syncCalendar(env, store, booking.id, "change"));
           return json({ booking });
         }
 
@@ -366,6 +379,10 @@ export default {
         if (booking.status === "cancelled") {
           ctx.waitUntil(notifyBooking(env, store, notify, "cancel"));
         }
+        // 標記完成也要同步：日曆上的顏色與備註是照預約當下的資料畫的
+        ctx.waitUntil(syncCalendar(
+          env, store, booking.id, booking.status === "cancelled" ? "cancel" : "change",
+        ));
 
         return json({ booking });
       } catch (err) {
@@ -417,6 +434,7 @@ export default {
           ctx.waitUntil(notifyBooking(
             env, store, { ...notify, lineName: profile.displayName }, "change",
           ));
+          ctx.waitUntil(syncCalendar(env, store, booking.id, "change"));
 
           return json({ booking });
         }
@@ -435,6 +453,7 @@ export default {
         ctx.waitUntil(notifyBooking(
           env, store, { ...notify, lineName: profile.displayName }, "cancel",
         ));
+        ctx.waitUntil(syncCalendar(env, store, booking.id, "cancel"));
 
         return json({ booking });
       } catch (err) {

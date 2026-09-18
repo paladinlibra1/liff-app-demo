@@ -12,6 +12,9 @@ supabase/.branches/
 # Cloudflare
 .dev.vars
 .wrangler/
+# 服務帳戶金鑰（Google 日曆同步），只在本機用來灌 secret
+*.secrets.json
+gcp-*.json
 
 node_modules/
 dist/
