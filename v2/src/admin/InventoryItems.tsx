@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
+import InventorySeries from "./InventorySeries";
 import {
   ITEM_FIELDS, ITEM_TYPES, UNCATEGORIZED,
   itemComparator, seriesNames,
@@ -22,6 +23,8 @@ export default function InventoryItems({ store }: { store: Store }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [series, setSeries] = useState<Series[]>([]);
   const [err, setErr] = useState("");
+  /** 排序模式：整個清單換成可拖曳的系列與商品順序 */
+  const [sortMode, setSortMode] = useState(false);
 
   /** 目前展開的商品 id；"new" 代表正在新增 */
   const [openId, setOpenId] = useState<string | null>(null);
@@ -176,6 +179,8 @@ export default function InventoryItems({ store }: { store: Store }) {
           ))}
         </div>
 
+        {!sortMode && (
+        <>
         <label style={{ marginTop: "0.875rem" }}>系列</label>
         <div className="chips" style={{ marginTop: 0 }}>
           <button
@@ -202,10 +207,27 @@ export default function InventoryItems({ store }: { store: Store }) {
           )}
         </div>
 
-        <button className="slim" style={{ marginTop: "0.875rem" }} onClick={startAdd}>
-          ➕ 新增商品
-        </button>
+        </>
+        )}
+
+        <div className="bk-acts" style={{ marginTop: "0.875rem" }}>
+          {!sortMode && <button className="slim" onClick={startAdd}>➕ 新增商品</button>}
+          <button
+            className={sortMode ? "slim" : "slim outline"}
+            onClick={() => { setSortMode(!sortMode); closeEdit(); }}
+          >
+            {sortMode ? "✓ 完成編輯" : "🏷️ 系列與排序"}
+          </button>
+        </div>
       </div>
+
+      {sortMode && items && (
+        <InventorySeries
+          store={store} type={type} series={series} items={items} reload={load}
+        />
+      )}
+
+      {!sortMode && <>
 
       {err && <div className="msg err">{err}</div>}
 
@@ -288,6 +310,8 @@ export default function InventoryItems({ store }: { store: Store }) {
           })}
         </div>
       )}
+
+      </>}
     </>
   );
 }
