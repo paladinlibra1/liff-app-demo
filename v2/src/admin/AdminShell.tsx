@@ -19,7 +19,11 @@ export interface Store {
 
 type TabKey = "bookings" | "members" | "days" | "reports" | "inventory" | "settings" | "admins";
 
-export default function AdminShell({ session, store }: { session: Session; store: Store }) {
+export default function AdminShell({ session, store, onRename }: {
+  session: Session;
+  store: Store;
+  onRename?: (name: string) => void;
+}) {
   const [tab, setTab] = useState<TabKey>("bookings");
   const [role, setRole] = useState<string | null>(null);
   /** 手機版的漢堡選單開著沒。桌面版不會用到這個狀態 */
@@ -126,7 +130,7 @@ export default function AdminShell({ session, store }: { session: Session; store
         </Suspense>
       )}
       {tab === "inventory" && <InventoryTab store={store} />}
-      {tab === "settings" && <SettingsTab store={store} />}
+      {tab === "settings" && <SettingsTab store={store} onRename={onRename} />}
       {tab === "admins" && isOwner && <AdminsTab store={store} myUserId={session.user.id} />}
     </div>
   );

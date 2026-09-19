@@ -74,7 +74,13 @@ export default function AdminApp() {
 
   if (!store) return <NotAuthorized session={session} />;
 
-  return <AdminShell session={session} store={store} />;
+  return (
+    <AdminShell
+      session={session}
+      store={store}
+      onRename={(name) => setStore((s) => (s ? { ...s, name } : s))}
+    />
+  );
 }
 
 /** 帳號建立了但還沒被加進任何店的名單 */
