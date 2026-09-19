@@ -91,7 +91,15 @@ function dayCount(from: string, to: string): number {
 function errorResponse(err: unknown, fallback: string): Response {
   if (err instanceof SupabaseError) {
     console.error(fallback, err.message);
-    // 資料庫的錯誤訊息可能含 schema 細節，不往外送
+    /*
+     * 4xx 是我們自己丟、而且講得出原因的錯（例如網址上的店名不存在），
+     * 那種訊息可以往外送，不然使用者只會看到「讀取店家設定失敗」，
+     * 完全不知道是網址打錯。
+     * 5xx 是資料庫本身的錯，訊息可能含 schema 細節，只留在 log。
+     */
+    if (err.status >= 400 && err.status < 500) {
+      return json({ error: err.message }, err.status);
+    }
     return json({ error: fallback }, 500);
   }
   console.error(fallback, err);
