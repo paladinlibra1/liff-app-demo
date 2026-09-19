@@ -30,12 +30,18 @@ export interface EditableBooking {
 }
 
 export default function EditBookingForm({
-  booking, onSaved, onClose,
+  booking, onSaved, onClose, onCancelBooking,
 }: {
   store: Store;
   booking: EditableBooking;
   onSaved: () => void | Promise<void>;
   onClose: () => void;
+  /**
+   * 「❌ 取消預約」。在日曆檢視點客人只會開這張表單，
+   * 沒有這顆按鈕就等於要取消還得先切回清單。
+   * 真正的取消動作在 BookingsTab（要走 Worker 才發得出 LINE）。
+   */
+  onCancelBooking?: () => void | Promise<void>;
 }) {
   const originalTime = booking.start_time.slice(0, 5);
 
@@ -192,7 +198,16 @@ export default function EditBookingForm({
       {err && <div className="msg err">{err}</div>}
 
       <button disabled={busy} onClick={save}>{busy ? "⏳ 儲存中…" : "✅ 儲存更改"}</button>
-      <button className="ghost" onClick={onClose}>↩️ 取消</button>
+
+      {onCancelBooking && (
+        <button className="outline danger" disabled={busy} onClick={() => void onCancelBooking()}
+          style={{ marginTop: "0.5rem" }}>
+          ❌ 取消這筆預約
+        </button>
+      )}
+
+      {/* 「取消」兩個字在這張表單上會被當成取消預約，所以改成「不改了」 */}
+      <button className="ghost" disabled={busy} onClick={onClose}>↩️ 不改了</button>
 
       <p className="hint">
         存檔後，有綁 LINE 的客人會收到一張「預約已更改」的卡片，上面是新的時間
