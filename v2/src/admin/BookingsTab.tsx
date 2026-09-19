@@ -298,10 +298,13 @@ export default function BookingsTab({ store }: { store: Store }) {
                           onClick={() => setStatus(r, "completed")}>
                           ✅ 完成
                         </button>
-                        <button className="slim outline danger" disabled={busy === r.id}
-                          onClick={() => setStatus(r, "cancelled")}>
-                          ❌ 取消
-                        </button>
+                        {/* 過去的預約不刪除（老闆定的規則），Worker 也擋著 */}
+                        {r.date >= today && (
+                          <button className="slim outline danger" disabled={busy === r.id}
+                            onClick={() => setStatus(r, "cancelled")}>
+                            ❌ 取消
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

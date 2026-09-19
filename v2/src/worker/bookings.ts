@@ -554,6 +554,17 @@ export async function adminSetBookingStatus(
     );
   }
 
+  /*
+   * 過去的預約不刪除——老闆定的規則：那是已經發生的事，紀錄要留著
+   * （報表、客人回訪都靠它）。前台也會把按鈕藏起來，這裡是真正的把關。
+   *
+   * 只擋整個過去的日子。當天的單還是刪得掉：客人沒來、臨時取消，
+   * 都是店員當天在處理的事。
+   */
+  if (status === "cancelled" && booking.date < todayInStore(store)) {
+    throw new BookingError("過去的預約不能刪除，紀錄要保留。", 409);
+  }
+
   const patch: Record<string, unknown> = { status };
   if (status === "cancelled") {
     patch.cancelled_at = new Date().toISOString();

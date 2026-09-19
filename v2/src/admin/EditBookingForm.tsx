@@ -30,6 +30,11 @@ export interface EditableBooking {
   remark: string | null;
 }
 
+/** 今天（Asia/Taipei）。過去的單不給刪，要靠這個判斷 */
+function todayStr(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei" }).format(new Date());
+}
+
 export default function EditBookingForm({
   booking, onSaved, onClose, onCancelBooking,
 }: {
@@ -46,6 +51,12 @@ export default function EditBookingForm({
   onCancelBooking?: () => Promise<StatusResult>;
 }) {
   const originalTime = booking.start_time.slice(0, 5);
+  /*
+   * 過去的預約不刪除（老闆定的規則）：已經發生的事，紀錄要留著。
+   * 只看日期，當天的單還是刪得掉——客人沒來是店員當天在處理的事。
+   * Worker 也擋著，這裡藏按鈕只是不要讓店員白按一次。
+   */
+  const isPast = booking.date < todayStr();
 
   const [date, setDate] = useState(booking.date);
   const [time, setTime] = useState(originalTime);
@@ -219,12 +230,16 @@ export default function EditBookingForm({
           {busy ? "⏳ 儲存中…" : "✅ 儲存更改"}
         </button>
         <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 取消修改</button>
-        {onCancelBooking && (
+        {onCancelBooking && !isPast && (
           <button className="slim outline danger" disabled={busy} onClick={() => void removeBooking()}>
             🗑️ 刪除預約
           </button>
         )}
       </div>
+
+      {isPast && (
+        <p className="hint">過去的預約不能刪除，紀錄要保留；要改時間還是可以。</p>
+      )}
 
       <p className="hint">
         存檔後，有綁 LINE 的客人會收到一張「預約已更改」的卡片，上面是新的時間
