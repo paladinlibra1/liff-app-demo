@@ -182,7 +182,15 @@ function handleNotification(payload) {
         adminCombinedName += " (" + String(data.lineName).trim() + ")";
     }
 
-    var adminGreeting = "有一筆預約" + ((type==='new')?"新增":(type==='update'?"修改":"取消")) + "：\n(" + adminCombinedName + " - " + data.type + ")\n電話：" + data.phone + "\n備註：" + remarkText;
+    // 客人有用券的話，群組通知一定要寫出來——店員要知道這一筆該給什麼。
+    // 讀的是預約上存的快照（couponBenefit），不是去查券：券後來被改名或刪掉都不影響。
+    var couponText = "";
+    if (data.couponBenefit || data.couponName) {
+      couponText = "\n🎁 優惠券：" + (data.couponBenefit || data.couponName);
+      if (data.couponAmount) couponText += "（" + data.couponAmount + " 元）";
+    }
+
+    var adminGreeting = "有一筆預約" + ((type==='new')?"新增":(type==='update'?"修改":"取消")) + "：\n(" + adminCombinedName + " - " + data.type + ")\n電話：" + data.phone + "\n備註：" + remarkText + couponText;
     // var adminGreeting = "有一筆預約" + ((type==='new')?"新增":(type==='update'?"修改":"取消")) + "：\n(" + combinedName + " - " + data.type + ")\n電話：" + data.phone + "\n備註：" + remarkText;
     var adminFlexMsg = getFlexMessage(adminTitle, adminGreeting, { date: data.date, time: data.time, link: editLink }, { color: adminHeaderColor, showAttendBtn: false, isCancel: (type === 'cancel') });
 
