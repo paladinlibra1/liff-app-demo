@@ -3468,6 +3468,13 @@
         let couponCampaigns = [];
         /** 正在編輯的活動 id；null＝新增 */
         let editingCouponId = null;
+        /**
+         * 表單開著沒。
+         * 不能只看 editingCouponId——新增活動時它是 null，但表單是開著的。
+         * 表單開著時清單上的按鈕全部鎖住：一次只做一件事，
+         * 不然會出現「一邊改生日禮、一邊按周年慶的刪除」。
+         */
+        let couponFormOpen = false;
 
         const COUPON_DEFAULT_MSG = '{{name}} 您好 🎁\n送您一張「{{benefit}}」優惠券，{{expires}} 前有效，歡迎預約使用！';
 
@@ -3511,6 +3518,10 @@
                 return;
             }
 
+            // 表單開著時，清單上的動作全部按不動
+            const dis = couponFormOpen ? 'disabled' : '';
+            const disCss = couponFormOpen ? 'opacity:.4; cursor:not-allowed;' : '';
+
             box.innerHTML = couponCampaigns.map(c => {
                 const off = !c.active;
                 const money = Number(c.amount || 0).toLocaleString('zh-TW');
@@ -3527,11 +3538,11 @@
                         ${couponIssueText(c)}　・　⏳ ${couponValidText(c)}
                     </div>
                     <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;"
+                        <button class="btn btn-outline" ${dis} style="padding:7px 14px; font-size:13px; ${disCss}"
                             onclick="openCouponForm('${escJsAttr(c.id)}')">✏️ 編輯</button>
-                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;"
+                        <button class="btn btn-outline" ${dis} style="padding:7px 14px; font-size:13px; ${disCss}"
                             onclick="runOnce(this,'處理中…',()=>toggleCouponCampaign('${escJsAttr(c.id)}'))">${off ? '✅ 啟用' : '🚫 停用'}</button>
-                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px; color:#c62828;"
+                        <button class="btn btn-outline" ${dis} style="padding:7px 14px; font-size:13px; color:#c62828; ${disCss}"
                             onclick="runOnce(this,'刪除中…',()=>deleteCouponCampaign('${escJsAttr(c.id)}'))">🗑️ 刪除</button>
                     </div>
                 </div>`;
@@ -3604,8 +3615,12 @@
             onCouponIssueModeChange();
             onCouponValidModeChange();
 
-            if (editingCouponId) placeCouponForm(editingCouponId);
-            else moveCouponFormHome();
+            couponFormOpen = true;
+            const newBtn = document.getElementById('couponNewBtn');
+            if (newBtn) newBtn.disabled = true;
+
+            // 重畫一次讓清單上的按鈕變成鎖住的樣子（順便把表單接到位置上）
+            renderCouponCampaigns();
 
             const form = document.getElementById('couponForm');
             form.style.display = 'block';
@@ -3614,9 +3629,12 @@
 
         function closeCouponForm() {
             editingCouponId = null;
+            couponFormOpen = false;
             document.getElementById('couponForm').style.display = 'none';
+            const newBtn = document.getElementById('couponNewBtn');
+            if (newBtn) newBtn.disabled = false;
             moveCouponFormHome();
-            // 重畫一次，剛才藏起來的那張卡片才會回來（資料在記憶體裡，不用再讀）
+            // 重畫一次：剛才藏起來的卡片回來、按鈕也解鎖（資料在記憶體裡，不用再讀）
             renderCouponCampaigns();
         }
 
