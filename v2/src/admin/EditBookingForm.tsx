@@ -197,17 +197,21 @@ export default function EditBookingForm({
 
       {err && <div className="msg err">{err}</div>}
 
-      {/* 三顆並排。「取消」兩個字在這張表單上會被當成取消預約，關表單那顆叫「返回」 */}
+      {/*
+        三顆並排。名字是老闆定的：關表單叫「取消修改」，
+        真正把預約取消掉的那顆叫「刪除預約」——雖然資料庫是存成「已取消」
+        （報表的取消率要算），但店員的說法就是刪掉。
+      */}
       <div className="chips" style={{ marginTop: "1.125rem" }}>
         <button className="slim" disabled={busy} onClick={save}>
-          {busy ? "⏳ 儲存中…" : "✅ 儲存"}
+          {busy ? "⏳ 儲存中…" : "✅ 儲存更改"}
         </button>
+        <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 取消修改</button>
         {onCancelBooking && (
           <button className="slim outline danger" disabled={busy} onClick={() => void onCancelBooking()}>
-            ❌ 取消預約
+            🗑️ 刪除預約
           </button>
         )}
-        <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 返回</button>
       </div>
 
       <p className="hint">
