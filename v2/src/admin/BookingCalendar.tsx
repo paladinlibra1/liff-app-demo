@@ -221,19 +221,19 @@ export default function BookingCalendar({
         <button className="slim outline" onClick={() => shift(1)}>▶</button>
         <b>{title}</b>
         <button className="slim outline" style={{ marginLeft: "auto" }} onClick={() => setAnchor(today)}>
-          📆 今天
+          今天
         </button>
       </div>
 
       <div className="tabs" style={{ marginBottom: "0.75rem" }}>
         <button type="button" aria-pressed={view === "day"} onClick={() => setView("day")}>
-          📆 一天
+          日
         </button>
         <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>
-          🗓️ 一週
+          週
         </button>
         <button type="button" aria-pressed={view === "month"} onClick={() => setView("month")}>
-          📅 一月
+          月
         </button>
       </div>
 
