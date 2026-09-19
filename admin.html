@@ -339,6 +339,7 @@
             <button class="tab-btn" id="tab-operating" onclick="switchTab('operating')">⏰ 營業日設定</button>
             <button class="tab-btn" id="tab-report" onclick="switchTab('report')">📊 報表</button>
             <button class="tab-btn" id="tab-retention" onclick="switchTab('retention')">💗 客戶回訪</button>
+            <button class="tab-btn" id="tab-coupon" onclick="switchTab('coupon')">🎁 優惠券</button>
             <button class="tab-btn" id="tab-admins" style="display:none;" onclick="switchTab('admins')">🔑 權限管理</button>
             <a class="tab-btn tab-link" href="inventory.html">📦 庫存盤點</a>
             <button class="tab-btn" id="logoutPc" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 登出</button>
@@ -360,6 +361,7 @@
                 <option value="operating">⏰ 營業日設定</option>
                 <option value="report">📊 報表</option>
                 <option value="retention">💗 客戶回訪</option>
+                <option value="coupon">🎁 優惠券</option>
                 <option value="inventory">📦 庫存盤點</option>
                 <!-- <option value="history" style="display: none;">📜 歷史預約</option> -->
             </select>
@@ -686,6 +688,120 @@
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════════
+             🎁 優惠券
+             第一步只做「活動設定」：券的種類由店家自己建，
+             要出新活動不必改程式。發放、客人端、核銷是後面幾步。
+        ════════════════════════════════════════════════════ -->
+        <div id="section-coupon" class="section">
+            <div class="box-container" style="padding:22px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                    <h3 style="margin:0; font-size:1.05rem;">🎁 優惠券活動</h3>
+                    <button class="btn btn-primary" id="couponNewBtn" onclick="openCouponForm()">➕ 新增活動</button>
+                </div>
+                <p style="margin:10px 0 0; font-size:0.85rem; color:#888; line-height:1.7;">
+                    一個活動就是一種券（生日禮、周年慶…）。這裡只是設定，
+                    建好之後再到名單上發給客人。<br>
+                    <strong>金額一定要填</strong>——報表要靠它算折抵多少；
+                    但客人看不看得到金額，由「客人看得到金額」那個開關決定
+                    （現金抵用券才需要打開）。
+                </p>
+
+                <!-- 新增／編輯表單 -->
+                <div id="couponForm" style="display:none; margin-top:18px; padding:18px; background:#fafafa; border:1px solid var(--border-color); border-radius:10px;">
+                    <div id="couponFormTitle" style="font-weight:700; margin-bottom:14px;">新增活動</div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:14px;">
+                        <label style="flex:1 1 220px; font-size:0.85rem; color:#666;">活動名稱
+                            <input id="cpName" type="text" maxlength="30" placeholder="例如：生日禮"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                        <label style="flex:1 1 220px; font-size:0.85rem; color:#666;">優惠內容
+                            <input id="cpBenefit" type="text" maxlength="60" placeholder="例如：免費護髮一次"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                        <label style="flex:0 1 160px; font-size:0.85rem; color:#666;">金額（元）
+                            <input id="cpAmount" type="number" min="0" step="1" placeholder="800"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                    </div>
+
+                    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:0.9rem; cursor:pointer;">
+                        <input id="cpShowAmount" type="checkbox">
+                        客人看得到金額（現金抵用券要打開）
+                    </label>
+
+                    <hr style="border:none; border-top:1px solid var(--border-color); margin:18px 0;">
+
+                    <div style="display:flex; flex-wrap:wrap; gap:14px;">
+                        <label style="flex:1 1 200px; font-size:0.85rem; color:#666;">發放方式
+                            <select id="cpIssueMode" onchange="onCouponIssueModeChange()"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                                <option value="manual">手動勾名單發放</option>
+                                <option value="birthday">生日自動發放</option>
+                            </select>
+                        </label>
+                        <label id="cpBirthdayTimingWrap" style="flex:1 1 200px; font-size:0.85rem; color:#666;">發放時機
+                            <select id="cpBirthdayTiming" onchange="onCouponIssueModeChange()"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                                <option value="before_days">生日前 N 天</option>
+                                <option value="month_start">生日當月 1 號</option>
+                            </select>
+                        </label>
+                        <label id="cpLeadDaysWrap" style="flex:0 1 140px; font-size:0.85rem; color:#666;">提前幾天
+                            <input id="cpLeadDays" type="number" min="0" max="60" step="1" value="7"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                    </div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:14px; margin-top:14px;">
+                        <label style="flex:1 1 200px; font-size:0.85rem; color:#666;">有效期算法
+                            <select id="cpValidMode" onchange="onCouponValidModeChange()"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                                <option value="days">發放後 N 天內有效</option>
+                                <option value="fixed">固定日期區間</option>
+                            </select>
+                        </label>
+                        <label id="cpValidDaysWrap" style="flex:0 1 140px; font-size:0.85rem; color:#666;">有效天數
+                            <input id="cpValidDays" type="number" min="1" max="730" step="1" value="30"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                        <label id="cpValidFromWrap" style="flex:1 1 160px; font-size:0.85rem; color:#666;">開始日期
+                            <input id="cpValidFrom" type="date"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                        <label id="cpValidToWrap" style="flex:1 1 160px; font-size:0.85rem; color:#666;">結束日期
+                            <input id="cpValidTo" type="date"
+                                style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </label>
+                    </div>
+
+                    <label style="display:block; margin-top:14px; font-size:0.85rem; color:#666;">LINE 訊息
+                        <textarea id="cpMessage" rows="4"
+                            style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none; resize:vertical; font-family:inherit;"></textarea>
+                    </label>
+                    <p style="margin:6px 0 0; font-size:0.78rem; color:#999; line-height:1.7;">
+                        可以用 <code>{{name}}</code> 姓名、<code>{{benefit}}</code> 優惠內容、
+                        <code>{{expires}}</code> 到期日、<code>{{amount}}</code> 金額。
+                    </p>
+
+                    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:0.9rem; cursor:pointer;">
+                        <input id="cpActive" type="checkbox" checked>
+                        啟用（關掉之後不會再自動發，也不能手動發）
+                    </label>
+
+                    <div style="display:flex; gap:8px; margin-top:18px; flex-wrap:wrap;">
+                        <button class="btn btn-primary" id="couponSaveBtn"
+                            onclick="runOnce(this,'儲存中…',()=>saveCouponCampaign())">💾 儲存</button>
+                        <button class="btn btn-outline" onclick="closeCouponForm()">↩️ 取消</button>
+                    </div>
+                </div>
+
+                <div id="couponListStatus" style="font-size:0.85rem; color:#888; margin-top:18px;">載入中…</div>
+                <div id="couponList" style="margin-top:14px;"></div>
+            </div>
+        </div>
+
         <div id="section-admins" class="section">
             <div class="box-container" style="padding:22px; max-width:660px;">
                 <h3 style="margin:0 0 6px; font-size:1.05rem;">🔑 後台登入名單</h3>
@@ -965,6 +1081,8 @@
             if (tabName === 'retention') {
                 ensureRetentionData();
             }
+
+            if (tabName === 'coupon') loadCouponCampaigns();
 
             if (tabName === 'admins') loadAdminList();
 
@@ -3327,6 +3445,220 @@
             } catch (err) {
                 alert('傳送失敗：' + err.message);
             }
+        }
+
+        // =====================================================================
+        // 🎁 優惠券：活動設定
+        // =====================================================================
+        // 一個「活動」就是一種券（生日禮、周年慶…），店家自己在後台建，
+        // 出新活動不必改程式。這一步只做設定；發放、客人端、核銷是後面幾步。
+        //
+        // Firestore：couponCampaigns/{自動 id}
+        //   name, benefit, amount, showAmount,
+        //   issueMode: 'manual' | 'birthday'
+        //   birthdayTiming: 'before_days' | 'month_start', birthdayLeadDays
+        //   validMode: 'days' | 'fixed', validDays / validFrom, validTo
+        //   message, active, createdAt, updatedAt
+        //
+        // 金額一律必填（報表要算折抵），但 showAmount 決定客人看不看得到——
+        // 現金抵用券要讓客人知道「折 300」，服務型的券寫金額只是給店裡對帳。
+
+        let couponCampaigns = [];
+        /** 正在編輯的活動 id；null＝新增 */
+        let editingCouponId = null;
+
+        const COUPON_DEFAULT_MSG = '{{name}} 您好 🎁\n送您一張「{{benefit}}」優惠券，{{expires}} 前有效，歡迎預約使用！';
+
+        async function loadCouponCampaigns() {
+            const statusEl = document.getElementById('couponListStatus');
+            statusEl.style.display = 'block';
+            statusEl.innerText = '載入中…';
+            try {
+                const snap = await db.collection('couponCampaigns').orderBy('createdAt', 'desc').get();
+                couponCampaigns = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+                statusEl.style.display = 'none';
+                renderCouponCampaigns();
+            } catch (err) {
+                console.error('讀取優惠券活動失敗', err);
+                statusEl.innerText = '讀取失敗：' + (err.message || err);
+            }
+        }
+
+        function couponIssueText(c) {
+            if (c.issueMode === 'birthday') {
+                return c.birthdayTiming === 'month_start'
+                    ? '🎂 生日當月 1 號自動發'
+                    : '🎂 生日前 ' + (c.birthdayLeadDays || 0) + ' 天自動發';
+            }
+            return '✋ 手動勾名單發放';
+        }
+
+        function couponValidText(c) {
+            if (c.validMode === 'fixed') {
+                return (c.validFrom || '?') + ' ~ ' + (c.validTo || '?');
+            }
+            return '發放後 ' + (c.validDays || 0) + ' 天內有效';
+        }
+
+        function renderCouponCampaigns() {
+            const box = document.getElementById('couponList');
+            if (!couponCampaigns.length) {
+                box.innerHTML = '<div style="padding:26px 0; text-align:center; color:#aaa; font-size:0.9rem;">還沒有任何活動，按右上角「➕ 新增活動」建立第一種券。</div>';
+                return;
+            }
+
+            box.innerHTML = couponCampaigns.map(c => {
+                const off = !c.active;
+                const money = Number(c.amount || 0).toLocaleString('zh-TW');
+                return `
+                <div style="padding:14px 16px; margin-bottom:10px; background:#fff; border:1px solid var(--border-color); border-radius:10px; ${off ? 'opacity:.55;' : ''}">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <strong style="font-size:1rem;">${escHtml(c.name || '(未命名)')}</strong>
+                        ${off ? '<span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:#eee; color:#888;">已停用</span>' : ''}
+                        ${c.showAmount ? '<span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:#fff3e0; color:#e65100;">現金抵用</span>' : ''}
+                    </div>
+                    <div style="margin-top:6px; font-size:0.9rem; color:#444;">${escHtml(c.benefit || '')}</div>
+                    <div style="margin-top:6px; font-size:0.8rem; color:#888; line-height:1.8;">
+                        💰 ${money} 元${c.showAmount ? '（客人看得到）' : '（只給店裡對帳）'}<br>
+                        ${couponIssueText(c)}　・　⏳ ${couponValidText(c)}
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;"
+                            onclick="openCouponForm('${escJsAttr(c.id)}')">✏️ 編輯</button>
+                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;"
+                            onclick="runOnce(this,'處理中…',()=>toggleCouponCampaign('${escJsAttr(c.id)}'))">${off ? '✅ 啟用' : '🚫 停用'}</button>
+                        <button class="btn btn-outline" style="padding:7px 14px; font-size:13px; color:#c62828;"
+                            onclick="runOnce(this,'刪除中…',()=>deleteCouponCampaign('${escJsAttr(c.id)}'))">🗑️ 刪除</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        /** 發放方式換了就只留下用得到的欄位，免得畫面問一堆不相干的問題 */
+        function onCouponIssueModeChange() {
+            const birthday = document.getElementById('cpIssueMode').value === 'birthday';
+            const timing = document.getElementById('cpBirthdayTiming').value;
+            document.getElementById('cpBirthdayTimingWrap').style.display = birthday ? '' : 'none';
+            document.getElementById('cpLeadDaysWrap').style.display =
+                (birthday && timing === 'before_days') ? '' : 'none';
+        }
+
+        function onCouponValidModeChange() {
+            const fixed = document.getElementById('cpValidMode').value === 'fixed';
+            document.getElementById('cpValidDaysWrap').style.display = fixed ? 'none' : '';
+            document.getElementById('cpValidFromWrap').style.display = fixed ? '' : 'none';
+            document.getElementById('cpValidToWrap').style.display = fixed ? '' : 'none';
+        }
+
+        function openCouponForm(id) {
+            const c = id ? couponCampaigns.find(x => x.id === id) : null;
+            editingCouponId = c ? c.id : null;
+
+            document.getElementById('couponFormTitle').innerText = c ? '編輯活動' : '新增活動';
+            document.getElementById('cpName').value = c ? (c.name || '') : '';
+            document.getElementById('cpBenefit').value = c ? (c.benefit || '') : '';
+            document.getElementById('cpAmount').value = c ? (c.amount != null ? c.amount : '') : '';
+            document.getElementById('cpShowAmount').checked = c ? !!c.showAmount : false;
+            document.getElementById('cpIssueMode').value = c ? (c.issueMode || 'manual') : 'manual';
+            document.getElementById('cpBirthdayTiming').value = c ? (c.birthdayTiming || 'before_days') : 'before_days';
+            document.getElementById('cpLeadDays').value = c && c.birthdayLeadDays != null ? c.birthdayLeadDays : 7;
+            document.getElementById('cpValidMode').value = c ? (c.validMode || 'days') : 'days';
+            document.getElementById('cpValidDays').value = c && c.validDays != null ? c.validDays : 30;
+            document.getElementById('cpValidFrom').value = c ? (c.validFrom || '') : '';
+            document.getElementById('cpValidTo').value = c ? (c.validTo || '') : '';
+            document.getElementById('cpMessage').value = c ? (c.message || '') : COUPON_DEFAULT_MSG;
+            document.getElementById('cpActive').checked = c ? c.active !== false : true;
+
+            onCouponIssueModeChange();
+            onCouponValidModeChange();
+
+            document.getElementById('couponForm').style.display = 'block';
+            document.getElementById('couponForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function closeCouponForm() {
+            editingCouponId = null;
+            document.getElementById('couponForm').style.display = 'none';
+        }
+
+        async function saveCouponCampaign() {
+            const name = document.getElementById('cpName').value.trim();
+            const benefit = document.getElementById('cpBenefit').value.trim();
+            const amountRaw = document.getElementById('cpAmount').value.trim();
+            const issueMode = document.getElementById('cpIssueMode').value;
+            const validMode = document.getElementById('cpValidMode').value;
+
+            if (!name) return alert('請填活動名稱');
+            if (!benefit) return alert('請填優惠內容');
+            // 金額必填（老闆要求）：報表要算折掉多少、帶來多少業績
+            if (amountRaw === '' || isNaN(Number(amountRaw)) || Number(amountRaw) < 0) {
+                return alert('請填金額（沒有折現的服務券就填它的等值金額）');
+            }
+
+            const data = {
+                name: name,
+                benefit: benefit,
+                amount: Math.round(Number(amountRaw)),
+                showAmount: document.getElementById('cpShowAmount').checked,
+                issueMode: issueMode,
+                validMode: validMode,
+                message: document.getElementById('cpMessage').value.trim() || COUPON_DEFAULT_MSG,
+                active: document.getElementById('cpActive').checked,
+                updatedAt: new Date()
+            };
+
+            if (issueMode === 'birthday') {
+                const timing = document.getElementById('cpBirthdayTiming').value;
+                data.birthdayTiming = timing;
+                if (timing === 'before_days') {
+                    const lead = Number(document.getElementById('cpLeadDays').value);
+                    if (isNaN(lead) || lead < 0 || lead > 60) return alert('提前天數請填 0～60');
+                    data.birthdayLeadDays = Math.round(lead);
+                } else {
+                    data.birthdayLeadDays = 0;
+                }
+            }
+
+            if (validMode === 'fixed') {
+                const from = document.getElementById('cpValidFrom').value;
+                const to = document.getElementById('cpValidTo').value;
+                if (!from || !to) return alert('固定日期區間要填開始與結束日期');
+                if (from > to) return alert('結束日期不能早於開始日期');
+                data.validFrom = from;
+                data.validTo = to;
+            } else {
+                const days = Number(document.getElementById('cpValidDays').value);
+                if (isNaN(days) || days < 1 || days > 730) return alert('有效天數請填 1～730');
+                data.validDays = Math.round(days);
+            }
+
+            if (editingCouponId) {
+                await db.collection('couponCampaigns').doc(editingCouponId).set(data, { merge: true });
+            } else {
+                data.createdAt = new Date();
+                await db.collection('couponCampaigns').add(data);
+            }
+
+            closeCouponForm();
+            await loadCouponCampaigns();
+        }
+
+        async function toggleCouponCampaign(id) {
+            const c = couponCampaigns.find(x => x.id === id);
+            if (!c) return;
+            await db.collection('couponCampaigns').doc(id).set(
+                { active: !c.active, updatedAt: new Date() }, { merge: true });
+            await loadCouponCampaigns();
+        }
+
+        async function deleteCouponCampaign(id) {
+            const c = couponCampaigns.find(x => x.id === id);
+            if (!c) return;
+            // 已經發出去的券不會跟著消失（那是客人手上的東西），
+            // 所以刪活動只是讓它不再出現在設定裡。真的要停用請用「🚫 停用」。
+            if (!confirm('確定要刪除活動「' + (c.name || '') + '」嗎？\n\n已經發出去的券不會被刪掉。\n如果只是不想再發，建議用「停用」。')) return;
+            await db.collection('couponCampaigns').doc(id).delete();
+            await loadCouponCampaigns();
         }
 
         function escJsAttr(str) {
