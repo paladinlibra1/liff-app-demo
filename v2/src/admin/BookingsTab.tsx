@@ -3,8 +3,9 @@ import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import NewBookingForm from "./NewBookingForm";
 import EditBookingForm from "./EditBookingForm";
+import BookingCalendar from "./BookingCalendar";
 
-interface BookingRow {
+export interface BookingRow {
   id: string;
   date: string;
   start_time: string;
@@ -53,6 +54,10 @@ export default function BookingsTab({ store }: { store: Store }) {
   const [adding, setAdding] = useState(false);
   /** 正在改的那一筆，null 就是沒開編輯表單 */
   const [editing, setEditing] = useState<BookingRow | null>(null);
+  /** 清單還是日曆。兩邊各自讀自己的資料，篩選條件只屬於清單 */
+  const [view, setView] = useState<"list" | "cal">("list");
+  /** 存完一筆就 +1，日曆看這個決定要不要重讀 */
+  const [stamp, setStamp] = useState(0);
 
   const load = useCallback(async () => {
     setErr("");
@@ -76,6 +81,12 @@ export default function BookingsTab({ store }: { store: Store }) {
   }, [store.id, from, to, showCancelled]);
 
   useEffect(() => { void load(); }, [load]);
+
+  /** 存完一筆：清單重讀，日曆也要跟著重讀 */
+  const refresh = useCallback(async () => {
+    await load();
+    setStamp((n) => n + 1);
+  }, [load]);
 
   /**
    * 改狀態走 `/api/admin/bookings/:id/status`，不直接改 Supabase——
@@ -116,7 +127,7 @@ export default function BookingsTab({ store }: { store: Store }) {
       if (!res.ok) {
         setErr(body?.error || `${verb}失敗（${res.status}），請稍後再試`);
       } else {
-        await load();
+        await refresh();
       }
     } catch {
       setErr("連線失敗，請檢查網路後再試一次");
@@ -138,7 +149,7 @@ export default function BookingsTab({ store }: { store: Store }) {
       {adding && (
         <NewBookingForm
           store={store}
-          onSaved={load}
+          onSaved={refresh}
           onClose={() => setAdding(false)}
         />
       )}
@@ -147,112 +158,134 @@ export default function BookingsTab({ store }: { store: Store }) {
         <EditBookingForm
           store={store}
           booking={editing}
-          onSaved={load}
+          onSaved={refresh}
           onClose={() => setEditing(null)}
         />
       )}
 
-      <div className="panel">
-        <div className="filters">
-          <div className="f">
-            <label htmlFor="from">開始日期</label>
-            <input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div className="f">
-            <label htmlFor="to">結束日期</label>
-            <input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="chips">
-          <button className="slim outline" onClick={() => { setFrom(today); setTo(today); }}>
-            📆 今天
-          </button>
-          <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 6)); }}>
-            🗓️ 未來 7 天
-          </button>
-          <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 30)); }}>
-            🗓️ 未來 30 天
-          </button>
-          <button className="slim outline" onClick={() => { setFrom(addDays(today, -30)); setTo(addDays(today, -1)); }}>
-            🕘 過去 30 天
-          </button>
-        </div>
-
-        <label className="toggle" style={{ marginTop: 14 }}>
-          <input
-            type="checkbox"
-            checked={showCancelled}
-            onChange={(e) => setShowCancelled(e.target.checked)}
-          />
-          顯示已取消的預約
-        </label>
+      {/* 清單／日曆。日曆是自己刻的（BookingCalendar），不是 Google 日曆的嵌入畫面 */}
+      <div className="tabs">
+        <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>
+          📋 清單
+        </button>
+        <button type="button" aria-pressed={view === "cal"} onClick={() => setView("cal")}>
+          📅 日曆
+        </button>
       </div>
 
       {err && <div className="msg err">{err}</div>}
 
-      {rows === null && <div className="panel"><div className="skeleton" style={{ height: 64 }} /></div>}
-
-      {rows && rows.length === 0 && (
-        <div className="panel empty">
-          <div className="emoji">📅</div>
-          <p>這段期間沒有預約</p>
-        </div>
+      {view === "cal" && (
+        <BookingCalendar
+          store={store}
+          reloadKey={stamp}
+          onPick={(r) => { setAdding(false); setEditing(r); }}
+        />
       )}
 
-      {rows && rows.length > 0 && (
+      {view === "list" && (
         <>
-          <p className="sub" style={{ margin: "0 0 10px" }}>共 {rows.length} 筆</p>
-          <div className="rows">
-            {rows.map((r) => (
-              <div className={"arow" + (r.status === "cancelled" ? " off" : "")} key={r.id}>
-                <div className="c when" data-label="日期">
-                  <b>{r.date.slice(5)}</b>
-                  <span className="dow">{dayName(r.date)}</span>
-                  <span className="tm">{r.start_time.slice(0, 5)}</span>
-                </div>
+        <div className="panel">
+          <div className="filters">
+            <div className="f">
+              <label htmlFor="from">開始日期</label>
+              <input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div className="f">
+              <label htmlFor="to">結束日期</label>
+              <input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+          </div>
 
-                <div className="c who" data-label="客人">
-                  <b>{r.name2 ? `${r.name}、${r.name2}` : r.name}</b>
-                  {r.name2 && <span className="tag2">兩位</span>}
-                  <div className="tel">
-                    {/* 手機上點一下就能打過去，店員最常用的動作 */}
-                    <a href={`tel:${r.phone}`}>{r.phone}</a>
+          <div className="chips">
+            <button className="slim outline" onClick={() => { setFrom(today); setTo(today); }}>
+              📆 今天
+            </button>
+            <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 6)); }}>
+              🗓️ 未來 7 天
+            </button>
+            <button className="slim outline" onClick={() => { setFrom(today); setTo(addDays(today, 30)); }}>
+              🗓️ 未來 30 天
+            </button>
+            <button className="slim outline" onClick={() => { setFrom(addDays(today, -30)); setTo(addDays(today, -1)); }}>
+              🕘 過去 30 天
+            </button>
+          </div>
+
+          <label className="toggle" style={{ marginTop: 14 }}>
+            <input
+              type="checkbox"
+              checked={showCancelled}
+              onChange={(e) => setShowCancelled(e.target.checked)}
+            />
+            顯示已取消的預約
+          </label>
+        </div>
+
+        {rows === null && <div className="panel"><div className="skeleton" style={{ height: 64 }} /></div>}
+
+        {rows && rows.length === 0 && (
+          <div className="panel empty">
+            <div className="emoji">📅</div>
+            <p>這段期間沒有預約</p>
+          </div>
+        )}
+
+        {rows && rows.length > 0 && (
+          <>
+            <p className="sub" style={{ margin: "0 0 10px" }}>共 {rows.length} 筆</p>
+            <div className="rows">
+              {rows.map((r) => (
+                <div className={"arow" + (r.status === "cancelled" ? " off" : "")} key={r.id}>
+                  <div className="c when" data-label="日期">
+                    <b>{r.date.slice(5)}</b>
+                    <span className="dow">{dayName(r.date)}</span>
+                    <span className="tm">{r.start_time.slice(0, 5)}</span>
+                  </div>
+
+                  <div className="c who" data-label="客人">
+                    <b>{r.name2 ? `${r.name}、${r.name2}` : r.name}</b>
+                    {r.name2 && <span className="tag2">兩位</span>}
+                    <div className="tel">
+                      {/* 手機上點一下就能打過去，店員最常用的動作 */}
+                      <a href={`tel:${r.phone}`}>{r.phone}</a>
+                    </div>
+                  </div>
+
+                  <div className="c" data-label="身分">{r.type}</div>
+
+                  <div className="c" data-label="狀態">
+                    <span className={"badge " + (r.status === "active" ? "up" : "old")}>
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </span>
+                    {r.booked_by === "admin" && <span className="tag2">店家代訂</span>}
+                  </div>
+
+                  {r.remark && <div className="c note" data-label="備註">{r.remark}</div>}
+
+                  <div className="c acts">
+                    {r.status === "active" && (
+                      <>
+                        <button className="slim outline" disabled={busy === r.id}
+                          onClick={() => { setAdding(false); setEditing(r); }}>
+                          ✏️ 改時間
+                        </button>
+                        <button className="slim outline" disabled={busy === r.id}
+                          onClick={() => setStatus(r, "completed")}>
+                          ✅ 完成
+                        </button>
+                        <button className="slim outline danger" disabled={busy === r.id}
+                          onClick={() => setStatus(r, "cancelled")}>
+                          ❌ 取消
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
-
-                <div className="c" data-label="身分">{r.type}</div>
-
-                <div className="c" data-label="狀態">
-                  <span className={"badge " + (r.status === "active" ? "up" : "old")}>
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                  {r.booked_by === "admin" && <span className="tag2">店家代訂</span>}
-                </div>
-
-                {r.remark && <div className="c note" data-label="備註">{r.remark}</div>}
-
-                <div className="c acts">
-                  {r.status === "active" && (
-                    <>
-                      <button className="slim outline" disabled={busy === r.id}
-                        onClick={() => { setAdding(false); setEditing(r); }}>
-                        ✏️ 改時間
-                      </button>
-                      <button className="slim outline" disabled={busy === r.id}
-                        onClick={() => setStatus(r, "completed")}>
-                        ✅ 完成
-                      </button>
-                      <button className="slim outline danger" disabled={busy === r.id}
-                        onClick={() => setStatus(r, "cancelled")}>
-                        ❌ 取消
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
+        )}
         </>
       )}
     </>
