@@ -20,8 +20,11 @@ const BookingApp = lazy(() => import("./customer/BookingApp"));
 const MyBookingsApp = lazy(() => import("./customer/MyBookingsApp"));
 const RegisterApp = lazy(() => import("./customer/RegisterApp"));
 
+import { ROUTE_PATH } from "./lib/storePath";
+
 function pick() {
-  const path = window.location.pathname;
+  // 網址第一段可能是店名，路由要看拆掉店名之後的路徑
+  const path = ROUTE_PATH;
   if (path.startsWith("/admin")) return <AdminApp />;
   /*
    * 綁定頁要排在 /my 前面。

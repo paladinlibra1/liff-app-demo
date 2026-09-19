@@ -87,17 +87,20 @@ export interface Store {
  * 快取住的話店員改完要等 TTL 過了客人才看得到。
  * 一次查詢約 20ms，先以「改完立刻生效」為準，之後真的成為瓶頸再加快取。
  */
-export async function getStore(env: Env): Promise<Store> {
+export async function getStore(env: Env, slug?: string | null): Promise<Store> {
+  // 網址帶了店名就用它，沒帶就用部署設定的預設店（潮州）
+  const wanted = slug || env.STORE_SLUG;
   const rows = await sb<Store[]>(
     env,
-    `stores?slug=eq.${encodeURIComponent(env.STORE_SLUG)}` +
+    `stores?slug=eq.${encodeURIComponent(wanted)}` +
       `&select=id,slug,name,timezone,business_hours,reminder_enabled,reminder_time` +
       `,line_group_id&limit=1`,
   );
 
   const store = rows[0];
   if (!store) {
-    throw new SupabaseError(`找不到店家 ${env.STORE_SLUG}，seed migration 是不是還沒跑？`, 500);
+    // 網址打錯店名也會走到這裡，所以不要只說「migration 沒跑」
+    throw new SupabaseError(`找不到店家 ${wanted}，請確認網址上的店名。`, 404);
   }
   return store;
 }

@@ -4,6 +4,7 @@
  * 客人不直連 Supabase，一律走 /api。前後端同源，所以不用處理 CORS，
  * 也不需要舊系統那招「Content-Type: text/plain 避開 preflight」。
  */
+import { apiUrl } from "../lib/storePath";
 
 export interface StoreInfo {
   name: string;
@@ -45,7 +46,8 @@ export interface BookingDraft {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, init);
+    // apiUrl：網址在哪家店，API 就打那家店
+    res = await fetch(apiUrl(path), init);
   } catch {
     throw new Error("連線失敗，請確認網路狀態後再試一次");
   }

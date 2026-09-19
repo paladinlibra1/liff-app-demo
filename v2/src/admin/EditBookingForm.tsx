@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
 import type { StatusResult } from "./BookingsTab";
+import { apiUrl } from "../lib/storePath";
 
 /**
  * 後台改預約的時間或備註。
@@ -79,7 +80,7 @@ export default function EditBookingForm({
     if (!date) return;
     setSlots(null);
     try {
-      const res = await fetch(`/api/availability?from=${date}&to=${date}`);
+      const res = await fetch(apiUrl(`/api/availability?from=${date}&to=${date}`));
       const body = await res.json() as { days?: { isOperating: boolean; slots: Slot[] }[] };
       const day = body.days?.[0];
       setDayOpen(Boolean(day?.isOperating));
@@ -133,7 +134,7 @@ export default function EditBookingForm({
         return;
       }
 
-      const res = await fetch(`/api/admin/bookings/${booking.id}/reschedule`, {
+      const res = await fetch(apiUrl(`/api/admin/bookings/${booking.id}/reschedule`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

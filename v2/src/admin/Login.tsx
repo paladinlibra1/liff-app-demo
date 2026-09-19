@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { apiUrl, pageUrl } from "../lib/storePath";
 
 /**
  * LINE／IG 的內建瀏覽器裡 Google OAuth 開不起來（Google 直接擋第三方 WebView），
@@ -23,7 +24,7 @@ export default function Login() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/store")
+    fetch(apiUrl("/api/store"))
       .then((r) => r.json() as Promise<{ name?: string }>)
       .then((d) => { if (!cancelled && d.name) setStoreName(d.name); })
       .catch(() => { /* 沒有店名照樣能登入 */ });
@@ -53,7 +54,8 @@ export default function Login() {
     setBusy(true); setErr(""); setInfo("");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + "/admin" },
+      // 回到同一家店的後台：/madou/admin 進去就要回 /madou/admin
+      options: { redirectTo: window.location.origin + pageUrl("/admin") },
     });
     // 沒出錯的話瀏覽器已經在跳轉了，不用解鎖
     if (error) {

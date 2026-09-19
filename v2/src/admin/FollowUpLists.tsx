@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
+import { apiUrl } from "../lib/storePath";
 
 /**
  * 😴 沉睡客／🆕 從未預約名單，以及發關懷 LINE。
@@ -136,7 +137,7 @@ export default function FollowUpLists({
       const token = sess.session?.access_token;
       if (!token) { setErr("登入已過期，請重新登入後台"); setBusy(false); return; }
 
-      const res = await fetch("/api/admin/followups/send", {
+      const res = await fetch(apiUrl("/api/admin/followups/send"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ member_ids: pickedHere.map((p) => p.memberId) }),

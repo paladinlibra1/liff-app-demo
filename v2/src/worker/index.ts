@@ -13,6 +13,7 @@
 
 import { verifyLineToken, bearerToken, LineAuthError } from "./line";
 import { getStore, SupabaseError } from "./supabase";
+import { splitStorePath } from "../shared/storeUrl";
 import { getAvailability, todayInStore } from "./availability";
 import {
   createBooking, createAdminBooking, adminSetBookingStatus, adminRescheduleBooking,
@@ -100,7 +101,9 @@ function errorResponse(err: unknown, fallback: string): Response {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    const path = url.pathname;
+    // 網址第一段可能是店名（/chaozhou/api/...），拆掉之後才是原本的路由。
+    // 沒帶店名就用部署設定的預設店，潮州店現有的網址照樣能用。
+    const { slug, rest: path } = splitStorePath(url.pathname);
 
     // Worker 只負責 /api，其餘（含 SPA fallback）交給靜態資源。
     // 少了這段，Worker 會把每個前端路由都回成 404。
@@ -116,7 +119,7 @@ export default {
         return json({ error: "Method not allowed" }, 405);
       }
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         return await handleLineWebhook(env, request, store);
       } catch (err) {
         // 這支不能回錯誤碼給 LINE，否則它會一直重送
@@ -141,7 +144,7 @@ export default {
     // 而且客人端要先拿到時段才能畫出預約表單。
     if (path === "/api/store") {
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         return json({
           name: store.name,
           timezone: store.timezone,
@@ -160,7 +163,7 @@ export default {
     // 不含任何客人資料，只回「剩幾位」，所以跟 /api/store 一樣不需要登入。
     if (path === "/api/availability") {
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         const today = todayInStore(store);
 
         const from = url.searchParams.get("from") || today;
@@ -200,7 +203,7 @@ export default {
           return json({ error: "送出的內容格式不正確" }, 400);
         }
 
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         const booking = await createBooking(env, store, profile, input);
 
         // 推播丟到背景：客人已經訂到位子了，不該因為 LINE 送不出去而等待或失敗
@@ -247,7 +250,7 @@ export default {
           return json({ error: "送出的內容格式不正確" }, 400);
         }
 
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         const member = await registerMember(env, store, profile, input);
         return json({ member }, 201);
       } catch (err) {
@@ -263,7 +266,7 @@ export default {
     // 就讓任何人都能用店家名義建預約、順便叫系統發 LINE 給別人。
     if (path === "/api/admin/bookings" && request.method === "POST") {
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         await verifyAdmin(env, request, store);
 
         let input: AdminBookingInput;
@@ -304,7 +307,7 @@ export default {
         return json({ error: "Method not allowed" }, 405);
       }
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         await verifyAdmin(env, request, store);
 
         let input: { member_ids?: unknown };
@@ -344,7 +347,7 @@ export default {
         return json({ error: "Method not allowed" }, 405);
       }
       try {
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         await verifyAdmin(env, request, store);
 
         let input: {
@@ -414,7 +417,7 @@ export default {
           bearerToken(request),
           env.LINE_LOGIN_CHANNEL_ID,
         );
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
 
         if (!isCancel && !isEdit) {
           return json(await listMyBookings(env, store, profile));
@@ -481,7 +484,7 @@ export default {
 
         // 第二次以後的預約要用既有資料預填表單，所以順便回會員資料。
         // 分成兩支 API 的話，客人端一開頁就得打兩次，多一次來回。
-        const store = await getStore(env);
+        const store = await getStore(env, slug);
         const member = await getMyProfile(env, store, profile.userId);
 
         return json({

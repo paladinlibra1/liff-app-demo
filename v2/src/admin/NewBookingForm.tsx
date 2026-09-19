@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { normalizePhone, isValidPhone, PHONE_RULE_MSG } from "../shared/phone";
 import type { Store } from "./AdminShell";
+import { apiUrl } from "../lib/storePath";
 
 /**
  * 代客預約（店家幫客人訂）
@@ -99,7 +100,7 @@ export default function NewBookingForm({
     if (!date) return;
     setSlots(null);
     try {
-      const res = await fetch(`/api/availability?from=${date}&to=${date}`);
+      const res = await fetch(apiUrl(`/api/availability?from=${date}&to=${date}`));
       const body = await res.json() as { days?: { isOperating: boolean; slots: Slot[] }[] };
       const day = body.days?.[0];
       setDayOpen(Boolean(day?.isOperating));
@@ -136,7 +137,7 @@ export default function NewBookingForm({
     }
 
     try {
-      const res = await fetch("/api/admin/bookings", {
+      const res = await fetch(apiUrl("/api/admin/bookings"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

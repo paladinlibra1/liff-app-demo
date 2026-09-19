@@ -10,6 +10,7 @@ import AdminShell from "./AdminShell";
  * 不要各寫一份——欄位加減時會漏掉其中一邊。
  */
 import type { Store } from "./AdminShell";
+import { STORE_SLUG } from "../lib/storePath";
 
 /** 登入狀態的三種可能：未登入 / 已登入但不在任何店的名單裡 / 已授權 */
 export default function AdminApp() {
@@ -50,9 +51,16 @@ export default function AdminApp() {
     }
     let cancelled = false;
     setChecking(true);
-    supabase
+    /*
+     * 網址帶了店名就查那一家（`/madou/admin`）；沒帶就拿查得到的第一家。
+     * 不用自己比對權限——RLS 保證只查得到自己在名單裡的店，
+     * 查回空的就是沒授權，畫面會顯示「尚未授權」。
+     */
+    let q = supabase
       .from("stores")
-      .select("id, name, slug, theme_primary, theme_bg, theme_ink, theme_ink_soft, theme_card, theme_border, theme_tabs, theme_btn2, theme_btn2_ink, theme_btn_border, theme_btn2_border")
+      .select("id, name, slug, theme_primary, theme_bg, theme_ink, theme_ink_soft, theme_card, theme_border, theme_tabs, theme_btn2, theme_btn2_ink, theme_btn_border, theme_btn2_border");
+    if (STORE_SLUG) q = q.eq("slug", STORE_SLUG);
+    q
       .limit(1)
       .then(({ data, error }) => {
         if (cancelled) return;

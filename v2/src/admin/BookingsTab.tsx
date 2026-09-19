@@ -4,6 +4,7 @@ import type { Store } from "./AdminShell";
 import NewBookingForm from "./NewBookingForm";
 import EditBookingForm from "./EditBookingForm";
 import BookingCalendar from "./BookingCalendar";
+import { apiUrl } from "../lib/storePath";
 
 /** 改狀態的結果。`ok` 是 false 又沒有 error，就是使用者自己在確認框按了取消 */
 export interface StatusResult {
@@ -134,7 +135,7 @@ export default function BookingsTab({ store }: { store: Store }) {
         return { ok: false, error: msg };
       }
 
-      const res = await fetch(`/api/admin/bookings/${row.id}/status`, {
+      const res = await fetch(apiUrl(`/api/admin/bookings/${row.id}/status`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
