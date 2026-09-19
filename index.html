@@ -246,6 +246,14 @@
                     <option value="">請先選擇日期</option>
                 </select>
             </div>
+            <!-- 有可用的券才會顯示。選了券就是當場核銷，取消預約會自動還回去 -->
+            <div class="form-group" id="group-coupon" style="display:none;">
+                <label>🎁 使用優惠券 (選填)</label>
+                <select id="couponSelect">
+                    <option value="">不使用優惠券</option>
+                </select>
+                <input type="hidden" id="originalCouponId" value="">
+            </div>
             <div class="form-group" id="group-remark">
                 <label>備註 (選填)</label>
                 <textarea id="remark" rows="3" placeholder="有什麼特別需要我們注意的嗎？"></textarea>
@@ -405,6 +413,12 @@
                         alert("👋 系統已自動偵測您的身分！\n請按下下方的「更新預約內容」按鈕來完成綁定。");
                     }
                 }
+
+                // 券要等修改模式把原本那張讀出來之後才填，不然會少一個選項
+                await loadMyCoupons(
+                    document.getElementById('lineId').value,
+                    document.getElementById('originalCouponId').value
+                );
                 
             } catch (err) {
                 // 🔥 新增：如果偵測到 Token 過期，系統自動清除舊快取並重新啟動！
@@ -533,6 +547,19 @@
                 remark: document.getElementById('remark').value.trim()
             };
 
+            /*
+             * 券的內容跟著預約走。
+             * 存快照而不是只存 id：店員在後台看那筆預約時要直接看到「要給什麼」，
+             * 而且券之後被改名或刪掉，也不影響這筆已經成立的預約。
+             */
+            const couponSel = document.getElementById('couponSelect');
+            const pickedCouponId = couponSel ? couponSel.value : '';
+            const pickedCoupon = myCoupons.find(c => c.id === pickedCouponId) || null;
+            formData.couponId = pickedCouponId || '';
+            formData.couponName = pickedCoupon ? (pickedCoupon.campaignName || '') : '';
+            formData.couponBenefit = pickedCoupon ? (pickedCoupon.benefit || '') : '';
+            formData.couponAmount = pickedCoupon ? Number(pickedCoupon.amount || 0) : 0;
+
             // =========================================================
             // 🛡️ Transaction 防競態：檢查 + 寫入 不可分割
             // =========================================================
@@ -589,6 +616,24 @@
 
                 // Transaction 成功
                 formData.id = editId || newDocRef.id;
+
+                /*
+                 * 選券＝核銷，就在這裡發生。
+                 * 改預約時如果換了券（或改成不用），原本那張要還回去，
+                 * 不然客人會白白損失一張。
+                 */
+                const originalCouponId = document.getElementById('originalCouponId').value;
+                if (originalCouponId && originalCouponId !== pickedCouponId) {
+                    await releaseCouponOfBooking(db, formData.id, originalCouponId);
+                }
+                if (pickedCouponId && pickedCouponId !== originalCouponId) {
+                    try {
+                        await useCouponForBooking(db, pickedCouponId, formData.id);
+                    } catch (e) {
+                        console.error("核銷優惠券失敗", e);
+                    }
+                }
+                document.getElementById('originalCouponId').value = pickedCouponId;
                 triggerNotification(formData, editId ? "update" : "new");
                 localStorage.setItem('force_refresh_admin', Date.now());
                 alert("預約成功！");
@@ -632,6 +677,9 @@
 
                 // 2. 從 Firebase 刪除資料
                 await db.collection("bookings").doc(editId).delete();
+
+                // 3. 預約沒了，券要還回去（老闆的規則：選券＝核銷，取消就回加）
+                await releaseCouponOfBooking(db, editId, document.getElementById('originalCouponId').value);
                 
                 alert("✅ 已成功取消預約！");
                 if(liff.isInClient()) liff.closeWindow();
@@ -766,6 +814,41 @@
         // =====================================================================
         // 🔍 5. 修改預約與店家快搜
         // =====================================================================
+        /**
+         * 這位客人可以用的券。
+         *
+         * keepId 是「這筆預約原本用的那張」——它已經被標成使用中，
+         * 不放進選項的話，客人只是改個時間就會把券弄丟。
+         */
+        let myCoupons = [];
+        async function loadMyCoupons(lineId, keepId) {
+            const group = document.getElementById('group-coupon');
+            const sel = document.getElementById('couponSelect');
+            if (!lineId) { group.style.display = 'none'; return; }
+
+            try {
+                const snap = await db.collection("coupons").where("memberId", "==", lineId).get();
+                myCoupons = [];
+                snap.forEach(doc => myCoupons.push({ id: doc.id, ...doc.data() }));
+            } catch (e) {
+                console.error("讀取優惠券失敗", e);
+                myCoupons = [];
+            }
+
+            const list = myCoupons
+                .filter(c => isCouponUsable(c) || (keepId && c.id === keepId))
+                .sort((a, b) => String(a.expiresAt || '').localeCompare(String(b.expiresAt || '')));
+
+            if (!list.length) { group.style.display = 'none'; return; }
+
+            sel.innerHTML = '<option value="">不使用優惠券</option>' + list.map(c => {
+                const money = c.showAmount && c.amount ? `（折 ${Number(c.amount).toLocaleString('zh-TW')} 元）` : '';
+                return `<option value="${c.id}">${c.benefit || c.campaignName}${money}・${c.expiresAt || ''} 前</option>`;
+            }).join('');
+            if (keepId && list.some(c => c.id === keepId)) sel.value = keepId;
+            group.style.display = 'block';
+        }
+
         async function loadBookingData(id) {
             try {
                 const doc = await db.collection("bookings").doc(id).get();
@@ -777,6 +860,7 @@
                     document.getElementById('phone').value = data.phone;
                     document.getElementById('type').value = data.type; 
                     document.getElementById('remark').value = data.remark || "";
+                    document.getElementById('originalCouponId').value = data.couponId || "";
                     
                     let dateSelect = document.getElementById('date');
                     if (!Array.from(dateSelect.options).some(opt => opt.value === data.date)) {
@@ -834,6 +918,8 @@
                                     document.getElementById('phone').value = m.p;
                                     document.getElementById('memberSearch').value = '';
                                     resultBox.style.display = 'none';
+                                    // 代客預約也要能幫客人用券
+                                    loadMyCoupons(m.lid, document.getElementById('originalCouponId').value);
                                 };
                                 resultBox.appendChild(div);
                             });

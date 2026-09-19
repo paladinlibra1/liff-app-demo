@@ -591,6 +591,9 @@ async function cancelBooking(id, date, time) {
       // 從 Firebase 刪除
       await db.collection("bookings").doc(id).delete();
 
+      // 這筆用掉的券要還回去（選券＝核銷，取消就回加）
+      await releaseCouponOfBooking(db, id, bookingData.couponId || '');
+
       // 觸發 GAS 通知（讓 GAS 去刪 Google 日曆事件）
       triggerNotification(bookingData, "cancel");
       logCancelledBooking(bookingData, 'customer');
@@ -598,6 +601,9 @@ async function cancelBooking(id, date, time) {
 
     allBookings = allBookings.filter(b => b.id !== id);
     renderList();
+    // 券可能被還回來了，重讀一次才看得到
+    await loadCoupons();
+    updateMenuCounts();
     showToast('✅ 預約已成功取消');
   } catch (err) {
     alert('取消失敗：' + err.message);

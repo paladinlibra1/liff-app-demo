@@ -52,6 +52,60 @@ function logCancelledBooking(bookingData, cancelledBy) {
 //   3. 呼叫 initAuthGate()（要在 firestore().settings() 之後，因為它會讀後台名單）
 // 擁有者：永遠進得去，也是唯一能改後台名單的人。
 // 這份只能改程式，故意不放進 Firestore——名單被人改壞或誤刪時還能登入修回來
+
+// ─────────────────────────────────────────────────────────
+// 🎁 優惠券：使用與歸還
+// ─────────────────────────────────────────────────────────
+// 老闆定的規則：**預約時選券就等於核銷**，店員不用另外按一次。
+// 相對的，預約被取消、或把券改掉／換成別張，就要把券還回去，
+// 不然客人會白白損失一張券。
+//
+// 券上記 usedBookingId，預約上記 couponId ＋ 券的內容快照，
+// 兩邊都留是刻意的：
+//   - 預約上的快照讓店員一眼看到「這筆要給什麼」，就算券後來被改或刪
+//   - 券上的 usedBookingId 讓「取消預約」時找得到要還哪一張
+
+/** 選了券就當場核銷 */
+async function useCouponForBooking(db, couponId, bookingId) {
+  if (!couponId) return;
+  await db.collection("coupons").doc(couponId).update({
+    usedAt: new Date(),
+    usedBookingId: bookingId || ""
+  });
+}
+
+/**
+ * 把券還回去（回到「可使用」）。
+ *
+ * 知道券 id 就直接還那張；只知道預約 id（例如後台取消預約）就反查 usedBookingId。
+ * 失敗只記 log 不擋流程——取消預約比還券重要，還券失敗店家可以手動處理。
+ */
+async function releaseCouponOfBooking(db, bookingId, couponId) {
+  try {
+    if (couponId) {
+      await db.collection("coupons").doc(couponId).update({ usedAt: null, usedBookingId: "" });
+      return;
+    }
+    if (!bookingId) return;
+    const snap = await db.collection("coupons").where("usedBookingId", "==", bookingId).get();
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.forEach(doc => batch.update(doc.ref, { usedAt: null, usedBookingId: "" }));
+    await batch.commit();
+  } catch (err) {
+    console.error("歸還優惠券失敗", err);
+  }
+}
+
+/** 這張券現在還能用嗎（沒用掉、沒過期） */
+function isCouponUsable(c) {
+  if (!c || c.usedAt) return false;
+  const today = new Date();
+  const p = n => String(n).padStart(2, "0");
+  const todayStr = today.getFullYear() + "-" + p(today.getMonth() + 1) + "-" + p(today.getDate());
+  return !c.expiresAt || c.expiresAt >= todayStr;
+}
+
 const OWNER_EMAILS = [
     "paladinlibra1@gmail.com",
     "paladinlibra1022@gmail.com"   // 備用，主帳號登不進去時才用

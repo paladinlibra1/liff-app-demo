@@ -63,6 +63,7 @@
         body { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang TC', '微軟正黑體', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; padding-top: max(20px, env(safe-area-inset-top)); letter-spacing: 0.5px; }
         .container { max-width: 95%; margin: 0 auto; }
         
+        .coupon-chip { display:inline-block; margin-bottom:4px; padding:3px 9px; border-radius:99px; background:#fff3e0; color:#e65100; font-size:12px; font-weight:600; }
         .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; letter-spacing: 1px; }
         .btn-primary { background: var(--primary-color); color: white; }
         .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
@@ -1445,7 +1446,7 @@
                     <td data-label="預約人姓名"><span style="color:#666;">${row.name}</span></td>
                     <td data-label="同行者姓名">${row.name2 ? `<strong style="color:#666;">${row.name2}</strong>` : `<span style="color:#aaa;">-</span>`}</td>
                     <td data-label="聯絡電話">${row.phone}</td>
-                    <td data-label="備註"><div class="remark-cell">${row.remark || '-'}</div></td>
+                    <td data-label="備註"><div class="remark-cell">${couponChip(row)}${row.remark || (row.couponBenefit ? '' : '-')}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                         <button class="btn btn-sm btn-edit" onclick="editBooking('${row.id}')">編輯</button>
@@ -1454,6 +1455,14 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        /** 這筆預約用了券就在備註欄前面掛一張標籤，店員一眼看到要給什麼 */
+        function couponChip(row) {
+            if (!row.couponBenefit && !row.couponName) return '';
+            const money = row.couponAmount ? `（${Number(row.couponAmount).toLocaleString('zh-TW')} 元）` : '';
+            const text = escHtml((row.couponBenefit || row.couponName) + money);
+            return `<div class="coupon-chip">🎁 ${text}</div>`;
         }
 
         function editBooking(id) { window.open(`${FRONTEND_URL}?role=admin&id=${id}`, '_blank'); }
@@ -1468,6 +1477,9 @@
 
                 // 2. 先刪除資料庫
                 await db.collection("bookings").doc(id).delete();
+
+                // 預約沒了，客人用掉的券要還回去（選券＝核銷，取消就回加）
+                await releaseCouponOfBooking(db, id, bookingData ? (bookingData.couponId || '') : '');
                 allBookings = allBookings.filter(r => r.id !== id);
                 filterBookingTable();
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
@@ -2330,7 +2342,7 @@
                     <td data-label="預約人姓名"><span style="color:#666;">${row.name}</span></td>
                     <td data-label="同行者姓名"><span style="color:#666;">${row.name2 ? row.name2 : '-'}</span></td>
                     <td data-label="聯絡電話"><span style="color:#666;">${row.phone}</span></td>
-                    <td data-label="備註"><div class="remark-cell">${row.remark || '-'}</div></td>
+                    <td data-label="備註"><div class="remark-cell">${couponChip(row)}${row.remark || (row.couponBenefit ? '' : '-')}</div></td>
                     <td class="action-btns">
                         <button class="btn btn-sm btn-rebook" onclick="rebook('${row.phone}', '${row.name}')">再約一筆</button>
                     </td>
