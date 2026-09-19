@@ -322,7 +322,7 @@ export default function MyBookingsApp() {
                     <button className="slim" disabled={saving} onClick={saveEdit}>
                       {saving ? "⏳ 儲存中…" : "💾 儲存變更"}
                     </button>
-                    <button className="slim ghost" onClick={() => setEditing(null)}>
+                    <button className="slim ghost" disabled={saving} onClick={() => setEditing(null)}>
                       ↩️ 取消修改
                     </button>
                   </div>

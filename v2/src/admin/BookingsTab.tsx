@@ -143,7 +143,8 @@ export default function BookingsTab({ store }: { store: Store }) {
     <>
       <div className="panel">
         {/* 兩張表單同時開著只會讓人搞不清楚在改哪一筆，開一張就關掉另一張 */}
-        <button className="slim" onClick={() => { setEditing(null); setAdding(true); }}>
+        <button className="slim" disabled={busy !== null}
+          onClick={() => { setEditing(null); setAdding(true); }}>
           ➕ 代客預約
         </button>
         <p className="hint">店家幫客人訂。規則跟客人端一樣，只選得到有營業又還有位子的時段。</p>
@@ -185,7 +186,7 @@ export default function BookingsTab({ store }: { store: Store }) {
         <BookingCalendar
           store={store}
           reloadKey={stamp}
-          onPick={(r) => { setAdding(false); setEditing(r); }}
+          onPick={(r) => { if (busy) return; setAdding(false); setEditing(r); }}
         />
       )}
 

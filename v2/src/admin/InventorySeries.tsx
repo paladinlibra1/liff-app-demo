@@ -184,7 +184,7 @@ export default function InventorySeries({
                   </div>
                   <div className="c acts">
                     <button className="slim" disabled={busy} onClick={() => saveRename(s)}>💾 儲存</button>
-                    <button className="slim ghost" onClick={() => setRenaming(null)}>↩️ 取消</button>
+                    <button className="slim ghost" disabled={busy} onClick={() => setRenaming(null)}>↩️ 取消</button>
                   </div>
                 </>
               ) : (

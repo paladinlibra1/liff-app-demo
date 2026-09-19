@@ -291,7 +291,7 @@ export default function NewBookingForm({
       {err && <div className="msg err">{err}</div>}
 
       <button disabled={busy} onClick={save}>{busy ? "⏳ 建立中…" : "✅ 建立預約"}</button>
-      <button className="ghost" onClick={onClose}>↩️ 取消</button>
+      <button className="ghost" disabled={busy} onClick={onClose}>↩️ 取消</button>
 
       <p className="hint">
         選了有綁 LINE 的會員，建立後會立刻發 LINE 通知給客人

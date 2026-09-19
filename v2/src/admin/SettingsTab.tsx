@@ -314,7 +314,7 @@ export default function SettingsTab({ store }: { store: Store }) {
             <button className="slim" disabled={busy || !dirty} onClick={saveTheme}>
               {busy ? "⏳ 儲存中…" : "💾 儲存配色"}
             </button>
-            <button className="slim ghost" disabled={!dirty} onClick={revert}>
+            <button className="slim ghost" disabled={busy || !dirty} onClick={revert}>
               ↩️ 還原
             </button>
           </div>

@@ -293,7 +293,7 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
                   ⛔ 封鎖時段
                 </button>
               )}
-              <button className="slim ghost" onClick={() => setSelected(new Set())}>✖️ 取消選擇</button>
+              <button className="slim ghost" disabled={busy !== null} onClick={() => setSelected(new Set())}>✖️ 取消選擇</button>
             </div>
           </div>
         )}
@@ -324,7 +324,7 @@ export default function OperatingDaysTab({ store }: { store: Store }) {
                   ))}
                 </div>
                 <p className="hint">點一下切換。被封鎖的時段，客人端會顯示「額滿」。</p>
-                <button className="ghost" onClick={() => setOpenDate(null)}>✖️ 關閉</button>
+                <button className="ghost" disabled={busy !== null} onClick={() => setOpenDate(null)}>✖️ 關閉</button>
               </>
             );
           })()}

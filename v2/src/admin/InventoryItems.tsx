@@ -242,7 +242,7 @@ export default function InventoryItems({ store }: { store: Store }) {
             <button className="slim" disabled={saving} onClick={save}>
               {saving ? "⏳ 儲存中…" : "💾 儲存"}
             </button>
-            <button className="slim ghost" onClick={closeEdit}>↩️ 取消</button>
+            <button className="slim ghost" disabled={saving || deleting} onClick={closeEdit}>↩️ 取消</button>
           </div>
         </div>
       )}
@@ -295,7 +295,7 @@ export default function InventoryItems({ store }: { store: Store }) {
                       <button className="slim" disabled={saving} onClick={save}>
                         {saving ? "⏳ 儲存中…" : "💾 儲存"}
                       </button>
-                      <button className="slim ghost" onClick={closeEdit}>↩️ 取消</button>
+                      <button className="slim ghost" disabled={saving || deleting} onClick={closeEdit}>↩️ 取消</button>
                       <button
                         className="slim outline danger" disabled={deleting}
                         onClick={() => remove(it)}

@@ -298,7 +298,7 @@ export default function MembersTab({ store }: { store: Store }) {
             <button className="slim" disabled={saving} onClick={save}>
               {saving ? "⏳ 儲存中…" : "💾 儲存"}
             </button>
-            <button className="slim ghost" onClick={() => setEditing(null)}>↩️ 取消</button>
+            <button className="slim ghost" disabled={saving} onClick={() => setEditing(null)}>↩️ 取消</button>
           </div>
         </div>
       )}
