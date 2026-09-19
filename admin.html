@@ -707,7 +707,8 @@
                     （現金抵用券才需要打開）。
                 </p>
 
-                <!-- 新增／編輯表單 -->
+                <!-- 新增／編輯表單。編輯時會被搬到那張卡片下面（見 placeCouponForm） -->
+                <div id="couponFormHome">
                 <div id="couponForm" style="display:none; margin-top:18px; padding:18px; background:#fafafa; border:1px solid var(--border-color); border-radius:10px;">
                     <div id="couponFormTitle" style="font-weight:700; margin-bottom:14px;">新增活動</div>
 
@@ -795,6 +796,7 @@
                             onclick="runOnce(this,'儲存中…',()=>saveCouponCampaign())">💾 儲存</button>
                         <button class="btn btn-outline" onclick="closeCouponForm()">↩️ 取消</button>
                     </div>
+                </div>
                 </div>
 
                 <div id="couponListStatus" style="font-size:0.85rem; color:#888; margin-top:18px;">載入中…</div>
@@ -3501,6 +3503,8 @@
         }
 
         function renderCouponCampaigns() {
+            // 重寫 innerHTML 會把搬進清單的表單一起刪掉，先接回來
+            moveCouponFormHome();
             const box = document.getElementById('couponList');
             if (!couponCampaigns.length) {
                 box.innerHTML = '<div style="padding:26px 0; text-align:center; color:#aaa; font-size:0.9rem;">還沒有任何活動，按右上角「➕ 新增活動」建立第一種券。</div>';
@@ -3511,7 +3515,7 @@
                 const off = !c.active;
                 const money = Number(c.amount || 0).toLocaleString('zh-TW');
                 return `
-                <div style="padding:14px 16px; margin-bottom:10px; background:#fff; border:1px solid var(--border-color); border-radius:10px; ${off ? 'opacity:.55;' : ''}">
+                <div id="cpCard-${c.id}" style="padding:14px 16px; margin-bottom:10px; background:#fff; border:1px solid var(--border-color); border-radius:10px; ${off ? 'opacity:.55;' : ''}">
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <strong style="font-size:1rem;">${escHtml(c.name || '(未命名)')}</strong>
                         ${off ? '<span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:#eee; color:#888;">已停用</span>' : ''}
@@ -3532,6 +3536,34 @@
                     </div>
                 </div>`;
             }).join('');
+
+            // 正在編輯就把表單接到那張卡片下面
+            if (editingCouponId) placeCouponForm(editingCouponId);
+        }
+
+        /*
+         * 表單搬家
+         *
+         * 一份表單重複用，但位置跟著你點的那張卡片走——不然你按的是最下面那張，
+         * 表單卻開在最上面，看起來像另一個活動。
+         *
+         * 搬進清單之後要注意：renderCouponCampaigns() 會重寫整個清單的 innerHTML，
+         * 那會把表單節點一起刪掉。所以每次重繪前先搬回「家」。
+         */
+        function moveCouponFormHome() {
+            const home = document.getElementById('couponFormHome');
+            const form = document.getElementById('couponForm');
+            if (home && form && form.parentElement !== home) home.appendChild(form);
+        }
+
+        function placeCouponForm(id) {
+            const card = document.getElementById('cpCard-' + id);
+            const form = document.getElementById('couponForm');
+            if (!card || !form) return;
+            // 表單長在卡片原本的位置，卡片自己藏起來——
+            // 不然同一個活動會在畫面上出現兩次（一次在表單、一次在清單）
+            card.insertAdjacentElement('afterend', form);
+            card.style.display = 'none';
         }
 
         /** 發放方式換了就只留下用得到的欄位，免得畫面問一堆不相干的問題 */
@@ -3572,13 +3604,20 @@
             onCouponIssueModeChange();
             onCouponValidModeChange();
 
-            document.getElementById('couponForm').style.display = 'block';
-            document.getElementById('couponForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (editingCouponId) placeCouponForm(editingCouponId);
+            else moveCouponFormHome();
+
+            const form = document.getElementById('couponForm');
+            form.style.display = 'block';
+            form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         function closeCouponForm() {
             editingCouponId = null;
             document.getElementById('couponForm').style.display = 'none';
+            moveCouponFormHome();
+            // 重畫一次，剛才藏起來的那張卡片才會回來（資料在記憶體裡，不用再讀）
+            renderCouponCampaigns();
         }
 
         async function saveCouponCampaign() {
