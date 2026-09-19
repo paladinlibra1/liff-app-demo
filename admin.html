@@ -1483,9 +1483,12 @@
         /** 這筆預約用了券就在備註欄前面掛一張標籤，店員一眼看到要給什麼 */
         function couponChip(row) {
             if (!row.couponBenefit && !row.couponName) return '';
+            // 活動名稱要寫出來：光看「保濕課程一堂」分不出是生日禮還是周年慶
             const money = row.couponAmount ? `（${Number(row.couponAmount).toLocaleString('zh-TW')} 元）` : '';
-            const text = escHtml((row.couponBenefit || row.couponName) + money);
-            return `<div class="coupon-chip">🎁 ${text}</div>`;
+            const text = (row.couponName && row.couponBenefit)
+                ? row.couponName + '：' + row.couponBenefit
+                : (row.couponName || row.couponBenefit);
+            return `<div class="coupon-chip">🎁 ${escHtml(text + money)}</div>`;
         }
 
         function editBooking(id) { window.open(`${FRONTEND_URL}?role=admin&id=${id}`, '_blank'); }

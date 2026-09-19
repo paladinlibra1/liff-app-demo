@@ -845,7 +845,10 @@
 
             sel.innerHTML = '<option value="">不使用優惠券</option>' + list.map(c => {
                 const money = c.showAmount && c.amount ? `（折 ${Number(c.amount).toLocaleString('zh-TW')} 元）` : '';
-                return `<option value="${c.id}">${c.benefit || c.campaignName}${money}・${c.expiresAt || ''} 前</option>`;
+                const label = (c.campaignName && c.benefit)
+                    ? `${c.campaignName}：${c.benefit}`
+                    : (c.campaignName || c.benefit || '優惠券');
+                return `<option value="${c.id}">${label}${money}・${c.expiresAt || ''} 前</option>`;
             }).join('');
             if (keepId && list.some(c => c.id === keepId)) sel.value = keepId;
             group.style.display = 'block';

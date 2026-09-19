@@ -186,7 +186,11 @@ function handleNotification(payload) {
     // 讀的是預約上存的快照（couponBenefit），不是去查券：券後來被改名或刪掉都不影響。
     var couponText = "";
     if (data.couponBenefit || data.couponName) {
-      couponText = "\n🎁 優惠券：" + (data.couponBenefit || data.couponName);
+      // 活動名稱也要寫：光看「保濕課程一堂」分不出是生日禮還是周年慶
+      var couponLabel = (data.couponName && data.couponBenefit)
+        ? (data.couponName + "：" + data.couponBenefit)
+        : (data.couponName || data.couponBenefit);
+      couponText = "\n🎁 優惠券：" + couponLabel;
       if (data.couponAmount) couponText += "（" + data.couponAmount + " 元）";
     }
 
