@@ -1009,7 +1009,7 @@
         let allMembers = [];
         let allOperatingDays = []; 
 
-        let currentFilterMode = 'today'; 
+        let currentFilterMode = 'day'; 
         let viewMode = 'list'; 
         let fcBookingCalendar = null; 
         let fcOperatingCalendar = null;
@@ -1242,6 +1242,12 @@
                 
                 if (!isFirstLoad) {
                     filterBookingTable(); 
+                    // 目前是哪個模式要看得出來（預設單日）
+                    const modeBtn = document.getElementById('btn-' + currentFilterMode);
+                    if (modeBtn && modeBtn.classList.contains('btn-outline')) {
+                        modeBtn.classList.remove('btn-outline');
+                        modeBtn.classList.add('btn-primary');
+                    }
                 }
                 
                 if (fcBookingCalendar) fcBookingCalendar.refetchEvents();
