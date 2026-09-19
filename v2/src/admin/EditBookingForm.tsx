@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Store } from "./AdminShell";
+import type { StatusResult } from "./BookingsTab";
 
 /**
  * 後台改預約的時間或備註。
@@ -37,11 +38,12 @@ export default function EditBookingForm({
   onSaved: () => void | Promise<void>;
   onClose: () => void;
   /**
-   * 「❌ 取消預約」。在日曆檢視點客人只會開這張表單，
-   * 沒有這顆按鈕就等於要取消還得先切回清單。
-   * 真正的取消動作在 BookingsTab（要走 Worker 才發得出 LINE）。
+   * 「🗑️ 刪除預約」。在日曆檢視點客人只會開這張表單，
+   * 沒有這顆按鈕就等於要刪除還得先切回清單。
+   * 真正的動作在 BookingsTab（要走 Worker 才發得出 LINE），
+   * 失敗訊息要回傳給這裡顯示——不然紅字會落在表單下面、看不到。
    */
-  onCancelBooking?: () => void | Promise<void>;
+  onCancelBooking?: () => Promise<StatusResult>;
 }) {
   const originalTime = booking.start_time.slice(0, 5);
 
@@ -139,6 +141,16 @@ export default function EditBookingForm({
     }
   }
 
+  /** 刪除預約：成功的話上層會關掉這張表單，失敗就在按鈕旁邊顯示原因 */
+  async function removeBooking() {
+    if (busy || !onCancelBooking) return;
+    setBusy(true); setErr("");
+    const res = await onCancelBooking();
+    if (res.ok) return;                                // 表單要被關掉了，不用收尾
+    if (res.error) setErr(res.error);
+    setBusy(false);
+  }
+
   return (
     <div className="panel">
       <div className="panel-title">更改預約</div>
@@ -208,7 +220,7 @@ export default function EditBookingForm({
         </button>
         <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 取消修改</button>
         {onCancelBooking && (
-          <button className="slim outline danger" disabled={busy} onClick={() => void onCancelBooking()}>
+          <button className="slim outline danger" disabled={busy} onClick={() => void removeBooking()}>
             🗑️ 刪除預約
           </button>
         )}

@@ -5,6 +5,12 @@ import NewBookingForm from "./NewBookingForm";
 import EditBookingForm from "./EditBookingForm";
 import BookingCalendar from "./BookingCalendar";
 
+/** 改狀態的結果。`ok` 是 false 又沒有 error，就是使用者自己在確認框按了取消 */
+export interface StatusResult {
+  ok: boolean;
+  error?: string;
+}
+
 export interface BookingRow {
   id: string;
   date: string;
@@ -92,15 +98,18 @@ export default function BookingsTab({ store }: { store: Store }) {
    * 改狀態走 `/api/admin/bookings/:id/status`，不直接改 Supabase——
    * 店家取消時客人要收到 LINE，而推播的 token 只存在 Worker。
    */
-  /** @returns 有沒有真的改成功（日曆那邊要靠這個決定表單關不關） */
-  async function setStatus(row: BookingRow, status: string): Promise<boolean> {
-    if (busy) return false;                 // 防連點
+  /**
+   * @returns 改成功沒有，失敗訊息一起回傳——這個元件的 err 畫在表單「下面」，
+   * 店員在表單上按「刪除預約」時根本看不到，所以表單要自己顯示一份。
+   */
+  async function setStatus(row: BookingRow, status: string): Promise<StatusResult> {
+    if (busy) return { ok: false };         // 防連點
     const cancelling = status === "cancelled";
     const verb = cancelling ? "取消" : "標記為已完成";
     const who = `${row.date} ${row.start_time.slice(0, 5)} ${row.name}`;
     const note = cancelling ? "\n\n客人會收到一則取消通知。" : "";
     if (!confirm(`確定要把 ${who} 的預約${verb}嗎？${note}`)) {
-      return false;
+      return { ok: false };
     }
 
     setBusy(row.id);
@@ -110,8 +119,9 @@ export default function BookingsTab({ store }: { store: Store }) {
       const { data: sess } = await supabase.auth.getSession();
       const token = sess.session?.access_token;
       if (!token) {
-        setErr("登入已過期，請重新登入後台");
-        return false;
+        const msg = "登入已過期，請重新登入後台";
+        setErr(msg);
+        return { ok: false, error: msg };
       }
 
       const res = await fetch(`/api/admin/bookings/${row.id}/status`, {
@@ -126,14 +136,19 @@ export default function BookingsTab({ store }: { store: Store }) {
       // Worker 的錯誤一律是 { error: "人看得懂的句子" }，直接顯示
       const body = await res.json().catch(() => null) as { error?: string } | null;
       if (!res.ok) {
-        setErr(body?.error || `${verb}失敗（${res.status}），請稍後再試`);
-        return false;
+        const msg = body?.error || `${verb}失敗（${res.status}），請稍後再試`;
+        setErr(msg);
+        // 伺服器說不行（例如那筆早就取消或已完成了），畫面上的狀態就是舊的，
+        // 重讀一次讓店員看到現在真正的狀態
+        await refresh();
+        return { ok: false, error: msg };
       }
       await refresh();
-      return true;
+      return { ok: true };
     } catch {
-      setErr("連線失敗，請檢查網路後再試一次");
-      return false;
+      const msg = "連線失敗，請檢查網路後再試一次";
+      setErr(msg);
+      return { ok: false, error: msg };
     } finally {
       setBusy(null);
     }
@@ -165,7 +180,9 @@ export default function BookingsTab({ store }: { store: Store }) {
           onSaved={refresh}
           onClose={() => setEditing(null)}
           onCancelBooking={async () => {
-            if (await setStatus(editing, "cancelled")) setEditing(null);
+            const res = await setStatus(editing, "cancelled");
+            if (res.ok) setEditing(null);
+            return res;
           }}
         />
       )}
