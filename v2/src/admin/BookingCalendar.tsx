@@ -194,24 +194,35 @@ export default function BookingCalendar({
       ? `${anchor.slice(0, 4)} 年 ${Number(anchor.slice(5, 7))} 月`
       : `${from.slice(5).replace("-", "/")} ~ ${to.slice(5).replace("-", "/")}`;
 
-  /** 一筆預約的色塊。點下去等於按「✏️ 改時間」 */
-  function chip(r: BookingRow, withTime = false) {
-    return (
-      <button
-        key={r.id}
-        type="button"
-        className={"bchip" + (r.status === "completed" ? " done" : "")}
-        style={{
-          background: TYPE_COLOR[r.type] ?? "var(--rose)",
-          color: TYPE_INK[r.type] ?? "#fff",
-        }}
-        title={`${r.type}／${r.phone}${r.remark ? "／" + r.remark : ""}`}
-        onClick={() => onPick(r)}
-      >
+  /**
+   * 一筆預約的色塊，**一個人一塊**。
+   *
+   * 帶同行者的單佔兩個位子（`bookings.seats` = 2，額滿計算看的是這個），
+   * 所以畫成兩塊，一格滿了就是滿滿兩塊——跟舊系統的日曆一樣。
+   * 兩塊都連到同一筆，點哪一塊都是開那筆的「更改預約」。
+   */
+  function chips(r: BookingRow, withTime = false) {
+    const style = {
+      background: TYPE_COLOR[r.type] ?? "var(--rose)",
+      color: TYPE_INK[r.type] ?? "#fff",
+    };
+    const cls = "bchip" + (r.status === "completed" ? " done" : "");
+    const tip = `${r.type}／${r.phone}${r.remark ? "／" + r.remark : ""}`;
+
+    const one = (key: string, who: string, note: string) => (
+      <button key={key} type="button" className={cls} style={style}
+        title={note ? `${who}（${note}）／${tip}` : `${who}／${tip}`}
+        onClick={() => onPick(r)}>
         {withTime && <i>{r.start_time.slice(0, 5)}</i>}
-        {r.name2 ? `${r.name}、${r.name2}` : r.name}
+        {who}
       </button>
     );
+
+    if (!r.name2) return [one(r.id, r.name, "")];
+    return [
+      one(r.id, r.name, `同行 2 位，另一位是 ${r.name2}`),
+      one(r.id + "-2", r.name2, `同行 2 位，跟 ${r.name} 同一筆`),
+    ];
   }
 
   return (
@@ -269,7 +280,7 @@ export default function BookingCalendar({
                   {Number(dt.slice(8))}
                   {list.length > 0 && <span className="bmd-c">{list.length}</span>}
                 </button>
-                {list.map((r) => chip(r, true))}
+                {list.map((r) => chips(r, true))}
               </div>
             );
           })}
@@ -312,7 +323,7 @@ export default function BookingCalendar({
                   return (
                     <div key={dt + t} className={cls}>
                       {blocked && list.length === 0 && <span className="bcal-x">封</span>}
-                      {list.map((r) => chip(r))}
+                      {list.map((r) => chips(r))}
                     </div>
                   );
                 })}
@@ -324,7 +335,9 @@ export default function BookingCalendar({
             {Object.entries(TYPE_COLOR).map(([type, color]) => (
               <span key={type}><i style={{ background: color }} />{type}</span>
             ))}
-            <span className="sub" style={{ margin: 0 }}>共 {rows.length} 筆・點名字可以改時間</span>
+            <span className="sub" style={{ margin: 0 }}>
+              共 {rows.length} 筆 / {rows.reduce((n, r) => n + (r.name2 ? 2 : 1), 0)} 位・點名字可以改時間
+            </span>
           </div>
         </>
       )}
