@@ -22,7 +22,12 @@ export interface BookingRow {
   remark: string | null;
   status: string;
   booked_by: string;
+  /** 只有清單會撈：用來把「客人沒來」跟一般取消分開顯示 */
+  cancel_reason?: string | null;
 }
+
+/** 「客人沒來」存的是 cancelled ＋ 這個理由，跟 Worker 的 NO_SHOW_REASON 一致 */
+const NO_SHOW_REASON = "客人沒來";
 
 const WEEK = ["日", "一", "二", "三", "四", "五", "六"];
 
@@ -69,7 +74,7 @@ export default function BookingsTab({ store }: { store: Store }) {
     setErr("");
     let q = supabase
       .from("bookings")
-      .select("id,date,start_time,name,name2,phone,type,remark,status,booked_by")
+      .select("id,date,start_time,name,name2,phone,type,remark,status,booked_by,cancel_reason")
       .eq("store_id", store.id)
       .gte("date", from)
       .lte("date", to)
@@ -104,10 +109,15 @@ export default function BookingsTab({ store }: { store: Store }) {
    */
   async function setStatus(row: BookingRow, status: string): Promise<StatusResult> {
     if (busy) return { ok: false };         // 防連點
-    const cancelling = status === "cancelled";
-    const verb = cancelling ? "取消" : "標記為已完成";
+    const verb = status === "cancelled" ? "刪除"
+      : status === "no_show" ? "標記為「客人沒來」"
+        : "標記為已完成";
     const who = `${row.date} ${row.start_time.slice(0, 5)} ${row.name}`;
-    const note = cancelling ? "\n\n客人會收到一則取消通知。" : "";
+    const note = status === "cancelled"
+      ? "\n\n有綁定 LINE 的客人會收到一則取消通知。"
+      : status === "no_show"
+        ? "\n\n這筆會變成已取消（紀錄留著），不會發任何通知。"
+        : "";
     if (!confirm(`確定要把 ${who} 的預約${verb}嗎？${note}`)) {
       return { ok: false };
     }
@@ -181,6 +191,11 @@ export default function BookingsTab({ store }: { store: Store }) {
           onClose={() => setEditing(null)}
           onCancelBooking={async () => {
             const res = await setStatus(editing, "cancelled");
+            if (res.ok) setEditing(null);
+            return res;
+          }}
+          onNoShow={async () => {
+            const res = await setStatus(editing, "no_show");
             if (res.ok) setEditing(null);
             return res;
           }}
@@ -280,7 +295,9 @@ export default function BookingsTab({ store }: { store: Store }) {
 
                   <div className="c" data-label="狀態">
                     <span className={"badge " + (r.status === "active" ? "up" : "old")}>
-                      {STATUS_LABEL[r.status] ?? r.status}
+                      {r.status === "cancelled" && r.cancel_reason === NO_SHOW_REASON
+                        ? "沒來"
+                        : STATUS_LABEL[r.status] ?? r.status}
                     </span>
                     {r.booked_by === "admin" && <span className="tag2">店家代訂</span>}
                   </div>
@@ -298,11 +315,16 @@ export default function BookingsTab({ store }: { store: Store }) {
                           onClick={() => setStatus(r, "completed")}>
                           ✅ 完成
                         </button>
+                        {/* 沒來不受「過去的單不刪」限制：那是補記已經發生的事 */}
+                        <button className="slim outline" disabled={busy === r.id}
+                          onClick={() => setStatus(r, "no_show")}>
+                          🚫 沒來
+                        </button>
                         {/* 過去的預約不刪除（老闆定的規則），Worker 也擋著 */}
                         {r.date >= today && (
                           <button className="slim outline danger" disabled={busy === r.id}
                             onClick={() => setStatus(r, "cancelled")}>
-                            ❌ 取消
+                            🗑️ 刪除
                           </button>
                         )}
                       </>

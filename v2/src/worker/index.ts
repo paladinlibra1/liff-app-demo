@@ -369,14 +369,16 @@ export default {
           return json({ booking });
         }
 
-        const { booking, notify } = await adminSetBookingStatus(
+        const { booking, notify, noShow } = await adminSetBookingStatus(
           env, store, adminStatusMatch![1],
           (input.status ?? "").trim(),
           input.reason?.trim() || null,
         );
 
-        // 標記完成不用通知任何人——那是店裡自己的紀錄，客人已經來過了
-        if (booking.status === "cancelled") {
+        // 標記完成不用通知任何人——那是店裡自己的紀錄，客人已經來過了。
+        // 「客人沒來」也一樣不發（老闆指定）：人都沒來了，
+        // 再推一張卡片給他、或洗店家群組都沒有意義。
+        if (booking.status === "cancelled" && !noShow) {
           ctx.waitUntil(notifyBooking(env, store, notify, "cancel"));
         }
         // 標記完成也要同步：日曆上的顏色與備註是照預約當下的資料畫的

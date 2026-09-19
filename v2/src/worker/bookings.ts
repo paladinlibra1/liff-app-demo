@@ -513,8 +513,17 @@ export async function createAdminBooking(
 // 後台改預約狀態（完成 / 取消）
 // ───────────────────────────────────────────────────────────
 
-/** 後台按鈕只有這兩種結果，其他值一律不收 */
-const ADMIN_STATUSES = ["completed", "cancelled"];
+/**
+ * 後台按鈕的三種結果，其他值一律不收。
+ *
+ * `no_show`（客人沒來）不是資料庫的狀態——存進去是 `cancelled` ＋
+ * cancel_reason「客人沒來」，老闆的說法是「視作取消預約」。
+ * 分成兩個輸入值是為了讓規則講得清楚：**刪除**過去的單不行，
+ * **標記沒來**可以（那是在記錄已經發生的事，而且多半隔天才發現）。
+ * 沒來**完全不發通知**（客人與店家群組都不發），那純粹是後台的紀錄。
+ */
+const ADMIN_STATUSES = ["completed", "cancelled", "no_show"];
+const NO_SHOW_REASON = "客人沒來";
 
 /**
  * 店家把一筆預約標成已完成或已取消。
@@ -554,21 +563,24 @@ export async function adminSetBookingStatus(
     );
   }
 
+  const noShow = status === "no_show";
+  const nextStatus = noShow ? "cancelled" : status;
+
   /*
    * 過去的預約不刪除——老闆定的規則：那是已經發生的事，紀錄要留著
    * （報表、客人回訪都靠它）。前台也會把按鈕藏起來，這裡是真正的把關。
    *
-   * 只擋整個過去的日子。當天的單還是刪得掉：客人沒來、臨時取消，
-   * 都是店員當天在處理的事。
+   * 「客人沒來」不在此限：它是在補記已經發生的事，而且常常是隔天
+   * 對帳才發現的。只擋整個過去的日子，當天的單照樣刪得掉。
    */
-  if (status === "cancelled" && booking.date < todayInStore(store)) {
-    throw new BookingError("過去的預約不能刪除，紀錄要保留。", 409);
+  if (nextStatus === "cancelled" && !noShow && booking.date < todayInStore(store)) {
+    throw new BookingError("過去的預約不能刪除，紀錄要保留。要記客人沒來請按「沒來」。", 409);
   }
 
-  const patch: Record<string, unknown> = { status };
-  if (status === "cancelled") {
+  const patch: Record<string, unknown> = { status: nextStatus };
+  if (nextStatus === "cancelled") {
     patch.cancelled_at = new Date().toISOString();
-    patch.cancel_reason = reason || "店家取消";
+    patch.cancel_reason = noShow ? NO_SHOW_REASON : (reason || "店家取消");
   }
 
   const updated = await sb<AdminBookingRow[]>(
@@ -584,6 +596,8 @@ export async function adminSetBookingStatus(
   const row = updated[0];
   return {
     booking: row,
+    /** 呼叫端要靠這個決定通知的樣子：沒來只通知店家群組 */
+    noShow,
     notify: {
       date: row.date,
       time: row.start_time.slice(0, 5),

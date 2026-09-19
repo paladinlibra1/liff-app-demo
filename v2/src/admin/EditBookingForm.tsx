@@ -36,7 +36,7 @@ function todayStr(): string {
 }
 
 export default function EditBookingForm({
-  booking, onSaved, onClose, onCancelBooking,
+  booking, onSaved, onClose, onCancelBooking, onNoShow,
 }: {
   store: Store;
   booking: EditableBooking;
@@ -49,6 +49,11 @@ export default function EditBookingForm({
    * 失敗訊息要回傳給這裡顯示——不然紅字會落在表單下面、看不到。
    */
   onCancelBooking?: () => Promise<StatusResult>;
+  /**
+   * 「🚫 客人沒來」。存成已取消（紀錄留著），但完全不發通知。
+   * 過去的單也按得下去——那是在補記已經發生的事。
+   */
+  onNoShow?: () => Promise<StatusResult>;
 }) {
   const originalTime = booking.start_time.slice(0, 5);
   /*
@@ -152,11 +157,11 @@ export default function EditBookingForm({
     }
   }
 
-  /** 刪除預約：成功的話上層會關掉這張表單，失敗就在按鈕旁邊顯示原因 */
-  async function removeBooking() {
-    if (busy || !onCancelBooking) return;
+  /** 刪除預約／標記沒來：成功的話上層會關掉這張表單，失敗就在按鈕旁邊顯示原因 */
+  async function run(action: () => Promise<StatusResult>) {
+    if (busy) return;
     setBusy(true); setErr("");
-    const res = await onCancelBooking();
+    const res = await action();
     if (res.ok) return;                                // 表單要被關掉了，不用收尾
     if (res.error) setErr(res.error);
     setBusy(false);
@@ -230,15 +235,23 @@ export default function EditBookingForm({
           {busy ? "⏳ 儲存中…" : "✅ 儲存更改"}
         </button>
         <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 取消修改</button>
+        {onNoShow && (
+          <button className="slim outline" disabled={busy} onClick={() => void run(onNoShow)}>
+            🚫 客人沒來
+          </button>
+        )}
         {onCancelBooking && !isPast && (
-          <button className="slim outline danger" disabled={busy} onClick={() => void removeBooking()}>
+          <button className="slim outline danger" disabled={busy} onClick={() => void run(onCancelBooking)}>
             🗑️ 刪除預約
           </button>
         )}
       </div>
 
       {isPast && (
-        <p className="hint">過去的預約不能刪除，紀錄要保留；要改時間還是可以。</p>
+        <p className="hint">
+          過去的預約不能刪除，紀錄要保留。客人沒來請按「🚫 客人沒來」——
+          那筆會變成已取消但紀錄留著，而且不發任何通知。
+        </p>
       )}
 
       <p className="hint">
