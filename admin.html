@@ -802,6 +802,64 @@
                 <div id="couponListStatus" style="font-size:0.85rem; color:#888; margin-top:18px;">載入中…</div>
                 <div id="couponList" style="margin-top:14px;"></div>
             </div>
+            <!-- ───────── 發放 ───────── -->
+            <div class="box-container" style="padding:22px; margin-top:16px;">
+                <h3 style="margin:0 0 6px; font-size:1.05rem;">📤 發放優惠券</h3>
+                <p style="margin:0 0 16px; font-size:0.85rem; color:#888; line-height:1.7;">
+                    勾誰就發給誰，一次最多 <strong>50 位</strong>。
+                    已經領過同一個活動的人會標「已發過」，按「全選」時不會勾到他們。<br>
+                    沒綁 LINE 的會員也可以發，券一樣存在，只是收不到通知，要自己口頭告知。
+                </p>
+
+                <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;">
+                    <label style="flex:1 1 240px; font-size:0.85rem; color:#666;">要發哪個活動
+                        <select id="cpIssueCampaign" onchange="onCouponIssueCampaignChange()"
+                            style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                        </select>
+                    </label>
+                    <div id="cpIssueCampaignInfo" style="flex:1 1 240px; font-size:0.8rem; color:#888; line-height:1.7; padding-bottom:4px;"></div>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:16px;">
+                    <label style="flex:1 1 200px; font-size:0.85rem; color:#666;">搜尋姓名或電話
+                        <input id="cpIssueSearch" type="text" placeholder="打幾個字就好" oninput="renderCouponIssueList()"
+                            style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                    </label>
+                    <label style="flex:0 1 160px; font-size:0.85rem; color:#666;">生日月份
+                        <select id="cpIssueBirthMonth" onchange="renderCouponIssueList()"
+                            style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                            <option value="">不限</option>
+                            <option value="01">1 月</option>
+                            <option value="02">2 月</option>
+                            <option value="03">3 月</option>
+                            <option value="04">4 月</option>
+                            <option value="05">5 月</option>
+                            <option value="06">6 月</option>
+                            <option value="07">7 月</option>
+                            <option value="08">8 月</option>
+                            <option value="09">9 月</option>
+                            <option value="10">10 月</option>
+                            <option value="11">11 月</option>
+                            <option value="12">12 月</option>
+                        </select>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; cursor:pointer; padding-bottom:10px;">
+                        <input id="cpIssueOnlyLine" type="checkbox" checked onchange="renderCouponIssueList()">
+                        只看有綁 LINE 的
+                    </label>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px; padding:10px 12px; background:#fafafa; border:1px solid var(--border-color); border-radius:8px;">
+                    <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;" onclick="couponPickAllShown()">☑️ 全選（上限 50）</button>
+                    <button class="btn btn-outline" style="padding:7px 14px; font-size:13px;" onclick="couponPickClear()">✖️ 清除</button>
+                    <div id="cpIssueSummary" style="font-size:0.85rem; color:#666; margin-left:auto;"></div>
+                </div>
+
+                <div id="cpIssueList" style="margin-top:12px; max-height:420px; overflow-y:auto;"></div>
+
+                <button class="btn btn-primary" id="cpIssueSendBtn" style="margin-top:16px;"
+                    onclick="runOnce(this,'發放中…',()=>issueCoupons())">🎁 發放給勾選的人</button>
+            </div>
         </div>
 
         <div id="section-admins" class="section">
@@ -1084,7 +1142,7 @@
                 ensureRetentionData();
             }
 
-            if (tabName === 'coupon') loadCouponCampaigns();
+            if (tabName === 'coupon') ensureCouponTab();
 
             if (tabName === 'admins') loadAdminList();
 
@@ -3478,6 +3536,17 @@
 
         const COUPON_DEFAULT_MSG = '{{name}} 您好 🎁\n送您一張「{{benefit}}」優惠券，{{expires}} 前有效，歡迎預約使用！';
 
+        /**
+         * 進「🎁 優惠券」分頁要的資料：活動 + 會員名單。
+         * 會員名單跟「👥 會員清單」共用同一份（allMembers），沒讀過才讀。
+         */
+        async function ensureCouponTab() {
+            await loadCouponCampaigns();
+            if (!allMembers.length) await loadMemberData(false);
+            fillCouponIssueCampaigns();
+            await onCouponIssueCampaignChange();
+        }
+
         async function loadCouponCampaigns() {
             const statusEl = document.getElementById('couponListStatus');
             statusEl.style.display = 'block';
@@ -3487,6 +3556,8 @@
                 couponCampaigns = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
                 statusEl.style.display = 'none';
                 renderCouponCampaigns();
+                // 活動改過之後，發放區的下拉也要跟著變（停用的就不該還能發）
+                if (document.getElementById('cpIssueCampaign')) fillCouponIssueCampaigns();
             } catch (err) {
                 console.error('讀取優惠券活動失敗', err);
                 statusEl.innerText = '讀取失敗：' + (err.message || err);
@@ -3716,6 +3787,258 @@
             if (!confirm('確定要刪除活動「' + (c.name || '') + '」嗎？\n\n已經發出去的券不會被刪掉。\n如果只是不想再發，建議用「停用」。')) return;
             await db.collection('couponCampaigns').doc(id).delete();
             await loadCouponCampaigns();
+        }
+
+        // =====================================================================
+        // 🎁 優惠券：發放
+        // =====================================================================
+        // 名單直接用會員清單那一份（allMembers），不另外讀一次。
+        // 一次最多 50 位（老闆定的）：LINE 推播每位收件人算一則，
+        // 群發很容易吃掉整個月的免費額度，寧可分幾批發。
+        //
+        // Firestore：coupons/{自動 id}
+        //   campaignId, campaignName, benefit, amount, showAmount（活動內容的快照）
+        //   memberId（= members 的 doc id）, memberName, phone, lineId
+        //   issuedAt, expiresAt('YYYY-MM-DD'), usedAt, usedBookingId, notified
+        //
+        // 為什麼要存活動內容的快照？券發出去之後，老闆可能會去改活動的文案或金額，
+        // 但客人手上那張券的條件不該跟著變。
+
+        const COUPON_ISSUE_LIMIT = 50;
+
+        /** 勾選中的 memberId */
+        let couponPicked = new Set();
+        /** 目前選到的活動，已經發過的人：memberId → issuedAt(Date) */
+        let couponIssuedOf = new Map();
+
+        function couponBirthMonth(b) {
+            const parts = String(b || '').split('-');
+            if (parts.length === 3) return parts[1];
+            if (parts.length === 2) return parts[0];
+            return '';
+        }
+
+        /** 手動建檔的會員沒有真的 LINE 身分，推播推不出去 */
+        function couponHasLine(m) {
+            return !m.isManual && !String(m.lineId || '').startsWith('manual_');
+        }
+
+        function couponSelectedCampaign() {
+            const id = document.getElementById('cpIssueCampaign').value;
+            return couponCampaigns.find(c => c.id === id) || null;
+        }
+
+        /** 發放時算出到期日：固定區間就用結束日，否則今天 + N 天 */
+        function couponExpiresAt(c) {
+            if (c.validMode === 'fixed') return c.validTo || '';
+            const d = new Date();
+            d.setDate(d.getDate() + Number(c.validDays || 0));
+            return d.toISOString().slice(0, 10);
+        }
+
+        /** 活動下拉：只列啟用中的。停用的不該還能發 */
+        function fillCouponIssueCampaigns() {
+            const sel = document.getElementById('cpIssueCampaign');
+            const keep = sel.value;
+            const usable = couponCampaigns.filter(c => c.active !== false);
+
+            if (!usable.length) {
+                sel.innerHTML = '<option value="">（沒有啟用中的活動）</option>';
+            } else {
+                sel.innerHTML = usable.map(c =>
+                    `<option value="${escHtml(c.id)}">${escHtml(c.name || '(未命名)')}</option>`).join('');
+                if (usable.some(c => c.id === keep)) sel.value = keep;
+            }
+        }
+
+        async function onCouponIssueCampaignChange() {
+            couponPicked = new Set();
+            couponIssuedOf = new Map();
+
+            const c = couponSelectedCampaign();
+            const info = document.getElementById('cpIssueCampaignInfo');
+            if (!c) {
+                info.innerHTML = '請先在上面建立一個啟用中的活動。';
+                renderCouponIssueList();
+                return;
+            }
+
+            info.innerHTML = `${escHtml(c.benefit || '')}<br>⏳ ${couponValidText(c)}`
+                + `　・　${c.showAmount ? '💰 客人看得到金額' : '💰 金額只給店裡對帳'}`;
+
+            // 這個活動已經發給誰了：避免同一個人重複收到同一張券
+            try {
+                const snap = await db.collection('coupons').where('campaignId', '==', c.id).get();
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const at = d.issuedAt && d.issuedAt.toDate ? d.issuedAt.toDate() : d.issuedAt;
+                    couponIssuedOf.set(d.memberId, at);
+                });
+            } catch (err) {
+                console.error('讀取已發放名單失敗', err);
+            }
+
+            renderCouponIssueList();
+        }
+
+        /** 目前篩選條件下看得到的人 */
+        function couponShownMembers() {
+            const kw = document.getElementById('cpIssueSearch').value.trim().toLowerCase();
+            const month = document.getElementById('cpIssueBirthMonth').value;
+            const onlyLine = document.getElementById('cpIssueOnlyLine').checked;
+
+            return allMembers.filter(m => {
+                if (onlyLine && !couponHasLine(m)) return false;
+                if (month && couponBirthMonth(m.birthday) !== month) return false;
+                if (kw) {
+                    const hay = ((m.name || '') + ' ' + (m.phone || '')).toLowerCase();
+                    if (hay.indexOf(kw) < 0) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderCouponIssueList() {
+            const box = document.getElementById('cpIssueList');
+            const c = couponSelectedCampaign();
+            if (!c) {
+                box.innerHTML = '';
+                document.getElementById('cpIssueSummary').innerText = '';
+                return;
+            }
+
+            const rows = couponShownMembers();
+            if (!rows.length) {
+                box.innerHTML = '<div style="padding:22px 0; text-align:center; color:#aaa; font-size:0.9rem;">這個條件下沒有會員</div>';
+            } else {
+                box.innerHTML = rows.map(m => {
+                    const id = m.lineId;
+                    const issuedAt = couponIssuedOf.get(id);
+                    const hasLine = couponHasLine(m);
+                    const picked = couponPicked.has(id);
+                    const issuedNote = issuedAt
+                        ? `<span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:#eee; color:#888;">已發過 ${formatCouponDate(issuedAt)}</span>`
+                        : '';
+                    const lineNote = hasLine
+                        ? ''
+                        : '<span style="font-size:0.72rem; padding:2px 8px; border-radius:99px; background:#fff3e0; color:#e65100;">沒綁 LINE</span>';
+                    return `
+                    <label style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid #f2f2f2; cursor:pointer;">
+                        <input type="checkbox" ${picked ? 'checked' : ''}
+                            onchange="toggleCouponPick('${escJsAttr(id)}', this.checked)">
+                        <span style="flex:1 1 auto; min-width:0;">
+                            <span style="font-weight:600;">${escHtml(m.name || '(無姓名)')}</span>
+                            <span style="color:#888; font-size:0.85rem;">　${escHtml(m.phone || '')}</span>
+                            <span style="color:#aaa; font-size:0.8rem;">　🎂 ${escHtml(m.birthday || '無')}</span>
+                        </span>
+                        ${lineNote}
+                        ${issuedNote}
+                    </label>`;
+                }).join('');
+            }
+
+            updateCouponIssueSummary();
+        }
+
+        function formatCouponDate(d) {
+            if (!d) return '';
+            const dt = (d instanceof Date) ? d : new Date(d);
+            if (isNaN(dt.getTime())) return '';
+            return (dt.getMonth() + 1) + '/' + dt.getDate();
+        }
+
+        function updateCouponIssueSummary() {
+            const picked = allMembers.filter(m => couponPicked.has(m.lineId));
+            const withLine = picked.filter(couponHasLine).length;
+            const el = document.getElementById('cpIssueSummary');
+            el.innerHTML = picked.length
+                ? `已勾 <strong>${picked.length}</strong> 位　・　其中 ${withLine} 位收得到 LINE`
+                : '還沒勾任何人';
+            const btn = document.getElementById('cpIssueSendBtn');
+            if (btn) btn.disabled = picked.length === 0;
+        }
+
+        function toggleCouponPick(id, on) {
+            if (on) {
+                if (couponPicked.size >= COUPON_ISSUE_LIMIT) {
+                    alert(`一次最多 ${COUPON_ISSUE_LIMIT} 位，請分批發放。`);
+                    renderCouponIssueList();
+                    return;
+                }
+                couponPicked.add(id);
+            } else {
+                couponPicked.delete(id);
+            }
+            updateCouponIssueSummary();
+        }
+
+        /** 全選：跳過已經發過的人，並且停在上限 */
+        function couponPickAllShown() {
+            const rows = couponShownMembers().filter(m => !couponIssuedOf.has(m.lineId));
+            let hitLimit = false;
+            for (const m of rows) {
+                if (couponPicked.size >= COUPON_ISSUE_LIMIT) { hitLimit = true; break; }
+                couponPicked.add(m.lineId);
+            }
+            renderCouponIssueList();
+            if (hitLimit) alert(`一次最多 ${COUPON_ISSUE_LIMIT} 位，已經勾到上限，剩下的請發下一批。`);
+        }
+
+        function couponPickClear() {
+            couponPicked = new Set();
+            renderCouponIssueList();
+        }
+
+        async function issueCoupons() {
+            const c = couponSelectedCampaign();
+            if (!c) return alert('請先選一個活動');
+
+            const picked = allMembers.filter(m => couponPicked.has(m.lineId));
+            if (!picked.length) return alert('請先勾要發給誰');
+            if (picked.length > COUPON_ISSUE_LIMIT) return alert(`一次最多 ${COUPON_ISSUE_LIMIT} 位`);
+
+            const expiresAt = couponExpiresAt(c);
+            if (!expiresAt) return alert('這個活動的有效期設定不完整，請先去上面補好');
+
+            const again = picked.filter(m => couponIssuedOf.has(m.lineId)).length;
+            const noLine = picked.filter(m => !couponHasLine(m)).length;
+            const note = [
+                `活動：${c.name}`,
+                `對象：${picked.length} 位`,
+                again ? `⚠️ 其中 ${again} 位之前已經領過這個活動` : '',
+                noLine ? `⚠️ 其中 ${noLine} 位沒綁 LINE，收不到通知，要自己告知` : '',
+                `到期日：${expiresAt}`,
+            ].filter(Boolean).join('\n');
+            if (!confirm(`確定要發放嗎？\n\n${note}`)) return;
+
+            // 一次交易寫完：中途失敗不會留下一半的券（50 筆遠低於 batch 的 500 筆上限）
+            const batch = db.batch();
+            const now = new Date();
+            picked.forEach(m => {
+                const ref = db.collection('coupons').doc();
+                batch.set(ref, {
+                    campaignId: c.id,
+                    // 活動的快照：之後老闆改文案或金額，不影響已經發出去的券
+                    campaignName: c.name || '',
+                    benefit: c.benefit || '',
+                    amount: Number(c.amount || 0),
+                    showAmount: !!c.showAmount,
+                    memberId: m.lineId,
+                    memberName: m.name || '',
+                    phone: m.phone || '',
+                    lineId: couponHasLine(m) ? m.lineId : '',
+                    issuedAt: now,
+                    expiresAt: expiresAt,
+                    usedAt: null,
+                    usedBookingId: '',
+                    notified: false
+                });
+            });
+            await batch.commit();
+
+            couponPicked = new Set();
+            await onCouponIssueCampaignChange();
+            alert(`已發放 ${picked.length} 張券。\n\nLINE 通知還沒接上（下一步要做），現在請先口頭告知客人。`);
         }
 
         function escJsAttr(str) {
