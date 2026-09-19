@@ -127,6 +127,16 @@ function handleNotification(payload) {
     if (type === 'cancel') { greeting += "您的預約已「取消」。期待下次為您服務！"; } 
     else { greeting += "您的預約已" + ((type==='new')?"保留":"更新") + "，詳細資訊如下：\n(備註: " + remarkText + ")"; }
 
+
+    // 有用券就寫在卡片上，客人才確定券真的扣掉了。
+    // 取消時不寫——那張券已經還回去了，再提只會讓人以為還扣著。
+    if (type !== 'cancel' && (data.couponBenefit || data.couponName)) {
+      var custCoupon = (data.couponName && data.couponBenefit)
+        ? (data.couponName + "：" + data.couponBenefit)
+        : (data.couponName || data.couponBenefit);
+      greeting += "\n🎁 已使用優惠券：" + custCoupon;
+    }
+
     var customerFlexMsg = getFlexMessage(title, greeting, { date: data.date, time: data.time, link: editLink }, { color: customerHeaderColor, showAttendBtn: false, isCancel: (type === 'cancel') });
     sendLinePush(data.lineId, customerFlexMsg);
   }

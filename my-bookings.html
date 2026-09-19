@@ -748,6 +748,33 @@ function renderCoupons() {
   }).join('') + '</div>';
 }
 
+/*
+ * 回到這一頁就重讀
+ *
+ * 客人從這裡按「開始預約」跳去預約頁，訂完回來時這一頁還是原本那份資料——
+ * 券明明扣掉了，畫面上還顯示「可使用」。所以頁面一回到前景就重讀一次。
+ *
+ * visibilitychange 管切回分頁／從 LIFF 的另一個視窗回來；
+ * pageshow(persisted) 管 iOS 上「上一頁」拿回快照的情況。
+ */
+let refreshing = false;
+async function refreshOnReturn() {
+  if (refreshing || !currentUserLineId) return;
+  refreshing = true;
+  try {
+    await fetchBookings(null);
+    await loadCoupons();
+  } catch (e) {
+    console.error('重讀失敗', e);
+  }
+  refreshing = false;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshOnReturn();
+});
+window.addEventListener('pageshow', (e) => { if (e.persisted) refreshOnReturn(); });
+
 /** 首頁選單右邊那兩個數字 */
 function updateMenuCounts() {
   const b = document.getElementById('menuBookingCount');
