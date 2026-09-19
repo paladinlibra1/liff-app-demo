@@ -260,29 +260,147 @@ body {
   margin-top: 4px;
   line-height: 1.4;
 }
+
+/* ── 首頁：個人資訊 ── */
+.hero { text-align: center; padding: 6px 0 24px; animation: fadeIn 0.5s ease-out; }
+.hero .avatar {
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(214,128,149,0.25);
+  object-fit: cover;
+  margin-bottom: 12px;
+  display: none;           /* 拿得到 LINE 大頭貼才顯示 */
+}
+.hero h2 {
+  font-size: 1.4rem; font-weight: 800;
+  color: var(--text-color); letter-spacing: 1px;
+}
+.hero-btn {
+  margin-top: 16px; padding: 14px 46px;
+  border: none; border-radius: 999px;
+  font-size: 1.05rem; font-weight: 700; font-family: inherit;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  box-shadow: 0 6px 18px rgba(214,128,149,0.35);
+  cursor: pointer;
+}
+.hero-btn:active { transform: scale(0.98); }
+
+/* ── 選單卡（預約紀錄／優惠券） ── */
+.menu-card {
+  background: var(--card-bg); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 4px 16px rgba(214,128,149,0.10);
+}
+.menu-row {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 18px; background: transparent; border: none;
+  border-bottom: 1px solid #f6ecef;
+  font-size: 1rem; font-family: inherit; color: var(--text-color);
+  text-align: left; cursor: pointer;
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row:active { background: #fdf7f9; }
+.menu-row .mi { font-size: 1.3rem; width: 28px; text-align: center; }
+.menu-row .mt { flex: 1 1 auto; font-weight: 600; }
+.menu-row .mc { color: var(--muted); font-size: 0.88rem; }
+.menu-row .ma { color: #d9c3c9; font-size: 1.3rem; line-height: 1; }
+
+/* ── 子頁的標題列 ── */
+.subhead { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.subhead .back {
+  border: none; background: #fff; color: var(--primary-dark);
+  font-size: 0.95rem; font-weight: 600; font-family: inherit;
+  padding: 8px 14px; border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(214,128,149,0.12); cursor: pointer;
+}
+.subhead .title { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); }
+
+/* ── 優惠券 ── */
+.coupon-list { display: flex; flex-direction: column; gap: 14px; }
+.coupon {
+  background: var(--card-bg); border-radius: 16px; padding: 16px 18px;
+  box-shadow: 0 4px 14px rgba(214,128,149,0.10);
+  border-left: 6px solid var(--primary-color);
+}
+/* 用掉或過期的券留在畫面上，但不要跟還能用的一樣醒目 */
+.coupon.used, .coupon.expired { opacity: 0.55; border-left-color: #ccc; }
+.coupon .cname { font-size: 0.82rem; color: var(--muted); }
+.coupon .cbenefit { font-size: 1.15rem; font-weight: 700; margin-top: 4px; }
+.coupon .camount { font-size: 1rem; font-weight: 700; color: var(--primary-dark); margin-top: 4px; }
+.coupon .cfoot {
+  margin-top: 12px; font-size: 0.82rem; color: var(--muted);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.coupon .cbadge {
+  font-size: 0.72rem; padding: 3px 10px; border-radius: 999px;
+  background: #f3e9ec; color: var(--muted);
+}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <img id="avatarImg" class="avatar" src="" alt="avatar">
-  <h2>📋 我的預約紀錄</h2>
-  <p id="welcomeText">載入中...</p>
-</div>
+<!-- 首頁：大頭貼、稱呼、開始預約，下面是選單 -->
+<div id="viewHome">
+  <div class="hero">
+    <img id="avatarImg" class="avatar" src="" alt="">
+    <h2 id="helloText">載入中…</h2>
+    <button class="hero-btn" onclick="goNewBooking()">開始預約</button>
+  </div>
 
-<div class="tabs">
-  <button class="tab-btn active" id="tabUpcoming" onclick="switchTab('upcoming')">即將到來</button>
-  <button class="tab-btn" id="tabPast" onclick="switchTab('past')">歷史紀錄</button>
-</div>
-
-<div id="listArea">
-  <div class="loading-state">
-    <div class="spinner"></div>
-    <p>正在讀取您的預約...</p>
+  <div class="menu-card">
+    <button class="menu-row" onclick="showView('bookings')">
+      <span class="mi">📅</span>
+      <span class="mt">預約紀錄</span>
+      <span class="mc" id="menuBookingCount"></span>
+      <span class="ma">›</span>
+    </button>
+    <button class="menu-row" onclick="showView('coupons')">
+      <span class="mi">🎁</span>
+      <span class="mt">優惠券</span>
+      <span class="mc" id="menuCouponCount"></span>
+      <span class="ma">›</span>
+    </button>
   </div>
 </div>
 
-<button class="new-booking-btn" onclick="goNewBooking()">＋ 新增預約</button>
+<!-- 預約紀錄 -->
+<div id="viewBookings" style="display:none;">
+  <div class="subhead">
+    <button class="back" onclick="showView('home')">‹ 返回</button>
+    <span class="title">📅 預約紀錄</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabUpcoming" onclick="switchTab('upcoming')">即將到來</button>
+    <button class="tab-btn" id="tabPast" onclick="switchTab('past')">已完成</button>
+  </div>
+
+  <div id="listArea">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>正在讀取您的預約...</p>
+    </div>
+  </div>
+
+  <button class="new-booking-btn" onclick="goNewBooking()">＋ 新增預約</button>
+</div>
+
+<!-- 優惠券 -->
+<div id="viewCoupons" style="display:none;">
+  <div class="subhead">
+    <button class="back" onclick="showView('home')">‹ 返回</button>
+    <span class="title">🎁 優惠券</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabCpUsable" onclick="switchCouponTab('usable')">可使用</button>
+    <button class="tab-btn" id="tabCpUsed" onclick="switchCouponTab('used')">已使用</button>
+    <button class="tab-btn" id="tabCpExpired" onclick="switchCouponTab('expired')">已過期</button>
+  </div>
+
+  <div id="couponArea"></div>
+</div>
 
 <script>
 // ── Firebase 設定（從 config.js 讀取）──
@@ -323,9 +441,11 @@ let currentUserLineId = '';
     const avatar = document.getElementById('avatarImg');
     avatar.src = profile.pictureUrl || '';
     avatar.style.display = profile.pictureUrl ? 'inline-block' : 'none';
-    document.getElementById('welcomeText').textContent = `${profile.displayName} 的預約紀錄`;
+    document.getElementById('helloText').textContent = `Hi! ${profile.displayName}`;
 
     await fetchBookings(cachedLineId === currentUserLineId ? earlyFetch : null);
+    // 券的數量要顯示在首頁選單上，所以一進來就讀，不等點進去才讀
+    await loadCoupons();
 
   } catch (err) {
     if (err.message && (err.message.includes("expired") || err.message.includes("Access token"))) {
@@ -357,6 +477,7 @@ async function fetchBookings(preloaded) {
     });
 
     renderList();
+    updateMenuCounts();
   } catch (err) {
     showError('讀取預約失敗：' + err.message);
   }
@@ -529,6 +650,107 @@ function triggerNotification(bookingData, type) {
     headers: { "Content-Type": "text/plain" },
     body: JSON.stringify({ action: "sendNotification", payload: payload })
   }).catch(e => console.log("GAS 通知觸發失敗", e));
+}
+
+
+// =====================================================================
+// 🎁 優惠券 與 畫面切換
+// =====================================================================
+// 這一頁現在有三個畫面：首頁（稱呼＋選單）、預約紀錄、優惠券。
+// 沒有用路由套件——手機上就三個畫面，顯示／隱藏就夠了。
+
+let allCoupons = [];
+let currentCouponTab = 'usable';
+
+function showView(name) {
+  const views = { home: 'viewHome', bookings: 'viewBookings', coupons: 'viewCoupons' };
+  Object.keys(views).forEach(k => {
+    document.getElementById(views[k]).style.display = (k === name) ? '' : 'none';
+  });
+  window.scrollTo(0, 0);
+}
+
+function todayStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+/** 券的狀態：用掉了、過期了、還能用 */
+function couponStatus(c) {
+  if (c.usedAt) return 'used';
+  if (c.expiresAt && c.expiresAt < todayStr()) return 'expired';
+  return 'usable';
+}
+
+async function loadCoupons() {
+  try {
+    // 券是發給「會員」的，而會員的 id 就是 LINE userId（手動建檔的另一組，收不到券）
+    const snap = await db.collection('coupons').where('memberId', '==', currentUserLineId).get();
+    allCoupons = [];
+    snap.forEach(doc => allCoupons.push({ id: doc.id, ...doc.data() }));
+    // 快到期的排前面，客人最需要先看到那張
+    allCoupons.sort((a, b) => String(a.expiresAt || '').localeCompare(String(b.expiresAt || '')));
+  } catch (err) {
+    console.error('讀取優惠券失敗', err);
+    allCoupons = [];
+  }
+  updateMenuCounts();
+  renderCoupons();
+}
+
+function switchCouponTab(tab) {
+  currentCouponTab = tab;
+  document.getElementById('tabCpUsable').classList.toggle('active', tab === 'usable');
+  document.getElementById('tabCpUsed').classList.toggle('active', tab === 'used');
+  document.getElementById('tabCpExpired').classList.toggle('active', tab === 'expired');
+  renderCoupons();
+}
+
+function renderCoupons() {
+  const area = document.getElementById('couponArea');
+  if (!area) return;
+
+  const list = allCoupons.filter(c => couponStatus(c) === currentCouponTab);
+  if (!list.length) {
+    const msg = currentCouponTab === 'usable'
+      ? '<div class="emoji">🎁</div><p>目前沒有可以使用的優惠券</p>'
+      : currentCouponTab === 'used'
+        ? '<div class="emoji">✅</div><p>還沒有使用過的優惠券</p>'
+        : '<div class="emoji">🗓️</div><p>沒有過期的優惠券</p>';
+    area.innerHTML = '<div class="empty-state">' + msg + '</div>';
+    return;
+  }
+
+  area.innerHTML = '<div class="coupon-list">' + list.map(c => {
+    const st = couponStatus(c);
+    const badge = st === 'used' ? '已使用' : (st === 'expired' ? '已過期' : '可使用');
+    // 金額只有「現金抵用券」才給客人看（後台的 showAmount 開關）
+    const amount = c.showAmount && c.amount
+      ? '<div class="camount">可抵用 ' + Number(c.amount).toLocaleString('zh-TW') + ' 元</div>'
+      : '';
+    return `
+      <div class="coupon ${st}">
+        <div class="cname">${escapeHtml(c.campaignName || '優惠券')}</div>
+        <div class="cbenefit">${escapeHtml(c.benefit || '')}</div>
+        ${amount}
+        <div class="cfoot">
+          <span>有效期限 ${escapeHtml(c.expiresAt || '—')}</span>
+          <span class="cbadge">${badge}</span>
+        </div>
+      </div>`;
+  }).join('') + '</div>';
+}
+
+/** 首頁選單右邊那兩個數字 */
+function updateMenuCounts() {
+  const b = document.getElementById('menuBookingCount');
+  if (b) b.textContent = allBookings.length ? '共 ' + allBookings.length + ' 次' : '';
+  const c = document.getElementById('menuCouponCount');
+  if (c) {
+    const usable = allCoupons.filter(x => couponStatus(x) === 'usable').length;
+    c.textContent = usable ? usable + ' 張可用' : (allCoupons.length ? '無可用' : '');
+  }
 }
 
 function escapeHtml(str) {
