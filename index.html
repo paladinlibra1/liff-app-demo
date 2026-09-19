@@ -824,6 +824,8 @@
         async function loadMyCoupons(lineId, keepId) {
             const group = document.getElementById('group-coupon');
             const sel = document.getElementById('couponSelect');
+            // 代客預約禁止用券（老闆的規定）：店員要幫客人用券請走後台的「臨櫃核銷」
+            if (document.getElementById('role').value === 'admin') { group.style.display = 'none'; return; }
             if (!lineId) { group.style.display = 'none'; return; }
 
             try {
@@ -918,8 +920,6 @@
                                     document.getElementById('phone').value = m.p;
                                     document.getElementById('memberSearch').value = '';
                                     resultBox.style.display = 'none';
-                                    // 代客預約也要能幫客人用券
-                                    loadMyCoupons(m.lid, document.getElementById('originalCouponId').value);
                                 };
                                 resultBox.appendChild(div);
                             });

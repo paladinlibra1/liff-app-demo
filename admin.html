@@ -861,6 +861,23 @@
                 <button class="btn btn-primary" id="cpIssueSendBtn" style="margin-top:16px;"
                     onclick="runOnce(this,'發放中…',()=>issueCoupons())">🎁 發放給勾選的人</button>
             </div>
+            <!-- ───────── 臨櫃核銷 ───────── -->
+            <div class="box-container" style="padding:22px; margin-top:16px;">
+                <h3 style="margin:0 0 6px; font-size:1.05rem;">✅ 臨櫃核銷</h3>
+                <p style="margin:0 0 16px; font-size:0.85rem; color:#888; line-height:1.7;">
+                    客人把券拿給你看，就在這裡核銷。
+                    <strong>從預約選券進來的不用再核銷一次</strong>——那個在客人送出預約時就已經核銷了。<br>
+                    核銷錯了可以按「還原」把券放回去。
+                </p>
+
+                <label style="display:block; font-size:0.85rem; color:#666;">查客人（姓名或電話）
+                    <input id="cpRedeemSearch" type="text" placeholder="打幾個字就好" oninput="renderRedeemMembers()"
+                        style="width:100%; box-sizing:border-box; margin-top:6px; padding:11px 14px; font-size:15px; border:1px solid var(--border-color); border-radius:8px; outline:none;">
+                </label>
+
+                <div id="cpRedeemMembers" style="margin-top:12px;"></div>
+                <div id="cpRedeemCoupons" style="margin-top:12px;"></div>
+            </div>
         </div>
 
         <div id="section-admins" class="section">
@@ -4111,6 +4128,120 @@
             }
             if (noLine) lines.push('⚠️ 其中 ' + noLine + ' 位沒綁 LINE，收不到通知，請自己告知。');
             alert(lines.join('\n\n'));
+        }
+
+        // =====================================================================
+        // ✅ 優惠券：臨櫃核銷
+        // =====================================================================
+        // 客人把券拿給店員看，店員在這裡核銷。
+        // 從預約選券進來的不用經過這裡——那個在客人送出預約時就已經核銷了
+        // （老闆的規則：選券＝核銷）。代客預約禁止用券，所以那條路也只能走這裡。
+        //
+        // 核銷錯了可以還原：usedAt 清掉，券回到「可使用」。
+
+        /** 正在看誰的券 */
+        let redeemMember = null;
+
+        function renderRedeemMembers() {
+            const kw = document.getElementById('cpRedeemSearch').value.trim().toLowerCase();
+            const box = document.getElementById('cpRedeemMembers');
+            if (!kw) {
+                box.innerHTML = '';
+                document.getElementById('cpRedeemCoupons').innerHTML = '';
+                redeemMember = null;
+                return;
+            }
+
+            const hits = allMembers.filter(m => {
+                const hay = ((m.name || '') + ' ' + (m.phone || '')).toLowerCase();
+                return hay.indexOf(kw) >= 0;
+            }).slice(0, 8);
+
+            if (!hits.length) {
+                box.innerHTML = '<div style="padding:14px 0; color:#aaa; font-size:0.9rem;">查無這位客人</div>';
+                return;
+            }
+
+            box.innerHTML = hits.map(m => `
+                <button class="btn btn-outline" style="display:block; width:100%; text-align:left; margin-bottom:6px; padding:10px 14px; font-size:14px;"
+                    onclick="openRedeemFor('${escJsAttr(m.lineId)}')">
+                    ${escHtml(m.name || '(無姓名)')}　<span style="color:#999;">${escHtml(m.phone || '')}</span>
+                </button>`).join('');
+        }
+
+        async function openRedeemFor(memberId) {
+            redeemMember = allMembers.find(m => m.lineId === memberId) || null;
+            const box = document.getElementById('cpRedeemCoupons');
+            box.innerHTML = '<div style="padding:14px 0; color:#888; font-size:0.9rem;">讀取中…</div>';
+
+            try {
+                const snap = await db.collection('coupons').where('memberId', '==', memberId).get();
+                const list = [];
+                snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                list.sort((a, b) => String(a.expiresAt || '').localeCompare(String(b.expiresAt || '')));
+                renderRedeemCoupons(list);
+            } catch (err) {
+                box.innerHTML = '<div style="padding:14px 0; color:#c62828; font-size:0.9rem;">讀取失敗：' + escHtml(err.message || String(err)) + '</div>';
+            }
+        }
+
+        function renderRedeemCoupons(list) {
+            const box = document.getElementById('cpRedeemCoupons');
+            const who = redeemMember ? (redeemMember.name || '') : '';
+
+            if (!list.length) {
+                box.innerHTML = '<div style="padding:14px 0; color:#aaa; font-size:0.9rem;">' + escHtml(who) + ' 沒有任何優惠券</div>';
+                return;
+            }
+
+            const today = getFormattedDate(new Date());
+            box.innerHTML = '<div style="font-weight:700; margin:8px 0 10px;">' + escHtml(who) + ' 的優惠券</div>'
+                + list.map(c => {
+                    const used = !!c.usedAt;
+                    const expired = !used && c.expiresAt && c.expiresAt < today;
+                    const state = used ? '已使用' : (expired ? '已過期' : '可使用');
+                    const money = c.amount ? '（' + Number(c.amount).toLocaleString('zh-TW') + ' 元'
+                        + (c.showAmount ? '' : '・客人看不到') + '）' : '';
+                    const fromBooking = c.usedBookingId
+                        ? '<div style="font-size:0.75rem; color:#aaa; margin-top:2px;">由預約核銷</div>' : '';
+                    return `
+                    <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:8px; background:#fff; border:1px solid var(--border-color); border-radius:10px; ${used || expired ? 'opacity:.6;' : ''}">
+                        <div style="flex:1 1 auto; min-width:0;">
+                            <div style="font-size:0.78rem; color:#999;">${escHtml(c.campaignName || '')}</div>
+                            <div style="font-weight:600;">${escHtml(c.benefit || '')}<span style="color:#888; font-weight:normal;">${money}</span></div>
+                            <div style="font-size:0.78rem; color:#aaa; margin-top:2px;">有效期限 ${escHtml(c.expiresAt || '—')}　・　${state}</div>
+                            ${fromBooking}
+                        </div>
+                        ${used
+                            ? `<button class="btn btn-outline" style="padding:7px 14px; font-size:13px;"
+                                   onclick="runOnce(this,'處理中…',()=>undoRedeem('${escJsAttr(c.id)}'))">↩️ 還原</button>`
+                            : (expired
+                                ? ''
+                                : `<button class="btn btn-primary" style="padding:7px 14px; font-size:13px;"
+                                       onclick="runOnce(this,'核銷中…',()=>redeemCoupon('${escJsAttr(c.id)}'))">✅ 核銷</button>`)}
+                    </div>`;
+                }).join('');
+        }
+
+        async function redeemCoupon(couponId) {
+            if (!confirm('確定要核銷這張券嗎？\n\n核銷後客人那邊會變成「已使用」。')) return;
+            // usedBookingId 留空：這是臨櫃核銷，不是從哪一筆預約來的
+            await db.collection('coupons').doc(couponId).update({
+                usedAt: new Date(),
+                usedBookingId: '',
+                redeemedBy: 'admin'
+            });
+            if (redeemMember) await openRedeemFor(redeemMember.lineId);
+        }
+
+        async function undoRedeem(couponId) {
+            if (!confirm('確定要把這張券還給客人嗎？\n\n券會回到「可使用」。')) return;
+            await db.collection('coupons').doc(couponId).update({
+                usedAt: null,
+                usedBookingId: '',
+                redeemedBy: ''
+            });
+            if (redeemMember) await openRedeemFor(redeemMember.lineId);
         }
 
         function escJsAttr(str) {
