@@ -46,6 +46,21 @@ function weekStart(date: string): string {
   return addDays(date, -dow(date));
 }
 
+/** `2026-09-20` 往前／往後 n 個月，回那個月的一號 */
+function shiftMonth(date: string, n: number): string {
+  const [y, m] = date.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return d.toISOString().slice(0, 10);
+}
+
+/** 那個月的每一天 */
+function daysOfMonth(date: string): string[] {
+  const month = date.slice(0, 7);
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return Array.from({ length: last }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+}
+
 /** 週六、週日算假日，其餘算平日。跟 Worker 的 timesForDate() 必須一致 */
 function kindOf(date: string): "weekday" | "weekend" {
   const d = dow(date);
@@ -58,7 +73,7 @@ interface DayRow {
   blocked_times: string[];
 }
 
-type View = "week" | "day";
+type View = "month" | "week" | "day";
 
 export default function BookingCalendar({
   store, reloadKey, onPick,
@@ -83,6 +98,7 @@ export default function BookingCalendar({
   /** 畫面上這幾天 */
   const dates = useMemo(() => {
     if (view === "day") return [anchor];
+    if (view === "month") return daysOfMonth(anchor);
     const s = weekStart(anchor);
     return Array.from({ length: 7 }, (_, i) => addDays(s, i));
   }, [view, anchor]);
@@ -158,16 +174,51 @@ export default function BookingCalendar({
     return map;
   }, [rows]);
 
-  const step = view === "day" ? 1 : 7;
+  /** 一月檢視用：日期 → 那一天的預約（已照時間排好） */
+  const byDate = useMemo(() => {
+    const map: Record<string, BookingRow[]> = {};
+    for (const r of rows ?? []) (map[r.date] ||= []).push(r);
+    return map;
+  }, [rows]);
+
+  /** 一月檢視的月曆要補開頭的空格，才對得上星期 */
+  const lead = view === "month" ? dow(dates[0]) : 0;
+
+  function shift(n: number) {
+    if (view === "month") setAnchor(shiftMonth(anchor, n));
+    else setAnchor(addDays(anchor, n * (view === "day" ? 1 : 7)));
+  }
   const title = view === "day"
     ? `${anchor.slice(5).replace("-", "/")}（週${WEEK[dow(anchor)]}）`
-    : `${from.slice(5).replace("-", "/")} ~ ${to.slice(5).replace("-", "/")}`;
+    : view === "month"
+      ? `${anchor.slice(0, 4)} 年 ${Number(anchor.slice(5, 7))} 月`
+      : `${from.slice(5).replace("-", "/")} ~ ${to.slice(5).replace("-", "/")}`;
+
+  /** 一筆預約的色塊。點下去等於按「✏️ 改時間」 */
+  function chip(r: BookingRow, withTime = false) {
+    return (
+      <button
+        key={r.id}
+        type="button"
+        className={"bchip" + (r.status === "completed" ? " done" : "")}
+        style={{
+          background: TYPE_COLOR[r.type] ?? "var(--rose)",
+          color: TYPE_INK[r.type] ?? "#fff",
+        }}
+        title={`${r.type}／${r.phone}${r.remark ? "／" + r.remark : ""}`}
+        onClick={() => onPick(r)}
+      >
+        {withTime && <i>{r.start_time.slice(0, 5)}</i>}
+        {r.name2 ? `${r.name}、${r.name2}` : r.name}
+      </button>
+    );
+  }
 
   return (
     <div className="panel">
       <div className="cal-bar">
-        <button className="slim outline" onClick={() => setAnchor(addDays(anchor, -step))}>◀</button>
-        <button className="slim outline" onClick={() => setAnchor(addDays(anchor, step))}>▶</button>
+        <button className="slim outline" onClick={() => shift(-1)}>◀</button>
+        <button className="slim outline" onClick={() => shift(1)}>▶</button>
         <b>{title}</b>
         <button className="slim outline" style={{ marginLeft: "auto" }} onClick={() => setAnchor(today)}>
           📆 今天
@@ -181,20 +232,51 @@ export default function BookingCalendar({
         <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>
           🗓️ 一週
         </button>
+        <button type="button" aria-pressed={view === "month"} onClick={() => setView("month")}>
+          📅 一月
+        </button>
       </div>
 
       {err && <div className="msg err">{err}</div>}
 
       {rows === null && <div className="skeleton" style={{ height: 240 }} />}
 
-      {rows !== null && slots.length === 0 && (
+      {rows !== null && view !== "month" && slots.length === 0 && (
         <div className="empty">
           <div className="emoji">📅</div>
           <p>這幾天沒有營業時段，請先到「📅 營業日設定」設定營業時間</p>
         </div>
       )}
 
-      {rows !== null && slots.length > 0 && (
+      {rows !== null && view === "month" && (
+        <div className="bcal-month">
+          {WEEK.map((w) => <div key={w} className="cal-wd">{w}</div>)}
+          {Array.from({ length: lead }, (_, i) => <div key={"b" + i} className="bmday blank" />)}
+          {dates.map((dt) => {
+            const on = days[dt]?.is_operating ?? false;
+            const list = byDate[dt] ?? [];
+            const cls = [
+              "bmday",
+              on ? "" : "closed",
+              dt === today ? "today" : "",
+              dt < today ? "past" : "",
+            ].filter(Boolean).join(" ");
+            return (
+              <div key={dt} className={cls}>
+                {/* 點日期跳到那一天的檢視——手機上月曆的格子太小，看細節要換檢視 */}
+                <button type="button" className="bmd-n" title="看這一天"
+                  onClick={() => { setAnchor(dt); setView("day"); }}>
+                  {Number(dt.slice(8))}
+                  {list.length > 0 && <span className="bmd-c">{list.length}</span>}
+                </button>
+                {list.map((r) => chip(r, true))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {rows !== null && view !== "month" && slots.length > 0 && (
         <>
           <div
             className={"bcal " + view}
@@ -230,21 +312,7 @@ export default function BookingCalendar({
                   return (
                     <div key={dt + t} className={cls}>
                       {blocked && list.length === 0 && <span className="bcal-x">封</span>}
-                      {list.map((r) => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          className={"bchip" + (r.status === "completed" ? " done" : "")}
-                          style={{
-                            background: TYPE_COLOR[r.type] ?? "var(--rose)",
-                            color: TYPE_INK[r.type] ?? "#fff",
-                          }}
-                          title={`${r.type}／${r.phone}${r.remark ? "／" + r.remark : ""}`}
-                          onClick={() => onPick(r)}
-                        >
-                          {r.name2 ? `${r.name}、${r.name2}` : r.name}
-                        </button>
-                      ))}
+                      {list.map((r) => chip(r))}
                     </div>
                   );
                 })}

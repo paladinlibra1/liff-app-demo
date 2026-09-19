@@ -1114,6 +1114,54 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 .bcal.day .bchip { font-size: 0.875rem; padding: 0.3125rem 0.5rem; text-align: left; }
 .bcal.day .bcal-dh { text-align: left; }
 
+/* 一月檢視：整個月的概觀，格子裡是「時間＋姓名」的小色塊 */
+.bcal-month {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem;
+}
+.bmday {
+  min-height: 4.5rem;
+  padding: 0.1875rem;
+  display: flex; flex-direction: column; gap: 0.125rem;
+  background: var(--rose-wash);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+.bmday.blank { background: transparent; border-color: transparent; min-height: 0; }
+/* 沒排班的日子：跟一週檢視同一套斜線底 */
+.bmday.closed {
+  background: repeating-linear-gradient(135deg, transparent 0 0.25rem, var(--line) 0.25rem 0.3125rem);
+}
+.bmday.today { border-color: var(--rose); border-width: 1.5px; }
+.bmday.past { opacity: .6; }
+
+/* 日期數字本身是按鈕：點下去換成那一天的檢視 */
+.bmd-n {
+  margin: 0; padding: 0;
+  width: auto; min-height: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.25rem;
+  background: transparent; border: none; box-shadow: none;
+  font-size: 0.8125rem; font-weight: 650; color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.bmd-c {
+  font-size: 0.625rem; font-weight: 650; line-height: 1.2;
+  padding: 0.0625rem 0.25rem; border-radius: 62.4375rem;
+  background: var(--rose); color: #fff;
+}
+.bmday .bchip {
+  font-size: 0.6875rem; padding: 0.125rem 0.1875rem;
+  text-align: left; display: flex; gap: 0.1875rem;
+}
+/* 時間用同色系的淡字，不要跟姓名一樣重 */
+.bmday .bchip i { font-style: normal; opacity: .75; font-variant-numeric: tabular-nums; }
+
+/* 手機的月曆格子只有 50px 寬，時間放不下，留姓名就好 */
+@media (max-width: 560px) {
+  .bmday { min-height: 3.5rem; padding: 0.125rem; }
+  .bmday .bchip i { display: none; }
+  .bmday .bchip { font-size: 0.625rem; }
+}
+
 /* 批次操作列 */
 .batch {
   display: flex; align-items: center; justify-content: space-between;
