@@ -1033,6 +1033,12 @@ button.danger { color: var(--danger); border-color: #f0c9d0; }
 .cal-cell.today { border-color: var(--rose); border-width: 2px; }
 .cal-cell.past { opacity: .45; }
 
+/* Google 登入鈕：照品牌慣例放 G 標誌，不用 emoji */
+.gbtn {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.gbtn svg { width: 1.125rem; height: 1.125rem; flex: 0 0 auto; }
+
 /* ── 預約日曆（BookingCalendar）───────────────────────
  *
  * 時段 × 日期的格子。欄數由 JS 塞 grid-template-columns，

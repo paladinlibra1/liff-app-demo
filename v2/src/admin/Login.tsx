@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
+/**
+ * LINE／IG 的內建瀏覽器裡 Google OAuth 開不起來（Google 直接擋第三方 WebView），
+ * 所以那種情況不顯示 Google 按鈕，只留信箱密碼。舊系統踩過同一個坑。
+ */
+function inAppBrowser(): boolean {
+  const ua = navigator.userAgent || "";
+  return /\bLine\b|Instagram|FBAN|FBAV/i.test(ua);
+}
+
 export default function Login() {
   /*
    * 店名。
@@ -27,6 +36,31 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [info, setInfo] = useState("");
+  const [canGoogle] = useState(() => !inAppBrowser());
+
+  /**
+   * Google 登入。
+   *
+   * 走轉址：Google →（Supabase 的 callback）→ 回到 /admin，
+   * 回來時 supabase-js 會自己把網址上的 token 收進 session，
+   * onAuthStateChange 接手，所以這裡成功之後什麼都不用做。
+   *
+   * 第一次用 Google 進來的人等於剛註冊，還不在店家名單裡，
+   * 會看到「尚未授權」，要負責人在「🔑 權限管理」的待審核名單按通過。
+   */
+  async function google() {
+    if (busy) return;                     // 防連點
+    setBusy(true); setErr(""); setInfo("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/admin" },
+    });
+    // 沒出錯的話瀏覽器已經在跳轉了，不用解鎖
+    if (error) {
+      setErr(translate(error.message));
+      setBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +97,21 @@ export default function Login() {
         <p className="sub">
           {mode === "signin" ? "請登入以繼續。" : "建立帳號後，還需要管理員把你加入店家名單才看得到資料。"}
         </p>
+
+        {canGoogle && (
+          <>
+            <button className="outline gbtn" style={{ marginTop: 0 }} disabled={busy} onClick={google}>
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.5 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.3 17.6 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-2.8-.4-4.1H24v8.1h12.6c-.3 2.1-1.6 5.2-4.6 7.3l7.6 5.9c4.5-4.2 6.5-10.2 6.5-17.2z" />
+                <path fill="#FBBC05" d="M10.3 28.7a14.7 14.7 0 0 1 0-9.4l-7.8-6.1a24 24 0 0 0 0 21.6l7.8-6.1z" />
+                <path fill="#34A853" d="M24 48c6.2 0 11.5-2 15.6-5.6l-7.6-5.9c-2 1.4-4.7 2.4-8 2.4-6.4 0-11.8-3.8-13.7-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+              </svg>
+              使用 Google 帳號登入
+            </button>
+            <p className="hint" style={{ textAlign: "center" }}>或用信箱密碼登入</p>
+          </>
+        )}
 
         <form onSubmit={submit}>
           <label htmlFor="email">電子信箱</label>
