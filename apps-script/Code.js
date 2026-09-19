@@ -69,6 +69,9 @@ function handleNotification(payload) {
       sendLinePush(data.lineId, data.message);
     }
     return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+  } else if (type === 'coupon_issue') {
+    // 發券通知：一次一批，券本身已經由後台寫進 Firestore 了
+    return sendCouponNotifications(data);
   }
 
   var combinedName = data.name + (data.name2 && data.name2 !== "" ? " & " + data.name2 : "");
@@ -247,6 +250,110 @@ function sendLinePush(to, messageContent) {
       "muteHttpExceptions": true 
     });
   } catch (e) { Logger.log("Push Error: " + e.toString()); }
+}
+
+// =========================================================
+// 🎁 核心 7：發券通知（後台勾名單後，一次送一批）
+// =========================================================
+// 前端已經把券寫進 Firestore 才呼叫這裡，所以這支只負責「通知」。
+// 一批最多 50 位（後台那邊限制的）：LINE 推播每位收件人算一則，
+// 群發很容易吃掉整個月的免費額度。
+//
+// 推播成功才把 coupons/{id}.notified 標成 true——
+// 失敗就留著 false，後台看得出「這幾位沒收到，要自己告知」。
+function sendCouponNotifications(data) {
+  var items = (data && data.items) || [];
+  var sent = 0, failed = 0, skipped = 0;
+
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    // 沒綁 LINE 的人券照樣存在，只是推不出去
+    if (!it.lineId) { skipped++; continue; }
+    try {
+      var ok = sendLinePushChecked(it.lineId, getCouponFlex(it));
+      if (ok) {
+        sent++;
+        if (it.couponId) markCouponNotified(it.couponId);
+      } else {
+        failed++;
+      }
+    } catch (err) {
+      failed++;
+      Logger.log("發券通知失敗：" + err.toString());
+    }
+  }
+
+  Logger.log("🎁 發券通知：成功 " + sent + "、失敗 " + failed + "、沒綁 LINE " + skipped);
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "success", sent: sent, failed: failed, skipped: skipped
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** 券的卡片。金額只有「現金抵用券」才顯示（後台的 showAmount 開關） */
+function getCouponFlex(it) {
+  var HEADER_COLOR = "#e8a33d";
+  var body = [
+    { "type": "text", "text": it.message || "", "wrap": true, "color": "#555555", "size": "md" },
+    { "type": "separator", "margin": "lg" },
+    { "type": "text", "text": it.benefit || "", "weight": "bold", "size": "xl", "margin": "lg", "align": "center", "color": HEADER_COLOR }
+  ];
+
+  if (it.showAmount && it.amount) {
+    body.push({ "type": "text", "text": "可抵用 " + it.amount + " 元", "weight": "bold", "size": "lg", "margin": "sm", "align": "center", "color": "#333333" });
+  }
+
+  body.push({ "type": "separator", "margin": "lg" });
+  body.push({ "type": "text", "text": "有效期限 " + (it.expiresAt || "") + " 前", "size": "sm", "color": "#888888", "align": "center", "margin": "lg" });
+  body.push({ "type": "text", "text": "預約時請告知要使用這張券", "size": "xs", "color": "#aaaaaa", "align": "center", "margin": "sm" });
+
+  return {
+    "type": "flex",
+    "altText": "🎁 " + (it.campaignName || "優惠券") + "：" + (it.benefit || ""),
+    "contents": {
+      "type": "bubble", "size": "mega",
+      "header": { "type": "box", "layout": "vertical", "backgroundColor": HEADER_COLOR, "paddingAll": "15px",
+        "contents": [ { "type": "text", "text": "🎁 " + (it.campaignName || "優惠券"), "color": "#ffffff", "weight": "bold", "size": "lg", "align": "center" } ] },
+      "body": { "type": "box", "layout": "vertical", "contents": body },
+      "footer": { "type": "box", "layout": "vertical", "paddingAll": "20px", "contents": [
+        { "type": "button", "style": "primary", "height": "sm", "color": HEADER_COLOR,
+          "action": { "type": "uri", "label": "📅 立即預約", "uri": FRONTEND_URL } }
+      ]}
+    }
+  };
+}
+
+/**
+ * 推播並回報有沒有成功。
+ *
+ * sendLinePush 把錯誤吞掉（預約通知寧可失敗也不要擋住流程），
+ * 但發券要知道誰沒收到，所以另外一支看 HTTP 狀態碼。
+ */
+function sendLinePushChecked(to, messageContent) {
+  var messages = (typeof messageContent === 'string') ? [{ "type": "text", "text": messageContent }] : [messageContent];
+  var res = UrlFetchApp.fetch("https://api.line.me/v2/bot/message/push", {
+    "method": "post",
+    "headers": { "Authorization": "Bearer " + CHANNEL_ACCESS_TOKEN, "Content-Type": "application/json" },
+    "payload": JSON.stringify({ "to": to, "messages": messages }),
+    "muteHttpExceptions": true
+  });
+  var code = res.getResponseCode();
+  if (code !== 200) Logger.log("推播回應 " + code + "：" + res.getContentText());
+  return code === 200;
+}
+
+/** 標記這張券已經通知過。用 updateMask 只改這個欄位，不會蓋掉整張券 */
+function markCouponNotified(couponId) {
+  var PROJECT_ID = "colorfashion-booking";
+  var API_KEY = "AIzaSyAgCfJ7CSme4K4MR8Xb0Cjwt6Cuzu6JUVU";
+  var url = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID +
+            "/databases/(default)/documents/coupons/" + couponId +
+            "?updateMask.fieldPaths=notified&key=" + API_KEY;
+  UrlFetchApp.fetch(url, {
+    "method": "patch",
+    "contentType": "application/json",
+    "payload": JSON.stringify({ "fields": { "notified": { "booleanValue": true } } }),
+    "muteHttpExceptions": true
+  });
 }
 
 // =========================================================

@@ -3989,6 +3989,21 @@
             renderCouponIssueList();
         }
 
+        /**
+         * 把活動的訊息範本換成這位客人的文字。
+         * {{amount}} 只有「客人看得到金額」時才換成數字，否則換成空字串——
+         * 服務型的券把金額寫給客人看會變成在標價。
+         */
+        function buildCouponMessage(c, memberName, expiresAt) {
+            const tpl = c.message || COUPON_DEFAULT_MSG;
+            const money = c.showAmount ? (Number(c.amount || 0).toLocaleString('zh-TW') + ' 元') : '';
+            return tpl
+                .replace(/\{\{name\}\}/g, memberName || '')
+                .replace(/\{\{benefit\}\}/g, c.benefit || '')
+                .replace(/\{\{expires\}\}/g, expiresAt || '')
+                .replace(/\{\{amount\}\}/g, money);
+        }
+
         async function issueCoupons() {
             const c = couponSelectedCampaign();
             if (!c) return alert('請先選一個活動');
@@ -4014,8 +4029,22 @@
             // 一次交易寫完：中途失敗不會留下一半的券（50 筆遠低於 batch 的 500 筆上限）
             const batch = db.batch();
             const now = new Date();
+            // 推播要用的清單。券 id 一起帶給 GAS，它推成功才會把 notified 標起來
+            const notifyItems = [];
             picked.forEach(m => {
                 const ref = db.collection('coupons').doc();
+                if (couponHasLine(m)) {
+                    notifyItems.push({
+                        couponId: ref.id,
+                        lineId: m.lineId,
+                        campaignName: c.name || '',
+                        benefit: c.benefit || '',
+                        amount: Number(c.amount || 0),
+                        showAmount: !!c.showAmount,
+                        expiresAt: expiresAt,
+                        message: buildCouponMessage(c, m.name, expiresAt)
+                    });
+                }
                 batch.set(ref, {
                     campaignId: c.id,
                     // 活動的快照：之後老闆改文案或金額，不影響已經發出去的券
@@ -4036,9 +4065,40 @@
             });
             await batch.commit();
 
+            /*
+             * 券寫好了才通知。順序不能顛倒：Firestore 是真的紀錄，
+             * GAS 只是把訊息送出去，送不出去也不該讓券消失。
+             *
+             * 這裡不讀 GAS 的回應（跟系統其他地方一樣，避免 CORS 的麻煩）——
+             * 誰真的收到了看券上的「已通知」，那是 GAS 推成功才寫回來的。
+             */
+            let pushError = '';
+            if (notifyItems.length) {
+                try {
+                    await fetch(GAS_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({
+                            action: 'sendNotification',
+                            payload: { type: 'coupon_issue', data: { items: notifyItems } }
+                        })
+                    });
+                } catch (err) {
+                    pushError = err.message || String(err);
+                }
+            }
+
             couponPicked = new Set();
             await onCouponIssueCampaignChange();
-            alert(`已發放 ${picked.length} 張券。\n\nLINE 通知還沒接上（下一步要做），現在請先口頭告知客人。`);
+
+            const lines = ['已發放 ' + picked.length + ' 張券。'];
+            if (notifyItems.length) {
+                lines.push(pushError
+                    ? '⚠️ LINE 通知送不出去（' + pushError + '），請自己告知客人。'
+                    : '已請系統發送 ' + notifyItems.length + ' 則 LINE 通知。');
+            }
+            if (noLine) lines.push('⚠️ 其中 ' + noLine + ' 位沒綁 LINE，收不到通知，請自己告知。');
+            alert(lines.join('\n\n'));
         }
 
         function escJsAttr(str) {
