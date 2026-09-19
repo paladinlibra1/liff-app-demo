@@ -197,17 +197,18 @@ export default function EditBookingForm({
 
       {err && <div className="msg err">{err}</div>}
 
-      <button disabled={busy} onClick={save}>{busy ? "⏳ 儲存中…" : "✅ 儲存更改"}</button>
-
-      {onCancelBooking && (
-        <button className="outline danger" disabled={busy} onClick={() => void onCancelBooking()}
-          style={{ marginTop: "0.5rem" }}>
-          ❌ 取消這筆預約
+      {/* 三顆並排。「取消」兩個字在這張表單上會被當成取消預約，關表單那顆叫「返回」 */}
+      <div className="chips" style={{ marginTop: "1.125rem" }}>
+        <button className="slim" disabled={busy} onClick={save}>
+          {busy ? "⏳ 儲存中…" : "✅ 儲存"}
         </button>
-      )}
-
-      {/* 「取消」兩個字在這張表單上會被當成取消預約，所以改成「不改了」 */}
-      <button className="ghost" disabled={busy} onClick={onClose}>↩️ 不改了</button>
+        {onCancelBooking && (
+          <button className="slim outline danger" disabled={busy} onClick={() => void onCancelBooking()}>
+            ❌ 取消預約
+          </button>
+        )}
+        <button className="slim ghost" disabled={busy} onClick={onClose}>↩️ 返回</button>
+      </div>
 
       <p className="hint">
         存檔後，有綁 LINE 的客人會收到一張「預約已更改」的卡片，上面是新的時間
