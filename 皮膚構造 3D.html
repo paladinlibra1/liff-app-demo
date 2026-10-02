@@ -175,12 +175,18 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <button class="close" data-close aria-label="關閉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div style="margin-top:4px">
-      <button class="prob-item" data-story="acne"><b>痘痘怎麼形成</b><span>從毛孔阻塞、粉刺到發炎紅腫，共 6 步</span></button>
-      <button class="prob-item" data-story="spot"><b>斑怎麼形成</b><span>黑色素從製造到堆積成斑，共 5 步</span></button>
-      <button class="prob-item" data-story="scar"><b>痘疤從哪裡來</b><span>痘印和痘疤的差別，四種痘疤類型，共 7 步</span></button>
-      <button class="prob-item" data-story="sens"><b>皮膚為什麼會敏感</b><span>屏障受損、刺激物進入、泛紅刺癢，共 4 步</span></button>
-      <button class="prob-item" data-story="dry"><b>乾燥與缺水</b><span>水分怎麼流失，乾性肌和缺水肌的差別，共 4 步</span></button>
+      <button class="prob-item" data-story="acne"><b>痘痘</b><span>從毛孔阻塞、粉刺到發炎紅腫，共 6 步</span></button>
+      <button class="prob-item" data-story="spot"><b>斑</b><span>黑色素從製造到堆積成斑，共 5 步</span></button>
+      <button class="prob-item" data-story="scar"><b>痘疤</b><span>痘印和痘疤的差別，四種痘疤類型，共 7 步</span></button>
+      <button class="prob-item" data-story="sens"><b>敏感</b><span>屏障受損、刺激物進入、泛紅刺癢，共 4 步</span></button>
+      <button class="prob-item" data-story="dry"><b>乾燥缺水</b><span>水分怎麼流失，乾性肌和缺水肌的差別，共 4 步</span></button>
       <button class="prob-item" data-story="fol"><b>毛囊炎</b><span>細菌感染毛囊，和痘痘的差別，共 4 步</span></button>
+      <button class="prob-item" data-story="com"><b>內包粉刺</b><span>閉鎖性粉刺怎麼形成，為什麼不要自己擠，共 4 步</span></button>
+      <button class="prob-item" data-story="pore"><b>凹洞（毛孔粗大）</b><span>出油型和老化鬆弛型毛孔，共 4 步</span></button>
+      <button class="prob-item" data-story="dark"><b>黑眼圈</b><span>血管型、色素型、結構型，怎麼分辨，共 5 步</span></button>
+      <button class="prob-item" data-story="ker"><b>角化斑</b><span>脂漏性角化症，什麼情況要就醫，共 4 步</span></button>
+      <button class="prob-item" data-story="mil"><b>皮脂球（粟粒腫）</b><span>不是脂肪也不是粉刺，正確處理方式，共 4 步</span></button>
+      <button class="prob-item" data-story="red"><b>泛紅</b><span>暫時泛紅、長期紅血絲與酒糟，共 5 步</span></button>
     </div>
   </section>
 
@@ -786,6 +792,8 @@ function buildStory(){
   buildStory2();
   buildStories();
   buildStories2();
+  buildStory3();
+  buildStories3();
 }
 /* ---------------- 敏感、乾燥缺水、毛囊炎 ---------------- */
 function particles(id,n,col,size,spawn,o){
@@ -868,6 +876,139 @@ function buildStories2(){
       {h:'以毛髮為中心的紅點、膿皰',text:'發炎集中在毛囊上段，皮膚表面出現一顆顆小紅點或小膿皰，中間常可以看到一根毛髮穿出來。可能會癢或痛，常常一片分散出現。',ov:{cocci:1,finflam:1,fdome:1,fpus:1},labels:[['毛髮穿過膿皰',Fo.pus],['毛囊上段發炎',Fo.inflam]]},
       {h:'和痘痘有什麼不同',text:'痘痘是從毛孔阻塞、形成粉刺開始；毛囊炎通常沒有粉刺，是感染直接引起。毛囊炎也常長在背部、胸口、臀部、大腿，或刮毛、除毛的部位，不只長在臉上。',ov:{cocci:1,finflam:1,fdome:1,fpus:1},labels:[['沒有粉刺，中央有毛髮',Fo.pus]]},
       {h:'常見原因與照顧',text:'刮毛除毛造成的小傷口、悶熱流汗、衣物太緊摩擦、長期擦類固醇藥膏、免疫力下降，都容易誘發。平時保持乾爽透氣、不要擠壓，除毛工具保持清潔並順著毛流方向。如果範圍擴大、反覆發作、變成又大又痛的膿包，或伴隨發燒，請盡快就醫。',ov:{cocci:1,finflam:[1,1.8],fdome:1},labels:[['感染變深會形成癤',Fo.deep]],cam:{t:SP.P2(.6,HZ),w:1.5,h:1.8}}
+    ]}
+  });
+}
+/* ---------------- 內包粉刺、毛孔粗大、黑眼圈、角化斑、皮脂球、泛紅 ---------------- */
+function buildStory3(){
+  const fp=(x,z)=>new V(x,surf(x,z)+.016,z);
+  const flatDiscs=(list,col)=>instanced((()=>{const g=new THREE.CircleGeometry(1,22);g.rotateX(-Math.PI/2);return g;})(),solid(col,{roughness:.6,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}),list);
+  /* 內包粉刺：用左邊的毛囊 */
+  const F3=FOLS.find(f=>Math.abs(f.fx+2.75)<.01)||FOLS[0];
+  const P3=(t,z)=>{const v=F3.Bp.clone().lerp(F3.S,t);v.z=z;return v;};
+  const ax3=F3.axis.clone();
+  ov('cPlug',new THREE.Mesh(ellipsoid(new V(),.14,.15,.07,ax3),solid('#d9c3a0',{roughness:.8}))).position.copy(P3(.93,HZ+.24));
+  ov('cBall',new THREE.Mesh(ellipsoid(new V(),.22,.3,.08,ax3,20,16),solid('#ecd394',{roughness:.35})),{op:1}).position.copy(P3(.74,HZ+.22));
+  const cy=surf(F3.S.x,HZ-.25);
+  ov('cDome',new THREE.Mesh(ellipsoid(new V(),.3,.13,.24,null,24,16),solid('#f2d6c2',{roughness:.45}))).position.set(F3.S.x,cy-.03,HZ-.25);
+  ov('cRupt',new THREE.Mesh(merge([ellipsoid(new V(-.25,0,0),.38,.34,.25),ellipsoid(new V(.25,-.25,0),.4,.36,.25)]),glow('#ff3b30')),{op:.28,basic:1}).position.copy(P3(.58,HZ+.05));
+  SP.P3c=t=>P3(t,HZ);SP.com={plug:P3(.95,HZ+.25),ball:P3(.74,HZ+.25),dome:new V(F3.S.x+.2,cy+.12,HZ-.1),rupt:P3(.5,HZ+.2),pore:F3.S.clone().setZ(HZ+.2)};
+
+  /* 毛孔粗大：用右邊的毛囊 */
+  const F4=FOLS.find(f=>Math.abs(f.fx-2.85)<.01)||FOLS[FOLS.length-1];
+  const fun=new THREE.CylinderGeometry(.13,.035,.42,24,1,true);fun.deleteAttribute('uv');fun.translate(0,-.21,0);
+  const mkFun=(col)=>{const m=new THREE.Mesh(fun,solid(col,{roughness:.6,side:THREE.DoubleSide}));m.quaternion.setFromUnitVectors(UP,F4.axis.clone().normalize());m.position.copy(F4.S).setZ(HZ+.02);return m;};
+  ov('pFun',mkFun('#3b211b'));
+  ov('pSeb',new THREE.Mesh(ellipsoid(new V(),.13,.3,.07,F4.axis,18,14),solid('#f2d26e',{roughness:.3})),{op:.95}).position.copy(F4.Bp.clone().lerp(F4.S,.7).setZ(HZ+.15));
+  const cf=[];for(let i=0;i<6;i++){const y=-.25-i*.24,pts=[];for(let k=0;k<=12;k++){const x=1.75+k*.19;pts.push(new V(x,y+.06*Math.sin(k*1.3+i),HZ+.03));}cf.push(tube(pts,()=>.03,40,6));}
+  ov('pCol',new THREE.Mesh(merge(cf),solid('#fbf4ea',{roughness:.5,emissive:lin('#3a3026')})));
+  const pz=[];let gd=0;while(pz.length<26&&gd++<900){const x=rr(1.25,4.3),z=rr(1.55,HZ-.12);if(Math.abs(x-F4.S.x)<.3&&z>HZ-.4)continue;if(pz.some(p=>Math.hypot(p[0]-x,p[1]-z)<.38))continue;pz.push([x,z]);}
+  ov('pDotN',flatDiscs(pz.map(p=>[fp(p[0],p[1]),null,new V(.03,1,.03)]),'#4a2c24'));
+  ov('pDotO',flatDiscs(pz.map(p=>[fp(p[0],p[1]),null,new V(.075,1,.075)]),'#4a2c24'));
+  ov('pDotA',flatDiscs(pz.map(p=>[fp(p[0],p[1]),null,new V(.055,1,.12)]),'#4a2c24'));
+  ov('pOil',surfaceSheet(1.15,4.4,1.45,HZ,'#f3d36a',.024),{op:.42});
+  SP.pore={fun:F4.S.clone().add(new V(.25,-.1,.15)),seb:F4.Bp.clone().lerp(F4.S,.7).setZ(HZ+.22),col:new V(3.4,-.7,HZ+.1),top:new V(1.9,surf(1.9,2.3)+.05,2.3),sag:new V(3.6,surf(3.6,2.6)+.05,2.6)};
+
+  /* 黑眼圈 */
+  const ev=[];
+  const vy=x=>papTop(x,HZ)-.24;
+  {const pts=[];for(let k=0;k<=16;k++){const x=-2.45+k*.15;pts.push(new V(x,vy(x)+.04*Math.sin(k*1.7),HZ+.03));}ev.push(tube(pts,()=>.045,60,8));}
+  [-2.1,-1.55,-1.0,-.45,0].forEach((x,i)=>{const a=new V(x,vy(x),HZ+.03),b=new V(x+(i%2?.12:-.1),papTop(x,HZ)-.09,HZ+.03);ev.push(tube([a,a.clone().lerp(b,.5).add(new V(.05,0,0)),b],t=>.03*(1-.4*t),12,6));});
+  ov('eVein',new THREE.Mesh(merge(ev),solid('#4f4a9a',{roughness:.4})));
+  ov('eBlue',surfacePatch(-1.15,HZ-.6,2.1,1.2,'#5b4f99',.42));
+  ov('eShade',surfacePatch(-1.15,HZ-.6,2.1,1.2,'#2b2730',.4));
+  SP.eye={thin:new V(-1.3,1.2,HZ+.1),vein:new V(-1.2,vy(-1.2)+.02,HZ+.1),blue:new V(-1.15,1.52,HZ-.6),epi:new V(-1.3,1.15,HZ+.1),patch:new V(-1.15,1.52,HZ-.6)};
+
+  /* 角化斑（脂漏性角化症） */
+  const kx=-3.75,kz=HZ-.3,krx=.62,krz=.6;
+  const kh=(x,z)=>{const r=Math.hypot((x-kx)/krx,(z-kz)/krz);if(r>=1)return 0;const b=Math.pow(1-r*r,.55);return b*(.27+.03*Math.sin(x*23)*Math.cos(z*19)+.02*Math.sin(x*41+z*13));};
+  const ktex=canvasTex((g,s)=>{g.fillStyle='#7d5236';g.fillRect(0,0,s,s);for(let i=0;i<900;i++){g.fillStyle=R()<.5?'rgba(60,35,22,.35)':'rgba(170,125,90,.3)';const r=rr(1,4);g.beginPath();g.arc(R()*s,R()*s,r,0,7);g.fill();}
+    g.strokeStyle='rgba(45,25,15,.6)';g.lineWidth=2;for(let i=0;i<40;i++){let x=R()*s,y=R()*s;g.beginPath();g.moveTo(x,y);for(let k=0;k<5;k++){x+=rr(-25,25);y+=rr(-25,25);g.lineTo(x,y);}g.stroke();}
+    for(let i=0;i<30;i++){g.fillStyle='rgba(245,232,205,.75)';g.beginPath();g.arc(R()*s,R()*s,rr(2,4),0,7);g.fill();}},256);
+  {const g=new THREE.PlaneGeometry(krx*2,HZ-(kz-krz),40,30);g.rotateX(-Math.PI/2);const cz=(HZ+kz-krz)/2;
+   const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i)+kx,z=p.getZ(i)+cz;p.setXYZ(i,x,surf(x,z)+kh(x,z)+.008,z);}
+   g.computeVertexNormals();
+   const m=new THREE.MeshStandardMaterial({map:ktex,roughness:.85,alphaTest:0});
+   const cv=canvasTex((g2,s)=>{const gr=g2.createRadialGradient(s/2,s*.62,s*.25,s/2,s*.62,s*.5);gr.addColorStop(0,'#fff');gr.addColorStop(1,'#000');g2.fillStyle='#000';g2.fillRect(0,0,s,s);g2.fillStyle=gr;g2.fillRect(0,0,s,s);},128);
+   m.alphaMap=cv;
+   ov('kPlaque',new THREE.Mesh(g,m));}
+  {const sh=new THREE.Shape(),N=40,x0=kx-krx,x1=kx+krx;
+   for(let i=0;i<=N;i++){const x=x0+(x1-x0)*i/N;const y=surf(x,HZ)+kh(x,HZ)+.01;i?sh.lineTo(x,y):sh.moveTo(x,y);}
+   for(let i=N;i>=0;i--){const x=x0+(x1-x0)*i/N,t=i/N,edge=Math.sin(Math.PI*t);const y=corB(x,HZ)-.05-edge*(.28+.09*Math.abs(Math.sin(i*1.9)));sh.lineTo(x,y);}
+   const g=new THREE.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:false});g.deleteAttribute('uv');g.translate(0,0,HZ-.02);
+   ov('kSec',new THREE.Mesh(g,solid('#a26b4b',{roughness:.7})));
+   const cs=[];for(let i=0;i<9;i++){const x=rr(kx-.42,kx+.42),y=rr(corB(x,HZ)-.25,surf(x,HZ)+kh(x,HZ)*.6),r=rr(.035,.06);cs.push([new V(x,y,HZ+.04),null,new V(r,r,r*.5)]);}
+   ov('kCyst',instanced(new THREE.SphereGeometry(1,12,8),solid('#f6ecd6',{roughness:.5}),cs));
+   const pg=[];for(let i=0;i<60;i++){const x=rr(kx-.5,kx+.5),y=rr(corB(x,HZ)-.3,surf(x,HZ)+kh(x,HZ)*.8),r=rr(.015,.024);pg.push([new V(x,y,HZ+.04),null,new V(r,r,r)]);}
+   ov('kPig',instanced(new THREE.SphereGeometry(1,8,6),solid('#4a2a19',{roughness:.6}),pg));}
+  ov('kFlat',surfacePatch(kx,HZ-.4,1.3,.95,'#7a4a2c',.5));
+  SP.ker={flat:new V(kx,surf(kx,HZ-.4)+.05,HZ-.4),top:new V(kx+.15,surf(kx,kz)+.24,kz),sec:new V(kx-.1,corB(kx,HZ)-.12,HZ+.1),cyst:new V(kx+.2,surf(kx,HZ)+.05,HZ+.1),base:new V(kx,corB(kx,HZ)-.3,HZ+.1)};
+
+  /* 皮脂球（粟粒腫） */
+  const mil=[[-1.05,.15],[-.55,.1]],mg=[],mw=[],md=[];
+  mil.forEach(([x,r])=>{const y=papTop(x,HZ)+.02,c=new V(x,y,HZ+.02);mg.push(ellipsoid(c,r,r,r*.6,null,18,14));
+    const t=new THREE.TorusGeometry(r+.012,.012,8,40);t.deleteAttribute('uv');t.translate(x,y,HZ+.045);mw.push(t);
+    md.push(ellipsoid(new V(x,surf(x,HZ-.2)-.02,HZ-.2),r*1.1,.065,r,null,18,12));});
+  const sd=[];for(let i=0;i<9;i++){const x=rr(-1.9,0),z=rr(2.4,3.05);sd.push(ellipsoid(new V(x,surf(x,z)-.01,z),.07,.05,.07,null,12,8));}
+  ov('mBall',new THREE.Mesh(merge(mg),solid('#f8f3e6',{roughness:.3})));
+  ov('mWall',new THREE.Mesh(merge(mw),solid('#c9927a',{roughness:.5})));
+  ov('mDome',new THREE.Mesh(merge(md.concat(sd)),solid('#f3e2d4',{roughness:.4})));
+  SP.mil={ball:new V(-1.05,papTop(-1.05,HZ)+.24,HZ+.12),wall:new V(-1.2,papTop(-1.05,HZ)-.15,HZ+.1),dome:new V(-.55,surf(-.55,HZ-.2)+.12,HZ-.2),top:new V(-1.2,surf(-1.2,2.7)+.08,2.7)};
+
+  /* 泛紅：微血管 */
+  const capPath=(wig)=>{const out=[];const py=x=>papBot(x,HZ)+.22;
+    const pts=[];for(let k=0;k<=18;k++){const x=-2.45+k*.14;pts.push(new V(x,py(x)+(wig?.05*Math.sin(k*2.1):0),HZ+.03));}out.push(pts);
+    for(let x=-2.3;x<.1;x+=.3){const top=papTop(x,HZ)-.07,b=py(x),w=wig?.07:.04;
+      out.push([new V(x-w,b,HZ+.03),new V(x-w+(wig?.05:0),(b+top)/2,HZ+.03),new V(x-w*.5,top,HZ+.03),new V(x+w*.5,top,HZ+.03),new V(x+w-(wig?.05:0),(b+top)/2,HZ+.03),new V(x+w,b,HZ+.03)]);}
+    return out;};
+  ov('capN',new THREE.Mesh(merge(capPath(false).map(p=>tube(p,()=>.017,p.length*6,6))),solid('#d2303a',{roughness:.4})));
+  ov('capD',new THREE.Mesh(merge(capPath(true).map(p=>tube(p,()=>.038,p.length*8,8))),solid('#c21f2b',{roughness:.35})));
+  const tl=[];for(let n=0;n<10;n++){let x=rr(-2.2,-.3),z=rr(2.45,3.25);const pts=[];for(let k=0;k<7;k++){pts.push(new V(x,surf(x,z)+.02,z));x+=rr(-.06,.16);z+=rr(-.09,.09);}tl.push(tube(pts,()=>.02,30,6));
+    const m=pts[3],e=m.clone().add(new V(rr(-.15,.15),0,rr(.08,.18)));e.y=surf(e.x,e.z)+.02;tl.push(tube([m,m.clone().lerp(e,.5),e],()=>.014,10,5));}
+  ov('telang',new THREE.Mesh(merge(tl),glow('#c0222f')),{basic:1});
+  SP.red={cap:new V(-1.25,papTop(-1.25,HZ)-.12,HZ+.1),plex:new V(-.6,papBot(-.6,HZ)+.22,HZ+.1),tel:new V(-1.2,surf(-1.2,2.85)+.06,2.85),patch:new V(-1.2,1.52,HZ-.55)};
+}
+function buildStories3(){
+  const P3c=SP.P3c,Cm=SP.com,Po=SP.pore,E=SP.eye,K=SP.ker,M=SP.mil,Rd=SP.red,A=SP.acne;
+  const comCam={t:P3c(.78),w:1.1,h:1.2};
+  Object.assign(STORIES,{
+    com:{title:'內包粉刺（閉鎖性粉刺）',show:['follicle','sebaceous','papilla','arrector'],dir:new V(.15,.3,1),cam:comCam,steps:[
+      {h:'毛孔出口被角質封住',text:'毛囊口的角質代謝不順，老廢角質堆在出口，把毛孔整個封起來。跟黑頭粉刺不同，內包粉刺的開口是封閉的，裡面的東西接觸不到空氣，所以不會變黑。',ov:{cPlug:1,cBall:[1,.5]},labels:[['被封住的毛孔',Cm.plug]]},
+      {h:'皮脂和角質悶在裡面',text:'皮脂出不來，就和角質一起悶在毛囊裡，慢慢撐成一顆小球。從外面看是一顆顆膚色或白色的小凸起，摸起來粗粗的，看不到開口，常長在額頭、下巴和臉頰。',ov:{cPlug:1,cBall:1,cDome:1},labels:[['皮脂和角質',Cm.ball],['表面膚色小凸起',Cm.dome]],cam:{t:P3c(.86).setZ(HZ-.1),w:1.2,h:1.2},dir:new V(.15,.5,1)},
+      {h:'為什麼不要自己擠',text:'開口是封閉的，用手硬擠通常擠不乾淨，力量反而容易把毛囊壁擠破，內容物流進真皮，引起紅腫發炎，變成痘痘，甚至留下痘印或痘疤。',ov:{cPlug:1,cBall:[1,1.1],cDome:1,cRupt:1},labels:[['毛囊壁破裂發炎',Cm.rupt]],cam:{t:P3c(.62),w:1.5,h:1.7}},
+      {h:'日常照顧',text:'保持清潔但不要過度清潔，避免太厚重、悶住毛孔的保養品和彩妝，卸妝要確實，作息規律、少熬夜。如果數量多、反覆長，或常常變成發炎的痘痘，建議找皮膚科醫師評估，醫師會依情況處理。',ov:{cPlug:1,cBall:1,cDome:1},labels:[['內包粉刺',Cm.dome]],cam:{t:P3c(.86).setZ(HZ-.1),w:1.2,h:1.2},dir:new V(.15,.5,1)}
+    ]},
+    pore:{title:'凹洞（毛孔粗大）',show:['follicle','sebaceous','papilla'],dir:new V(.12,.6,1),cam:{t:new V(2.8,.7,3.0),w:1.9,h:1.8},steps:[
+      {h:'毛孔是毛囊的開口',text:'每個毛孔底下都連著一個毛囊和皮脂腺，皮脂就是從這裡排到皮膚表面。正常的毛孔很小，在真皮裡的膠原蛋白，像網子一樣撐住周圍的皮膚，讓開口維持緊實。',ov:{pFun:1,pDotN:1,pCol:1},labels:[['毛孔開口',Po.top],['膠原蛋白支撐',Po.col]]},
+      {h:'出油型：被皮脂撐大',text:'皮脂分泌旺盛時，大量皮脂經過毛孔，把開口撐開，毛孔看起來圓而明顯，常見於T字部位、鼻翼兩側，臉上也容易泛油光。和荷爾蒙、體質、天氣炎熱有關。',ov:{pFun:[1,1.8],pSeb:1,pDotO:1,pCol:1,pOil:1},labels:[['皮脂撐大毛孔',Po.seb],['圓形明顯的毛孔',Po.top]]},
+      {h:'老化鬆弛型：被往下拉',text:'隨著年齡增加和長期日曬，膠原蛋白和彈力纖維流失，支撐變弱，毛孔周圍的皮膚往下垂，開口被拉長，看起來像水滴形，常常連成一條線，多見於兩頰。',ov:{pFun:[1,1.6],pDotA:1,pCol:.25},labels:[['膠原支撐變少',Po.col],['水滴形毛孔',Po.sag]]},
+      {h:'日常照顧',text:'毛孔大小有很大部分和體質有關，沒有辦法讓它消失，但可以讓它不再更明顯：做好清潔和控油、不要用手擠或過度去角質、每天防曬減少膠原流失。毛孔或凹洞明顯困擾時，可以找皮膚科醫師評估。',ov:{pFun:1,pDotN:1,pCol:1},labels:[['毛孔開口',Po.top]]}
+    ]},
+    dark:{title:'黑眼圈',show:[],dir:new V(.15,.5,1),cam:{t:new V(-1.15,.95,HZ-.2),w:1.5,h:1.1},steps:[
+      {h:'眼周皮膚特別薄',text:'眼睛周圍是全身皮膚最薄的地方之一，皮下脂肪也很少，所以底下血管的顏色、色素和凹凸陰影，都特別容易透出來。黑眼圈大致可以分成三種，很多人是混合型。',ov:{eVein:1},labels:[['很薄的表皮',E.thin],['皮下的血管',E.vein]]},
+      {h:'血管型：偏青紫色',text:'熬夜、疲勞、眼睛過度使用時，眼周血液循環變差，靜脈裡的血液流動變慢、顏色變深，透過薄薄的皮膚看起來青青紫紫。睡飽後通常會改善一些。',ov:{eVein:[1,1.15],eBlue:1},labels:[['靜脈透出的顏色',E.vein],['青紫色',E.blue]]},
+      {h:'色素型：偏咖啡色',text:'常揉眼睛、過敏引起的摩擦、日曬，或遺傳體質，都會讓眼周的黑色素增加、沉澱，形成咖啡色的黑眼圈，就算睡飽也不太會改變。',ov:{melano:1,melLow:1,melHigh:1,spotPatch:1},labels:[['黑色素沉澱',E.epi],['咖啡色',E.patch]]},
+      {h:'結構型：陰影',text:'眼下凹陷（淚溝）或眼袋凸出，讓光線照不到某些位置，形成陰影，看起來像黑眼圈。這種跟年齡、骨架和脂肪分布有關，抬頭看燈光時顏色會跟著變化。',ov:{eShade:1},labels:[['凹凸造成的陰影',E.patch]]},
+      {h:'怎麼分辨與照顧',text:'輕輕把眼下皮膚往外拉：顏色變淡的多是血管型，顏色跟著皮膚走的多是色素型，抬頭看燈光才變淡的多是結構型。平時睡眠充足、不揉眼睛、過敏要好好控制、做好防曬。如果突然出現、只有單側，或合併腫脹，請找醫師檢查。',ov:{eVein:1,eBlue:.6,melLow:1,spotPatch:.5},labels:[['血管',E.vein],['色素',E.epi]]}
+    ]},
+    ker:{title:'角化斑（脂漏性角化症）',show:[],dir:new V(.15,.5,1),cam:{t:new V(-3.75,1.2,HZ-.25),w:1.5,h:1.2},steps:[
+      {h:'一開始：扁平的褐色斑',text:'角化斑是表皮的角質細胞過度增生所形成，初期通常是扁平、淡褐色的斑，容易和曬斑搞混。民間常把它和曬斑一起叫做老人斑，多在中年以後出現，臉、手背、胸背都常見。',ov:{kFlat:1},labels:[['扁平褐色斑',K.flat]]},
+      {h:'慢慢變厚、凸起',text:'隨著時間，增生的細胞越堆越厚，變成微微凸起的斑塊，表面粗糙、顏色加深，看起來像黏貼在皮膚上一樣，摸起來有點油油、蠟蠟的感覺。',ov:{kPlaque:1,kSec:1},labels:[['凸起的斑塊',K.top]],dir:new V(.15,.85,.8)},
+      {h:'剖面看：只長在表皮',text:'從剖面看，增厚的部分只在表皮，不會往深處長。裡面常有一顆顆白色的小角質囊，以及黑色素，所以顏色從淡褐到深褐都有。',ov:{kPlaque:1,kSec:1,kCyst:1,kPig:1},labels:[['增厚的表皮',K.sec],['角質小囊',K.cyst]],cam:{t:new V(-3.75,1.15,HZ),w:1.5,h:1.1},dir:new V(.1,.2,1)},
+      {h:'需要注意的情況',text:'角化斑是良性的，不會傳染，和年齡、日曬、體質有關。不建議自己摳、剪或用偏方點掉，容易感染留疤。如果斑在短時間內快速變大或變多、形狀顏色不規則、會出血或潰爛，請盡快找皮膚科醫師檢查，排除其他皮膚病變。',ov:{kPlaque:1,kSec:1,kCyst:1,kPig:1},labels:[['請醫師確認',K.top]],dir:new V(.15,.6,1)}
+    ]},
+    mil:{title:'皮脂球（粟粒腫）',show:['follicle','sebaceous'],dir:new V(.15,.4,1),cam:{t:new V(-.8,.95,HZ-.05),w:1.05,h:.95},steps:[
+      {h:'表皮下的小囊',text:'皮脂球醫學上叫粟粒腫，是表皮下方一顆很小的囊，外面有一層薄薄的囊壁，裡面包著角質。外觀是白色或米黃色、硬硬的小顆粒，常長在眼睛周圍、臉頰和額頭。',ov:{mBall:1,mWall:1,mDome:1},labels:[['角質（白色）',M.ball],['囊壁',M.wall]]},
+      {h:'不是脂肪，也不是粉刺',text:'雖然常被叫做脂肪粒，但裡面是角質，不是脂肪或油脂。它也和毛孔沒有相通：白頭粉刺是皮脂堵在毛孔裡，皮脂球則是自己包成一顆，表面沒有開口，所以擠不出來。',ov:{mBall:1,mWall:1,mDome:1,plug:1,sebum:1},labels:[['皮脂球：沒有開口',M.ball],['白頭粉刺：在毛孔裡',A.sebum]],cam:{t:new V(-.3,.95,HZ),w:2.3,h:1.6}},
+      {h:'為什麼會長',text:'有些是體質，沒有特別原因就長出來，新生兒也很常見；有些則是皮膚受過傷，例如摩擦、小傷口或水泡癒合後、長期日曬受損，修復時角質被包在裡面。常被怪罪是眼霜太滋潤，但目前並沒有明確證據。',ov:{mBall:1,mWall:1,mDome:1},labels:[['表面看到的白色小顆粒',M.top]],cam:{t:new V(-.9,1.3,2.85),w:1.7,h:1.1},dir:new V(.1,1,.6)},
+      {h:'正確處理方式',text:'不要自己用針挑或用手硬擠，容易發炎、感染或留下疤痕，眼周皮膚又特別薄。新生兒的通常會自己消失；成人的比較不容易自行消退，想處理的話，建議由皮膚科醫師評估，以無菌方式處理。',ov:{mBall:1,mWall:1,mDome:1},labels:[['皮脂球',M.dome]]}
+    ]},
+    red:{title:'泛紅',show:[],dir:new V(.12,.35,1),cam:{t:new V(-1.15,.7,HZ-.1),w:1.6,h:1.4},steps:[
+      {h:'真皮裡的微血管',text:'真皮上層布滿細小的微血管，一圈一圈伸進真皮乳頭，負責送養分和調節體溫。平常血管口徑很細，皮膚透出自然的紅潤。',ov:{capN:1},labels:[['微血管',Rd.cap],['血管網',Rd.plex]]},
+      {h:'暫時泛紅',text:'遇熱、運動、喝酒、吃辣、情緒激動或溫差大時，微血管會擴張，血流增加，皮膚就變紅、發熱。這是正常反應，刺激消失後通常會慢慢退回去。',ov:{capD:1,flush:1,redPatch:.7},labels:[['微血管擴張',Rd.cap]]},
+      {h:'長期泛紅與紅血絲',text:'如果血管反覆擴張，慢慢失去收縮的彈性，就會一直維持擴張，臉上看起來持續發紅，甚至看得到一條條細細的紅血絲，醫學上叫微血管擴張。',ov:{capD:1,flush:1,redPatch:1,telang:1},labels:[['持續擴張的血管',Rd.cap],['紅血絲',Rd.tel]],cam:{t:new V(-1.15,1.2,2.95),w:1.8,h:1.4},dir:new V(.1,.85,.75)},
+      {h:'常見原因',text:'屏障受損的敏感肌、酒糟性皮膚炎、長期擦含類固醇的藥膏、長年日曬，或天生皮膚較薄、血管較明顯，都可能造成長期泛紅。酒糟常在臉中央泛紅，遇熱更明顯，有時還會冒出像痘痘的紅疹。',ov:{capD:1,redPatch:1,telang:1},labels:[['臉部泛紅',Rd.patch]]},
+      {h:'日常照顧與就醫',text:'找出自己的誘發因子並盡量避開，例如過熱的環境、熱水洗臉、酒精、辛辣食物和大溫差；保養以溫和、保濕、精簡為主，並每天防曬。如果泛紅持續好幾週、有灼熱刺痛、冒出紅疹，或眼睛也乾澀發紅，建議找皮膚科醫師確認原因。',ov:{capN:1,redPatch:.4},labels:[['溫和照顧',Rd.patch]]}
     ]}
   });
 }
