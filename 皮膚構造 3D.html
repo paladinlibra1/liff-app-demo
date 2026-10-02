@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>皮膚構造 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#eef3f5; --bg2:#c9d7de; --ink:#1c2a33; --muted:#5a6b75;
+  --panel:rgba(255,255,255,.93); --line:rgba(28,42,51,.12);
+  --accent:#1d6d8b; --accent-ink:#fff; --accent-soft:rgba(29,109,139,.12);
+  --shadow:0 10px 30px rgba(20,40,55,.16);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg1:#22323c; --bg2:#0e161b; --ink:#e6eef2; --muted:#9db0ba;
+    --panel:rgba(22,32,39,.94); --line:rgba(230,238,242,.14);
+    --accent:#68bfe0; --accent-ink:#0e161b; --accent-soft:rgba(104,191,224,.16);
+    --shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg1:#22323c; --bg2:#0e161b; --ink:#e6eef2; --muted:#9db0ba;
+  --panel:rgba(22,32,39,.94); --line:rgba(230,238,242,.14);
+  --accent:#68bfe0; --accent-ink:#0e161b; --accent-soft:rgba(104,191,224,.16);
+  --shadow:0 10px 30px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  height:100%;margin:0;overflow:hidden;color:var(--ink);
+  background:radial-gradient(110% 75% at 50% 38%,var(--bg1),var(--bg2));
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;
+  -webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;
+}
+#app{position:relative;height:100%;width:100%;overflow:hidden}
+#app canvas{display:block;touch-action:none;position:absolute;inset:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px 0;pointer-events:none}
+.top>*{pointer-events:auto}
+.title h1{margin:0;font-family:"Noto Serif TC","Songti TC",serif;font-weight:700;font-size:26px;letter-spacing:.06em;line-height:1.2}
+.title p{margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+.icon-btn{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--panel);box-shadow:var(--shadow);flex:none}
+.icon-btn svg{width:20px;height:20px}
+
+.toolbar{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;width:calc(100% - 20px);max-width:560px;display:grid;grid-template-columns:repeat(6,1fr);background:var(--panel);border-radius:20px;box-shadow:var(--shadow);padding:6px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.toolbar button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;border-radius:14px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.toolbar button svg{width:22px;height:22px}
+.toolbar button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:500}
+
+.sheet{position:absolute;left:50%;transform:translateX(-50%);bottom:86px;width:calc(100% - 20px);max-width:520px;max-height:48%;overflow:auto;background:var(--panel);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:rise .22s ease-out}
+.sheet[hidden]{display:none}
+@keyframes rise{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+.sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sheet h2{margin:0;font-family:"Noto Serif TC","Songti TC",serif;font-size:21px;letter-spacing:.04em}
+.sheet .sub{margin:2px 0 0;font-size:13px;color:var(--muted);font-style:italic}
+.sheet .body{margin:10px 0 0;font-size:15px;line-height:1.75}
+.close{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--muted);flex:none}
+.close:hover{background:var(--accent-soft)}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);font-size:14px}
+.chip svg{width:16px;height:16px}
+.chip.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+.list-title{margin:14px 0 6px;font-size:13px;color:var(--muted);font-weight:500}
+.list-title:first-of-type{margin-top:10px}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line);font-size:15px}
+.toggle-row:last-child{border-bottom:0}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:10px;vertical-align:-1px}
+.switch{position:relative;width:46px;height:28px;border-radius:999px;background:var(--line);transition:background .2s;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+
+.tourbar{position:absolute;left:50%;transform:translateX(-50%);top:84px;display:flex;align-items:center;gap:8px;background:var(--panel);box-shadow:var(--shadow);border-radius:999px;padding:6px 6px 6px 14px;font-size:13px;white-space:nowrap}
+.tourbar[hidden]{display:none}
+.tourbar .chip{padding:6px 12px;font-size:13px}
+
+.pin{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+.pin[hidden]{display:none}
+.pin .dot{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2.5px solid #fff;box-shadow:0 0 0 6px var(--accent-soft)}
+.pin .tag{position:absolute;left:12px;top:-40px;padding:5px 11px;border-radius:10px;background:var(--panel);box-shadow:var(--shadow);font-size:14px;font-weight:500;white-space:nowrap}
+.pin .tag::before{content:"";position:absolute;left:-10px;bottom:-12px;width:14px;height:1.5px;background:var(--accent);transform:rotate(-55deg);transform-origin:right}
+.layer-tag{position:absolute;left:0;top:0;pointer-events:none;font-size:13px;font-weight:500;padding:4px 10px;border-radius:8px;background:var(--panel);box-shadow:var(--shadow);white-space:nowrap;transform:translate(8px,-50%)}
+.layer-tag[hidden]{display:none}
+
+.kicker{margin:0 0 3px;font-size:13px;font-weight:500;color:var(--accent)}
+.step-count{font-size:13px;color:var(--muted);margin-left:auto;align-self:center}
+.chip:disabled{opacity:.4}
+.prob-item{display:block;width:100%;text-align:left;padding:13px 2px;border-bottom:1px solid var(--line)}
+.prob-item:last-child{border-bottom:0}
+.prob-item b{display:block;font-size:16px;font-weight:500}
+.prob-item span{display:block;margin-top:2px;font-size:13px;color:var(--muted)}
+.story-tag{position:absolute;left:0;top:0;pointer-events:none;transform:translate(-50%,calc(-100% - 12px));padding:4px 10px;border-radius:8px;background:var(--panel);box-shadow:var(--shadow);font-size:13px;font-weight:500;white-space:nowrap}
+.story-tag::after{content:"";position:absolute;left:50%;bottom:-18px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+#loading{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;color:var(--muted);transition:opacity .4s}
+#loading.done{opacity:0;pointer-events:none}
+
+@media (min-width:760px){
+  .title h1{font-size:30px}
+}
+@media (prefers-reduced-motion:reduce){
+  .sheet{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="loading">正在建立模型</div>
+
+  <header class="top">
+    <div class="title">
+      <h1>皮膚構造</h1>
+      <p id="hint">拖曳旋轉，雙指縮放，點一下構造看說明</p>
+    </div>
+    <button class="icon-btn" id="btnReset" aria-label="重設視角">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+  </header>
+
+  <div class="tourbar" id="tourBar" hidden>
+    <span id="tourCount">導覽</span>
+    <button class="chip" id="tourPrev">上一個</button>
+    <button class="chip" id="tourNext">下一個</button>
+    <button class="chip primary" id="tourStop">結束</button>
+  </div>
+
+  <div class="pin" id="pin" hidden><div class="dot"></div><div class="tag" id="pinTag"></div></div>
+  <div id="layerTags"></div>
+  <div id="storyTags"></div>
+
+  <section class="sheet" id="info" hidden aria-live="polite">
+    <div class="sheet-head">
+      <div><h2 id="infoTitle"></h2><p class="sub" id="infoSub"></p></div>
+      <button class="close" id="infoClose" aria-label="關閉說明">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p class="body" id="infoText"></p>
+    <div class="actions">
+      <button class="chip primary" id="btnSpeak">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        <span>朗讀</span>
+      </button>
+      <button class="chip" id="btnIsolate" aria-pressed="false">只看這個</button>
+    </div>
+  </section>
+
+  <section class="sheet" id="layersPanel" hidden>
+    <div class="sheet-head"><h2>顯示圖層</h2>
+      <button class="close" data-close aria-label="關閉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div id="layerList" style="margin-top:6px"></div>
+  </section>
+
+  <section class="sheet" id="catalogPanel" hidden>
+    <div class="sheet-head"><h2>構造目錄</h2>
+      <button class="close" data-close aria-label="關閉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div id="catalogList"></div>
+  </section>
+
+  <section class="sheet" id="probPanel" hidden>
+    <div class="sheet-head"><h2>皮膚問題</h2>
+      <button class="close" data-close aria-label="關閉"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div style="margin-top:4px">
+      <button class="prob-item" data-story="acne"><b>痘痘怎麼形成</b><span>從毛孔阻塞、粉刺到發炎紅腫，共 6 步</span></button>
+      <button class="prob-item" data-story="spot"><b>斑怎麼形成</b><span>黑色素從製造到堆積成斑，共 5 步</span></button>
+      <button class="prob-item" data-story="scar"><b>痘疤從哪裡來</b><span>痘印和痘疤的差別，四種痘疤類型，共 7 步</span></button>
+      <button class="prob-item" data-story="sens"><b>皮膚為什麼會敏感</b><span>屏障受損、刺激物進入、泛紅刺癢，共 4 步</span></button>
+      <button class="prob-item" data-story="dry"><b>乾燥與缺水</b><span>水分怎麼流失，乾性肌和缺水肌的差別，共 4 步</span></button>
+      <button class="prob-item" data-story="fol"><b>毛囊炎</b><span>細菌感染毛囊，和痘痘的差別，共 4 步</span></button>
+    </div>
+  </section>
+
+  <section class="sheet" id="story" hidden aria-live="polite">
+    <div class="sheet-head">
+      <div><p class="kicker" id="stTopic"></p><h2 id="stTitle"></h2></div>
+      <button class="close" id="stClose" aria-label="結束說明"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="body" id="stText"></p>
+    <div class="actions">
+      <button class="chip" id="stPrev">上一步</button>
+      <button class="chip primary" id="stNext">下一步</button>
+      <button class="chip" id="stSpeak" aria-label="朗讀"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>朗讀</button>
+      <span class="step-count" id="stCount"></span>
+    </div>
+  </section>
+
+  <nav class="toolbar" aria-label="工具列">
+    <button data-act="layers" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>圖層</button>
+    <button data-act="catalog" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>目錄</button>
+    <button data-act="xray" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>透視</button>
+    <button data-act="explode" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="3" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="17" width="16" height="4" rx="1"/></svg>分層</button>
+    <button data-act="tour" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg>導覽</button>
+    <button data-act="problems" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.6"/><circle cx="15" cy="9" r="1.1"/><circle cx="13.5" cy="15" r="1.9"/></svg>皮膚問題</button>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+if(!window.THREE||!THREE.OrbitControls){$('#loading').textContent='3D 元件載入失敗，請檢查網路後重新整理';return;}
+
+/* ---------------- 說明資料 ---------------- */
+const INFO={
+  corneum:{zh:'角質層',en:'Stratum corneum',g:'epi',text:'皮膚最外層，由已經角化、沒有細胞核的扁平細胞層層堆疊，像磚牆一樣鎖住水分、阻擋外來刺激。隨著表皮更新，老舊角質會逐漸自然脫落。'},
+  epidermis:{zh:'表皮',en:'Epidermis',g:'epi',text:'位於角質層下方，主要由角質形成細胞組成。最底部的基底層會持續分裂，把細胞往上推，大約四週完成一次更新。這裡也有黑色素細胞，決定膚色並幫助抵擋紫外線。表皮本身沒有血管，養分靠下方的真皮供應。'},
+  papillary:{zh:'真皮乳頭層',en:'Papillary dermis',g:'dermis',text:'真皮最上層，向上形成許多指狀突起，嵌進表皮底部，讓兩層接合得更牢固。這裡布滿微血管和觸覺小體，負責供應表皮養分，也負責感知輕微的碰觸。'},
+  reticular:{zh:'真皮網狀層',en:'Reticular dermis',g:'dermis',text:'真皮中較厚的深層，膠原蛋白與彈力纖維交織成網，讓皮膚強韌又有彈性。年齡增長或長期日曬會讓這些纖維減少、斷裂，皮膚就會出現鬆弛和皺紋。'},
+  fat:{zh:'皮下脂肪',en:'Subcutaneous fat',g:'fat',text:'由脂肪細胞聚集成小葉，中間有結締組織分隔。它能保持體溫、緩衝外力、儲存能量，也讓皮膚可以在深層組織上滑動。'},
+  muscle:{zh:'肌肉層',en:'Fascia and muscle',g:'muscle',text:'皮下組織再往下是筋膜和骨骼肌。它不屬於皮膚本身，但為上方的皮膚提供支撐。'},
+  hair:{zh:'毛幹',en:'Hair shaft',g:'hair',text:'露出皮膚表面的毛髮，由角蛋白構成，已經沒有活的細胞，所以剪頭髮不會痛。最外層的毛鱗片排列是否整齊，決定毛髮的光澤與觸感。'},
+  follicle:{zh:'毛囊',en:'Hair follicle',g:'hair',text:'包覆毛髮根部的管狀構造，從表皮一路延伸到真皮深層。毛髮的生長期、退化期、休止期都在毛囊裡進行，底部膨大的毛球負責製造新的毛髮。'},
+  papilla:{zh:'毛乳頭',en:'Dermal papilla',g:'hair',text:'位在毛球底部的小團組織，裡面有微血管供應養分，並發出訊號調控毛母細胞分裂。毛乳頭運作正常，毛髮才能持續生長。'},
+  sebaceous:{zh:'皮脂腺',en:'Sebaceous gland',g:'gland',text:'附著在毛囊旁邊，分泌的皮脂沿著毛囊從毛孔排出，和汗水混合成皮脂膜，幫助保濕並維持皮膚的弱酸性。皮脂分泌過多或毛孔阻塞時，容易形成粉刺。'},
+  arrector:{zh:'立毛肌',en:'Arrector pili muscle',g:'hair',text:'連接毛囊與真皮上層的小束平滑肌。遇冷或緊張時會收縮，把毛髮拉直，皮膚表面就出現雞皮疙瘩，同時也會擠壓皮脂腺幫助皮脂排出。'},
+  sweat:{zh:'汗腺',en:'Eccrine sweat gland',g:'gland',text:'盤繞成一團的腺體位在真皮深層，汗液沿著細長的導管往上，以螺旋狀穿過表皮，從汗孔排出。主要功能是靠汗水蒸發來調節體溫。'},
+  artery:{zh:'動脈',en:'Artery',g:'vessel',text:'把含氧血液送進皮膚，在真皮與皮下脂肪交界處，以及乳頭層下方各形成一層血管網，再分出微血管供應毛囊、腺體和表皮。'},
+  vein:{zh:'靜脈',en:'Vein',g:'vessel',text:'收集回流的缺氧血液，大多與動脈並行。皮膚血管的收縮與擴張也參與體溫調節，例如天熱時皮膚會泛紅。'},
+  nerve:{zh:'神經',en:'Nerve',g:'nerve',text:'把觸碰、壓力、溫度、疼痛和癢的感覺傳回大腦，也負責控制汗腺與立毛肌。末端連接各種感覺接受器。'},
+  meissner:{zh:'觸覺小體',en:"Meissner's corpuscle",g:'nerve',text:'位在真皮乳頭裡的橢圓形接受器，對輕觸和低頻振動特別敏感，在指尖和嘴唇分布最密集。'},
+  pacinian:{zh:'環層小體',en:'Pacinian corpuscle',g:'nerve',text:'位在真皮深層與皮下組織，由許多層同心薄膜包覆，切開來像洋蔥。負責感受深層壓力與快速振動。'}
+};
+const GROUPS=[
+  {id:'epi',zh:'表皮',sw:'#e9a99f'},
+  {id:'dermis',zh:'真皮',sw:'#e3a1bb'},
+  {id:'fat',zh:'皮下脂肪',sw:'#f0cf72'},
+  {id:'muscle',zh:'肌肉',sw:'#c4594f'},
+  {id:'hair',zh:'毛髮與毛囊',sw:'#3a2216'},
+  {id:'gland',zh:'腺體',sw:'#f1dc93'},
+  {id:'vessel',zh:'血管',sw:'#c8282b'},
+  {id:'nerve',zh:'神經與感覺小體',sw:'#f2c230'}
+];
+const TOUR=['corneum','epidermis','papillary','reticular','fat','hair','follicle','papilla','sebaceous','arrector','sweat','artery','vein','nerve','meissner','pacinian'];
+
+/* ---------------- 基本設定 ---------------- */
+const V=THREE.Vector3;
+const W=10,D=7,HX=W/2,HZ=D/2;
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R=rng(20261001);
+const rr=(a,b)=>a+(b-a)*R();
+
+const surf=(x,z)=>1.45+0.05*Math.sin(x*1.3)*Math.cos(z*1.1)+0.03*Math.sin(x*3.1+z*2.3);
+const corB=(x,z)=>surf(x,z)-0.09;
+const papTop=(x,z)=>{const s=Math.sin(x*2.2+0.3)*Math.cos(z*2.0);const k=0.5+0.5*s;return 0.74+0.32*k*k;};
+const papBot=(x,z)=>0.02+0.06*Math.sin(x*1.7+z);
+const fatTop=(x,z)=>-2.2+0.12*Math.sin(x*1.1)*Math.cos(z*1.4)+0.05*Math.sin(x*3+z*2);
+const musTop=(x,z)=>-4.3+0.08*Math.sin(x*0.9+z*0.7);
+const musBot=()=>-5.0;
+
+const app=$('#app');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.NoToneMapping;
+
+renderer.localClippingEnabled=true;
+app.insertBefore(renderer.domElement,app.firstChild);
+const canvas=renderer.domElement;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,0.1,300);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=4;controls.maxDistance=70;controls.rotateSpeed=0.8;
+controls.target.set(0,-1.4,0);
+
+scene.add(new THREE.HemisphereLight(0xfff6f0,0x8a7266,0.8));
+const keyL=new THREE.DirectionalLight(0xffffff,1.15);keyL.position.set(6,12,9);scene.add(keyL);
+const fillL=new THREE.DirectionalLight(0xdfeeff,0.45);fillL.position.set(-8,4,-3);scene.add(fillL);
+const rimL=new THREE.DirectionalLight(0xffe8dc,0.35);rimL.position.set(-2,-6,10);scene.add(rimL);
+
+const lin=hex=>new THREE.Color(hex).convertSRGBToLinear();
+
+/* ---------------- 程式繪製材質 ---------------- */
+function canvasTex(draw,size){
+  size=size||512;
+  const c=document.createElement('canvas');c.width=c.height=size;
+  const g=c.getContext('2d');draw(g,size);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.encoding=THREE.sRGBEncoding;
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+function wavyLine(g,s,y0,amp,k,ph){g.beginPath();for(let x=0;x<=s;x+=8){const y=y0+amp*Math.sin(x/s*Math.PI*2*k+ph);x?g.lineTo(x,y):g.moveTo(x,y);}g.stroke();}
+
+let tCor,tEpi,tPap,tRet,tFat,tMus,tTop;
+function buildTextures(){
+  tCor=canvasTex((g,s)=>{
+    g.fillStyle='#f4d3c9';g.fillRect(0,0,s,s);
+    g.lineWidth=1.3;
+    for(let y=4;y<s;y+=8){g.strokeStyle=`rgba(176,110,100,${0.22+R()*0.2})`;wavyLine(g,s,y,1.6,4,y*0.7);}
+  });
+  tEpi=canvasTex((g,s)=>{
+    g.fillStyle='#e3a198';g.fillRect(0,0,s,s);
+    const ell=(x,y,rx,ry,fill)=>{g.fillStyle=fill;for(const dx of[-s,0,s]){g.beginPath();g.ellipse(x+dx,y,rx,ry,0,0,Math.PI*2);g.fill();}};
+    for(let r=0;r<s/16;r++)for(let c=0;c<s/32;c++){
+      const x=c*32+(r%2?16:0),y=r*16+8,l=66+R()*8;
+      ell(x,y,14.5,6.6,`hsl(8,58%,${l}%)`);
+      ell(x+(R()-.5)*4,y,3.2,2.4,'rgba(130,55,65,.42)');
+    }
+  });
+  tPap=canvasTex((g,s)=>{
+    g.fillStyle='#e19fba';g.fillRect(0,0,s,s);
+    const step=16;g.lineCap='round';
+    for(let k=-s;k<2*s;k+=step){
+      g.lineWidth=3;g.strokeStyle='rgba(160,70,118,.38)';
+      g.beginPath();g.moveTo(k,0);g.lineTo(k+s,s);g.stroke();
+      g.beginPath();g.moveTo(k,s);g.lineTo(k+s,0);g.stroke();
+      g.lineWidth=1;g.strokeStyle='rgba(255,232,242,.6)';
+      g.beginPath();g.moveTo(k+3,0);g.lineTo(k+3+s,s);g.stroke();
+    }
+  });
+  tRet=canvasTex((g,s)=>{
+    g.fillStyle='#efc3a5';g.fillRect(0,0,s,s);g.lineCap='round';
+    for(let i=0;i<110;i++){
+      const y0=R()*s,amp=3+R()*9,ph=R()*6.28,k=1+Math.floor(R()*3),light=R()<.5;
+      g.lineWidth=2+R()*5;
+      g.strokeStyle=light?'rgba(255,238,222,.55)':'rgba(194,124,94,.32)';
+      for(const dy of[-s,0,s])wavyLine(g,s,y0+dy,amp,k,ph);
+    }
+    g.fillStyle='rgba(140,70,62,.42)';
+    for(let i=0;i<70;i++){const x=R()*s,y=R()*s;g.beginPath();g.ellipse(x,y,3.2,1.4,R()*.4,0,7);g.fill();}
+  });
+  tFat=canvasTex((g,s)=>{
+    g.fillStyle='#c9962f';g.fillRect(0,0,s,s);
+    const n=16,cs=s/n;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+      const x=(i+.5)*cs+(R()-.5)*cs*.35,y=(j+.5)*cs+(R()-.5)*cs*.35,r=cs*(.43+R()*.09);
+      for(const dx of[-s,0,s])for(const dy of[-s,0,s]){
+        const X=x+dx,Y=y+dy;if(X<-cs||X>s+cs||Y<-cs||Y>s+cs)continue;
+        const gr=g.createRadialGradient(X-r*.3,Y-r*.35,r*.1,X,Y,r);
+        gr.addColorStop(0,'#fff3c4');gr.addColorStop(.65,'#f2d27a');gr.addColorStop(1,'#d3a23c');
+        g.fillStyle=gr;g.beginPath();g.arc(X,Y,r,0,7);g.fill();
+      }
+    }
+  });
+  tMus=canvasTex((g,s)=>{
+    g.fillStyle='#b9504a';g.fillRect(0,0,s,s);
+    for(let y=0;y<s;y+=8){g.fillStyle=`hsl(5,50%,${46+R()*10}%)`;g.fillRect(0,y,s,6.5);}
+    g.strokeStyle='rgba(255,215,205,.16)';g.lineWidth=1;
+    for(let x=0;x<s;x+=4){g.beginPath();g.moveTo(x,0);g.lineTo(x,s);g.stroke();}
+  });
+  tTop=canvasTex((g,s)=>{
+    g.fillStyle='#ecb9a7';g.fillRect(0,0,s,s);
+    const n=8,cs=s/n,P=[];
+    for(let i=0;i<n;i++){P[i]=[];for(let j=0;j<n;j++)P[i][j]=[(i+.5)*cs+(R()-.5)*cs*.6,(j+.5)*cs+(R()-.5)*cs*.6];}
+    const pt=(i,j)=>{const ii=((i%n)+n)%n,jj=((j%n)+n)%n;return[P[ii][jj][0]+Math.floor(i/n)*s,P[ii][jj][1]+Math.floor(j/n)*s];};
+    g.lineCap='round';
+    g.strokeStyle='rgba(165,96,88,.5)';g.lineWidth=2.4;
+    for(let i=-1;i<=n;i++)for(let j=-1;j<=n;j++){const a=pt(i,j);for(const[di,dj]of[[1,0],[0,1],[1,1]]){const b=pt(i+di,j+dj);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();}}
+    g.strokeStyle='rgba(255,236,228,.35)';g.lineWidth=1;
+    for(let k=0;k<320;k++){const x=R()*s,y=R()*s,a=R()*3.14,l=5+R()*12;g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke();}
+  });
+}
+
+/* ---------------- 材質註冊 ---------------- */
+const MATS=[],keyMats={},pickables=[];
+function reg(mat,key,kind){mat.userData={key,kind,op:1,meshes:[]};MATS.push(mat);(keyMats[key]=keyMats[key]||[]).push(mat);return mat;}
+function addMesh(mesh,key,parent){mesh.userData.key=key;parent.add(mesh);pickables.push(mesh);const ms=Array.isArray(mesh.material)?mesh.material:[mesh.material];ms.forEach(m=>{if(m.userData.meshes&&m.userData.meshes.indexOf(mesh)<0)m.userData.meshes.push(mesh);});}
+
+const visGroups={};GROUPS.forEach(g=>{visGroups[g.id]=new THREE.Group();scene.add(visGroups[g.id]);});
+const tissueGroups={},layerMeshes={},FOLS=[];
+
+/* ---------------- 組織分層 ---------------- */
+const LAYERS=[
+  {key:'corneum',top:surf,bot:corB,side:()=>tCor,topT:()=>tTop,off:2.7},
+  {key:'epidermis',top:corB,bot:papTop,side:()=>tEpi,topT:()=>tEpi,off:1.95},
+  {key:'papillary',top:papTop,bot:papBot,side:()=>tPap,topT:()=>tPap,off:1.05},
+  {key:'reticular',top:papBot,bot:fatTop,side:()=>tRet,topT:()=>tRet,off:0},
+  {key:'fat',top:fatTop,bot:musTop,side:()=>tFat,topT:()=>tFat,off:-1.15},
+  {key:'muscle',top:musTop,bot:musBot,side:()=>tMus,topT:()=>tMus,off:-2.3}
+];
+const TS=2;
+function layerGeo(topFn,botFn,sx,sz){
+  const g=new THREE.BoxGeometry(W,1,D,sx||110,1,sz||77);
+  const p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv;
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i),z=p.getZ(i),y=p.getY(i)>0?topFn(x,z):botFn(x,z);
+    p.setY(i,y);
+    const nx=n.getX(i),ny=n.getY(i);
+    if(Math.abs(nx)>.5)uv.setXY(i,z/TS,y/TS);
+    else if(Math.abs(ny)>.5)uv.setXY(i,x/TS,z/TS);
+    else uv.setXY(i,x/TS,y/TS);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+function tissueMat(tex,key){
+  return reg(new THREE.MeshStandardMaterial({map:tex,bumpMap:tex,bumpScale:0.014,roughness:0.78,metalness:0}),key,'tissue');
+}
+function buildLayers(){
+  LAYERS.forEach(L=>{
+    const grp=new THREE.Group();tissueGroups[L.key]=grp;
+    visGroups[INFO[L.key].g].add(grp);
+    const side=tissueMat(L.side(),L.key);
+    const top=L.key==='corneum'?reg(new THREE.MeshStandardMaterial({map:L.topT(),bumpMap:L.topT(),bumpScale:0.02,roughness:0.62,metalness:0}),L.key,'tissue'):side;
+    const fine=['corneum','epidermis','papillary','reticular'].indexOf(L.key)>=0;
+    const mesh=new THREE.Mesh(layerGeo(L.top,L.bot,fine?170:110,fine?119:77),[side,side,top,side,side,side]);layerMeshes[L.key]=mesh;
+    addMesh(mesh,L.key,grp);
+  });
+  // 脂肪小葉立體顆粒（切面）
+  const pts=[];
+  for(let x=-4.92;x<=4.92;x+=0.2)for(let k=0;k<12;k++){
+    const xx=x+rr(-.06,.06),ft=fatTop(xx,HZ),mt=musTop(xx,HZ),y=mt+0.1+(ft-mt-0.2)*(k+R()*.6)/12;
+    const r=rr(.085,.12);pts.push([xx,y,HZ-r*.5,r]);
+  }
+  for(let z=-3.42;z<=3.3;z+=0.2)for(let k=0;k<12;k++){
+    const zz=z+rr(-.06,.06),ft=fatTop(HX,zz),mt=musTop(HX,zz),y=mt+0.1+(ft-mt-0.2)*(k+R()*.6)/12;
+    const r=rr(.085,.12);pts.push([HX-r*.5,y,zz,r]);
+  }
+  const mat=reg(new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.42,clearcoat:.45,clearcoatRoughness:.35}),'fat','tissue');
+  const im=new THREE.InstancedMesh(new THREE.SphereGeometry(1,14,10),mat,pts.length);im.frustumCulled=false;
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),c=new THREE.Color();
+  pts.forEach((p,i)=>{m4.compose(new V(p[0],p[1],p[2]),q,new V(p[3],p[3]*.92,p[3]));im.setMatrixAt(i,m4);c.setHSL(.12+R()*.02,.78,.66+R()*.1).convertSRGBToLinear();im.setColorAt(i,c);});
+  addMesh(im,'fat',tissueGroups.fat);
+}
+
+/* ---------------- 幾何工具 ---------------- */
+function tube(pts,rFn,seg,rad){
+  const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+  const fr=curve.computeFrenetFrames(seg,false);
+  const pos=[],nor=[],idx=[],P=new V(),N=new V();
+  for(let i=0;i<=seg;i++){
+    const t=i/seg;curve.getPointAt(t,P);const r=rFn(t),n=fr.normals[i],b=fr.binormals[i];
+    for(let j=0;j<=rad;j++){
+      const v=j/rad*Math.PI*2,c=Math.cos(v),s=Math.sin(v);
+      N.set(c*n.x+s*b.x,c*n.y+s*b.y,c*n.z+s*b.z).normalize();
+      pos.push(P.x+r*N.x,P.y+r*N.y,P.z+r*N.z);nor.push(N.x,N.y,N.z);
+    }
+  }
+  for(let i=0;i<seg;i++)for(let j=0;j<rad;j++){const a=i*(rad+1)+j,b2=a+rad+1;idx.push(a,a+1,b2,b2,a+1,b2+1);}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));
+  g.setIndex(idx);return g;
+}
+const UP=new V(0,1,0);
+function ellipsoid(c,sx,sy,sz,dir,ws,hs){
+  const g=new THREE.SphereGeometry(1,ws||16,hs||12);
+  const q=new THREE.Quaternion();if(dir)q.setFromUnitVectors(UP,dir.clone().normalize());
+  g.applyMatrix4(new THREE.Matrix4().compose(c,q,new V(sx,sy,sz)));
+  g.deleteAttribute('uv');return g;
+}
+function colorize(g,hex){const c=lin(hex),n=g.attributes.position.count,a=new Float32Array(n*3);for(let i=0;i<n;i++){a[i*3]=c.r;a[i*3+1]=c.g;a[i*3+2]=c.b;}g.setAttribute('color',new THREE.BufferAttribute(a,3));return g;}
+function merge(geos){
+  let nV=0,nI=0;const hasC=geos.some(g=>g.attributes.color);
+  geos.forEach(g=>{nV+=g.attributes.position.count;nI+=g.index.count;});
+  const pos=new Float32Array(nV*3),nor=new Float32Array(nV*3),col=hasC?new Float32Array(nV*3):null,idx=new Uint32Array(nI);
+  let vo=0,io=0;
+  geos.forEach(g=>{
+    const n=g.attributes.position.count;
+    pos.set(g.attributes.position.array,vo*3);nor.set(g.attributes.normal.array,vo*3);
+    if(col){if(g.attributes.color)col.set(g.attributes.color.array,vo*3);else col.fill(1,vo*3,(vo+n)*3);}
+    const ia=g.index.array;for(let k=0;k<ia.length;k++)idx[io+k]=ia[k]+vo;
+    vo+=n;io+=ia.length;g.dispose();
+  });
+  const out=new THREE.BufferGeometry();
+  out.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
+  if(col)out.setAttribute('color',new THREE.BufferAttribute(col,3));
+  out.setIndex(new THREE.BufferAttribute(idx,1));
+  out.computeBoundingSphere();return out;
+}
+const B={},ANCH={};
+const add=(key,g)=>{(B[key]=B[key]||[]).push(g);};
+const anchor=(key,v)=>{if(!ANCH[key])ANCH[key]=v.clone();};
+
+/* ---------------- 毛髮、毛囊、皮脂腺、立毛肌 ---------------- */
+function follicle(fx,fz,dir2,h,front,fwd){
+  const F=fwd?fwd.clone():new V();
+  const by=-2.02+rr(-.14,.06);
+  const Bp=new V(fx,by,fz);
+  const S=new V(fx+dir2.x*h,0,fz+dir2.z*h);S.y=surf(S.x,S.z);
+  const axis=S.clone().sub(Bp).normalize();
+  const side=new V(-dir2.z,0,dir2.x);
+  const wig=front?0:0.05;
+  const pts=[Bp.clone(),Bp.clone().lerp(S,.35).addScaledVector(side,rr(-wig,wig)),Bp.clone().lerp(S,.7),S.clone(),S.clone().addScaledVector(axis,.06)];
+  add('follicle',tube(pts,t=>t<.85?0.165-0.05*t:0.123+(t-.85)*0.5,30,14));
+  add('follicle',ellipsoid(Bp.clone().addScaledVector(axis,-.02),.215,.29,.215,axis,18,14));
+  add('papilla',ellipsoid(Bp.clone().addScaledVector(axis,-.1).addScaledVector(F,.13),.1,.14,.1,axis,14,10));
+  // 毛幹
+  const e=dir2.clone().multiplyScalar(.95).add(UP).normalize();
+  const Lh=rr(1.6,2.7),inLen=S.distanceTo(Bp);
+  const hp=[Bp.clone().addScaledVector(axis,.02).addScaledVector(F,.15),Bp.clone().lerp(S,.5).addScaledVector(F,.13),S.clone().addScaledVector(F,.11),
+    S.clone().addScaledVector(e,Lh*.35),
+    S.clone().addScaledVector(e,Lh*.7).addScaledVector(dir2,Lh*.08).addScaledVector(UP,-Lh*.05),
+    S.clone().addScaledVector(e,Lh).addScaledVector(dir2,Lh*.22).addScaledVector(UP,-Lh*.2)];
+  const f0=inLen/(inLen+Lh*1.05);
+  hp.slice(3).forEach(q=>q.addScaledVector(F,.11));
+  add('hair',tube(hp,t=>t<f0?0.05:0.006+0.044*Math.pow(1-(t-f0)/(1-f0),0.75),64,8));
+  // 皮脂腺
+  const Q=Bp.clone().lerp(S,(0.02-by)/(S.y-by));
+  const G=Q.clone().addScaledVector(dir2,.25);
+  const lat=front?0:1;
+  [[0,0,0,.15],[.1,-.16,.05,.13],[.03,.13,-.05,.11],[-.02,-.3,0,.1],[.16,-.02,-.06,.1],[-.12,-.08,0,.07]].forEach(s=>{
+    const c=G.clone().addScaledVector(dir2,s[0]).add(new V(0,s[1],0)).addScaledVector(side,s[2]*lat);
+    add('sebaceous',ellipsoid(c,s[3],s[3]*1.05,s[3],null,14,10));
+  });
+  // 立毛肌
+  const a0=Bp.clone().lerp(S,(-1.05-by)/(S.y-by)).addScaledVector(dir2,.13);
+  const a2=a0.clone().addScaledVector(dir2,1.0);a2.y=papTop(a2.x,a2.z)-0.13;
+  const a1=a0.clone().lerp(a2,.5).addScaledVector(UP,.06);
+  add('arrector',tube([a0,a1,a2],t=>0.022+0.095*Math.pow(Math.sin(Math.PI*t),0.8),26,12));
+  if(front&&fwd&&fwd.z>0)FOLS.push({fx,Bp,S,axis,G:G.clone()});
+  if(front){
+    anchor('follicle',Bp.clone().lerp(S,.42));anchor('papilla',Bp);anchor('sebaceous',G);
+    anchor('arrector',a1);anchor('hair',S.clone().addScaledVector(e,Lh*.45));
+  }
+}
+function buildHair(){
+  const X=new V(1,0,0);
+  [-2.75,0.3,2.85].forEach(x=>follicle(x,HZ-.05,X,.55,true,new V(0,0,1)));
+  [1.1,-1.9].forEach(z=>follicle(HX-.05,z,new V(0,0,-1),.55,true,new V(1,0,0)));
+  const spots=[];let guard=0;
+  while(spots.length<30&&guard++<2000){
+    const x=rr(-4.6,3.9),z=rr(-3.25,2.75);
+    if(spots.some(s=>Math.hypot(s[0]-x,s[1]-z)<0.95))continue;
+    spots.push([x,z]);
+  }
+  spots.forEach(s=>{const a=rr(-.55,.45);follicle(s[0],s[1],new V(Math.cos(a),0,Math.sin(a)),rr(.45,.7),false);});
+}
+
+/* ---------------- 汗腺 ---------------- */
+function sweat(c,plane){
+  const pts=[],N=48;
+  for(let i=0;i<N;i++){
+    const a=i*.6;
+    let dx=.26*Math.cos(a)+.08*Math.cos(3.1*a),dy=.17*Math.sin(1.7*a)+.06*Math.cos(2.3*a),dz=.26*Math.sin(a)+.08*Math.sin(2.7*a);
+    if(plane==='front')dz*=.5;if(plane==='right')dx*=.5;
+    pts.push(new V(c.x+dx,c.y+dy,c.z+dz));
+  }
+  const fx=plane==='right'?0:1,fz=plane==='front'?0:1;
+  pts.push(new V(c.x,c.y+.38,c.z));
+  const yA=papTop(c.x,c.z);
+  [[-1.25,.12],[-.45,-.1],[.3,.08],[yA-.06,0]].forEach(p=>pts.push(new V(c.x+p[1]*fx,p[0],c.z+p[1]*fz)));
+  const ys=surf(c.x,c.z),n=8;
+  for(let i=1;i<=n;i++){const y=yA-.06+(ys+.01-(yA-.06))*i/n,a=i*1.7;pts.push(new V(c.x+.07*Math.cos(a)*fx,y,c.z+.07*Math.sin(a)*fz));}
+  add('sweat',tube(pts,t=>t<.62?0.05:0.036,300,8));
+  if(plane==='front')anchor('sweat',c);
+}
+function buildSweat(){
+  [[-1.3,-2.0],[2.05,-2.08],[-4.15,-1.95]].forEach(p=>sweat(new V(p[0],p[1],HZ-.05),'front'));
+  [[-1.0,-2.02],[2.7,-1.98]].forEach(p=>sweat(new V(HX-.05,p[1],p[0]),'right'));
+  for(let i=0;i<9;i++)sweat(new V(rr(-4.2,3.8),rr(-2.3,-1.85),rr(-3,2.6)),'in');
+}
+
+/* ---------------- 血管與神經 ---------------- */
+const FZ=HZ-.02,RXp=HX-.02;
+function lineX(y0,z,ph){const p=[];for(let x=-HX;x<=HX+.001;x+=1.25)p.push(new V(x,y0+.07*Math.sin(x*1.3+ph),z));return p;}
+function lineZ(y0,x,ph){const p=[];for(let z=HZ;z>=-HZ-.001;z-=1)p.push(new V(x,y0+.07*Math.sin(z*1.5+ph),z));return p;}
+const yAt=(y0,ph,u)=>y0+.07*Math.sin(u*1.3+ph);
+const yAtZ=(y0,ph,u)=>y0+.07*Math.sin(u*1.5+ph);
+function clampIn(p){p.x=Math.max(-HX+.15,Math.min(HX-.15,p.x));p.z=Math.max(-HZ+.15,Math.min(HZ-.15,p.z));return p;}
+function branch(key,start,mode,r0,ends){
+  const pts=[start.clone()];let p=start.clone();const ty=rr(.12,.32),steps=4;
+  for(let i=1;i<=steps;i++){
+    const y=start.y+(ty-start.y)*i/steps;
+    p=new V(p.x+(mode==='right'?0:rr(-.24,.24)),y,p.z+(mode==='front'?0:rr(-.24,.24)));
+    if(mode==='front')p.z=start.z;if(mode==='right')p.x=start.x;
+    if(mode==='in')clampIn(p);
+    pts.push(p);
+  }
+  add(key,tube(pts,t=>r0*(1-.5*t),40,8));
+  let dirs;
+  if(mode==='front')dirs=[new V(-1,0,0),new V(1,0,0)];
+  else if(mode==='right')dirs=[new V(0,0,-1),new V(0,0,1)];
+  else{const a=rr(0,6.28);dirs=[new V(Math.cos(a),0,Math.sin(a)),new V(-Math.cos(a),0,-Math.sin(a))];}
+  dirs.forEach((d,i)=>{
+    const tip=p.clone().addScaledVector(d,rr(.25,.45));if(mode==='in')clampIn(tip);
+    tip.y=papTop(tip.x,tip.z)-(ends?.2:.1);
+    const mid=p.clone().lerp(tip,.5);mid.y=(p.y+tip.y)/2+.04;
+    add(key,tube([p.clone(),mid,tip],t=>r0*.45*(1-.55*t),14,6));
+    if(ends&&i===0){
+      const m=tip.clone();m.y+=.08;
+      add('meissner',ellipsoid(m,.065,.12,.065,null,14,10));
+      if(mode==='front')anchor('meissner',m);
+    }
+  });
+}
+function pacinian(c,front){
+  const q=new THREE.Quaternion().setFromAxisAngle(new V(0,0,1),rr(-.35,.35));
+  [[1,'#f7ecdd'],[.8,'#e8c9b0'],[.62,'#f7ecdd'],[.45,'#e2bca0'],[.27,'#f3e2cf'],[.13,'#c98a75']].forEach(s=>{
+    const g=new THREE.SphereGeometry(1,22,16);
+    g.applyMatrix4(new THREE.Matrix4().compose(c,q,new V(.26*s[0],.42*s[0],.26*s[0])));
+    g.deleteAttribute('uv');add('pacinian',colorize(g,s[1]));
+  });
+  add('nerve',tube([c.clone().add(new V(0,-.3,0)),c.clone().add(new V(.05,-.5,0)),c.clone().add(new V(0,-.75,0))],()=>.035,10,6));
+  if(front)anchor('pacinian',c);
+}
+function buildVessels(){
+  const A=[-2.42,0],Vn=[-2.72,1.1],Nv=[-3.0,2.3];
+  // 前切面
+  add('artery',tube(lineX(A[0],FZ,A[1]),()=>.14,90,12));
+  add('vein',tube(lineX(Vn[0],FZ,Vn[1]),()=>.17,90,12));
+  add('nerve',tube(lineX(Nv[0],FZ+.01,Nv[1]),()=>.1,90,10));
+  // 右切面
+  add('artery',tube(lineZ(A[0],RXp,A[1]),()=>.14,70,12));
+  add('vein',tube(lineZ(Vn[0],RXp,Vn[1]),()=>.17,70,12));
+  add('nerve',tube(lineZ(Nv[0],RXp+.01,Nv[1]),()=>.1,70,10));
+  // 內部
+  [.9,-2.1].forEach((z,i)=>{
+    add('artery',tube(lineX(A[0],z,A[1]+i),()=>.13,90,10));
+    add('vein',tube(lineX(Vn[0],z+.22,Vn[1]+i),()=>.16,90,10));
+    add('nerve',tube(lineX(Nv[0],z-.2,Nv[1]+i),()=>.09,90,8));
+  });
+  // 往深層的主幹
+  const ax=-.35,vx=.2;
+  add('artery',tube([new V(ax,yAt(A[0],A[1],ax),FZ),new V(ax-.12,-3.2,FZ),new V(ax-.22,-4.2,FZ),new V(ax-.18,-5,FZ)],t=>.15+.04*t,40,12));
+  add('vein',tube([new V(vx,yAt(Vn[0],Vn[1],vx),FZ),new V(vx+.05,-3.4,FZ),new V(vx+.12,-4.3,FZ),new V(vx+.08,-5,FZ)],t=>.18+.05*t,40,12));
+  anchor('artery',new V(ax-.12,-3.3,FZ));anchor('vein',new V(2,yAt(Vn[0],Vn[1],2),FZ));anchor('nerve',new V(3.2,yAt(Nv[0],Nv[1],3.2),FZ));
+  // 前切面分支
+  [-4.4,-3.3,-1.7,-.95,1.25,2.2,3.7,4.5].forEach(x=>branch('artery',new V(x,yAt(A[0],A[1],x),FZ),'front',.085));
+  [-4.0,-2.2,-.5,.9,2.6,4.1].forEach(x=>branch('vein',new V(x,yAt(Vn[0],Vn[1],x),FZ-.02),'front',.095));
+  [-3.85,-1.05,1.75,4.15].forEach(x=>branch('nerve',new V(x,yAt(Nv[0],Nv[1],x),FZ+.01),'front',.06,true));
+  // 右切面分支
+  [2.9,1.7,.3,-.8,-2.3,-3.1].forEach(z=>branch('artery',new V(RXp,yAtZ(A[0],A[1],z),z),'right',.085));
+  [2.4,.8,-1.5,-2.8].forEach(z=>branch('vein',new V(RXp-.02,yAtZ(Vn[0],Vn[1],z),z),'right',.095));
+  [2.0,-.4,-2.7].forEach(z=>branch('nerve',new V(RXp+.01,yAtZ(Nv[0],Nv[1],z),z),'right',.06,true));
+  // 內部分支
+  [.9,-2.1].forEach((z,i)=>{
+    for(let k=0;k<6;k++){const x=rr(-4.5,4.5);branch('artery',new V(x,yAt(A[0],A[1]+i,x),z),'in',.065);}
+    for(let k=0;k<5;k++){const x=rr(-4.5,4.5);branch('vein',new V(x,yAt(Vn[0],Vn[1]+i,x),z+.22),'in',.075);}
+    for(let k=0;k<4;k++){const x=rr(-4.5,4.5);branch('nerve',new V(x,yAt(Nv[0],Nv[1]+i,x),z-.2),'in',.045,true);}
+  });
+  pacinian(new V(-3.55,-3.4,HZ+PO),true);
+  pacinian(new V(HX+PO,-3.45,1.6),false);
+  pacinian(new V(1.4,-3.6,-1.2),false);
+}
+
+/* ---------------- 結構材質 ---------------- */
+const CL=.035,PO=.24;const pacPlanes=[new THREE.Plane(new V(0,0,-1),HZ+PO),new THREE.Plane(new V(-1,0,0),HX+PO)];const clipPlanes=[new THREE.Plane(new V(0,0,-1),HZ+CL),new THREE.Plane(new V(0,0,1),HZ+CL),new THREE.Plane(new V(-1,0,0),HX+CL),new THREE.Plane(new V(1,0,0),HX+CL)];
+const SM={
+  hair:{c:'#3a2216',r:.42},
+  follicle:{c:'#f2e7dc',r:.5},
+  papilla:{c:'#cf5b6a',r:.5},
+  sebaceous:{c:'#f1db8f',r:.38,phys:1},
+  arrector:{c:'#d4675b',r:.55},
+  sweat:{c:'#f0cd6c',r:.38,phys:1},
+  artery:{c:'#c8282b',r:.34,phys:1},
+  vein:{c:'#2f50c2',r:.34,phys:1},
+  nerve:{c:'#f2c230',r:.42,phys:1},
+  meissner:{c:'#f3d6ae',r:.5},
+  pacinian:{c:'#ffffff',r:.5,clip:1,vc:1}
+};
+function buildStructures(){
+  Object.keys(SM).forEach(key=>{
+    if(!B[key])return;
+    const s=SM[key];
+    const opt={color:s.vc?0xffffff:lin(s.c),roughness:s.r,metalness:0,side:THREE.DoubleSide,vertexColors:!!s.vc};
+    if(s.clip)opt.clippingPlanes=key==='pacinian'?pacPlanes:clipPlanes;
+    const mat=s.phys?new THREE.MeshPhysicalMaterial(Object.assign(opt,{clearcoat:.5,clearcoatRoughness:.3})):new THREE.MeshStandardMaterial(opt);
+    reg(mat,key,'struct');
+    const mesh=new THREE.Mesh(merge(B[key]),mat);
+    addMesh(mesh,key,visGroups[INFO[key].g]);
+  });
+}
+
+/* ---------------- 皮膚問題：斑、痘痘、痘疤 ---------------- */
+const sstep=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t);};
+const SITES=[
+  {x:-3.6,d:.8,f:r=>Math.pow(Math.max(0,1-r/.18),1.1)},
+  {x:-1.0,d:.42,f:r=>1-sstep(.3,.43,r)},
+  {x:1.9,d:.34,f:r=>r<.9?(Math.cos(Math.PI*r/.9)+1)/2:0},
+  {x:4.05,d:-.3,f:r=>r<.55?Math.pow((Math.cos(Math.PI*r/.55)+1)/2,.8):0}
+];
+const DENT={amt:[0,0,0,0],tgt:[0,0,0,0],items:[]};
+function buildDents(){
+  ['corneum','epidermis','papillary','reticular'].forEach(k=>{
+    const g=layerMeshes[k].geometry,p=g.attributes.position,n=p.count,base=Float32Array.from(p.array),disp=SITES.map(()=>new Float32Array(n));
+    for(let i=0;i<n;i++){
+      const x=base[i*3],y=base[i*3+1],z=base[i*3+2];
+      SITES.forEach((s,j)=>{const fr=s.f(Math.hypot(x-s.x,z-HZ));if(fr<=0)return;const ad=Math.abs(s.d),y0=1.45-ad-.45;disp[j][i]=s.d*fr*Math.min(1,Math.max(0,(y-y0)/(1.45-y0)));});
+    }
+    DENT.items.push({g,p,base,disp});
+  });
+}
+function applyDent(){
+  DENT.items.forEach(it=>{
+    const a=it.p.array,n=it.p.count;
+    for(let i=0;i<n;i++){let y=it.base[i*3+1];for(let j=0;j<4;j++)if(DENT.amt[j])y-=DENT.amt[j]*it.disp[j][i];a[i*3+1]=y;}
+    it.p.needsUpdate=true;it.g.computeVertexNormals();it.g.computeBoundingSphere();
+  });
+}
+const storyGroup=new THREE.Group();scene.add(storyGroup);
+const OV={};
+function ov(id,mesh,o){
+  o=o||{};storyGroup.add(mesh);
+  const m=mesh.material;m.transparent=true;m.userData.baseOp=o.op||1;m.opacity=0;
+  mesh.visible=false;mesh.userData={op:0,t:0,ts:1,basic:!!o.basic,pulse:!!o.pulse};
+  OV[id]=mesh;return mesh;
+}
+const solid=(c,extra)=>new THREE.MeshStandardMaterial(Object.assign({color:lin(c),roughness:.5},extra||{}));
+const glow=(c)=>new THREE.MeshBasicMaterial({color:lin(c),depthWrite:false});
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
+function surfacePatch(cx,cz,w,d,col,alpha){
+  const tex=canvasTex((g,s)=>{for(let i=0;i<16;i++){const x=s*(.28+R()*.44),y=s*(.28+R()*.44),r=s*(.13+R()*.2);const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,hexA(col,alpha));gr.addColorStop(1,hexA(col,0));g.fillStyle=gr;g.fillRect(0,0,s,s);}},256);
+  tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
+  const g=new THREE.PlaneGeometry(w,d,30,30);g.rotateX(-Math.PI/2);
+  const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i)+cx,z=p.getZ(i)+cz;p.setXYZ(i,x,surf(x,z)+.014,z);}
+  g.computeVertexNormals();
+  return new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:tex,roughness:.7,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
+}
+function instanced(geo,mat,list){
+  const im=new THREE.InstancedMesh(geo,mat,list.length),m4=new THREE.Matrix4();im.frustumCulled=false;
+  list.forEach((l,i)=>{m4.compose(l[0],l[1]||new THREE.Quaternion(),l[2]);im.setMatrixAt(i,m4);});
+  return im;
+}
+const SP={};
+function buildStory(){
+  buildDents();
+  /* 痘痘 */
+  const F=FOLS.find(f=>Math.abs(f.fx-.3)<.01)||FOLS[0];
+  const P=(t,z)=>{const v=F.Bp.clone().lerp(F.S,t);v.z=z;return v;};
+  const ax=F.axis.clone(),perp=new V(ax.y,-ax.x,0);
+  SP.F=F;SP.P=P;
+  const sebC=P(.68,HZ+.16);
+  ov('sebum',new THREE.Mesh(ellipsoid(new V(),.2,.48,.07,ax,20,16),solid('#f2d26e',{roughness:.3})),{op:.95}).position.copy(sebC);
+  ov('plug',new THREE.Mesh(ellipsoid(new V(),.12,.17,.06,ax),solid('#cdb28a',{roughness:.8}))).position.copy(P(.9,HZ+.18));
+  ov('plugDark',new THREE.Mesh(ellipsoid(new V(),.11,.05,.05,ax),solid('#2f221b',{roughness:.6}))).position.copy(P(.985,HZ+.2));
+  const bl=[];for(let i=0;i<28;i++){const q=new THREE.Quaternion().setFromAxisAngle(new V(0,0,1),rr(0,3.14));bl.push([sebC.clone().addScaledVector(ax,rr(-.36,.36)).addScaledVector(perp,rr(-.13,.13)).setZ(HZ+.245),q,new V(.018,.045,.018)]);}
+  ov('bact',instanced(new THREE.SphereGeometry(1,10,8),solid('#7a4aa8',{roughness:.4}),bl));
+  ov('inflam',new THREE.Mesh(ellipsoid(new V(),.75,.95,.32,ax,24,18),glow('#ff3b30')),{op:.3,basic:1}).position.copy(P(.62,HZ+.06));
+  const domeY=surf(F.S.x,HZ-.3);
+  ov('dome',new THREE.Mesh(ellipsoid(new V(),.42,.2,.3,null,24,16),solid('#df7a6f',{roughness:.45}))).position.set(F.S.x,domeY-.05,HZ-.3);
+  ov('pus',new THREE.Mesh(ellipsoid(new V(),.15,.08,.13,null,18,12),solid('#f4ead0',{roughness:.35}))).position.set(F.S.x,domeY+.12,HZ-.3);
+  const rc=P(.38,HZ+.05);
+  ov('rupture',new THREE.Mesh(merge([ellipsoid(new V(-.4,-.05,0),.42,.38,.25),ellipsoid(new V(.35,-.3,0),.45,.4,.25),ellipsoid(new V(0,-.62,0),.5,.36,.25)]),glow('#ff3b30')),{op:.26,basic:1}).position.copy(rc);
+  SP.acne={gland:F.G.clone().setZ(HZ+.2),pore:F.S.clone().setZ(HZ+.2),plug:P(.9,HZ+.25),sebum:sebC.clone().setZ(HZ+.25),dark:P(1,HZ+.25),dome:new V(F.S.x+.25,domeY+.1,HZ-.05),pus:new V(F.S.x,domeY+.2,HZ-.3),rupture:rc.clone().add(new V(-.2,-.5,.2))};
+
+  /* 斑 */
+  const xs=[-2.1,-1.6,-1.1,-0.6,-0.15],mg=[];
+  xs.forEach(x=>{
+    const y=papTop(x,HZ)+.05,c=new V(x,y,HZ+.025);
+    mg.push(ellipsoid(c,.075,.055,.05,null,14,10));
+    [[-.2,.2],[.03,.3],[.2,.18],[-.1,.12]].forEach(d=>{const e=new V(x+d[0],y+d[1],HZ+.025),m=c.clone().lerp(e,.5).add(new V(0,.03,0));mg.push(tube([c.clone(),m,e],t=>.016*(1-.7*t),10,5));});
+  });
+  ov('melano',new THREE.Mesh(merge(mg),solid('#5a321f',{roughness:.5})));
+  const uv=[];
+  [-2.0,-1.35,-.7,-.05].forEach(x=>{
+    const end=new V(x,surf(x,HZ-.25)+.12,HZ-.25),st=new V(x+.75,3.9,HZ-.25),dir=end.clone().sub(st),len=dir.length();dir.normalize();
+    const side=new V(dir.y,-dir.x,0),pts=[];
+    for(let i=0;i<=24;i++){const t=i/24;pts.push(st.clone().addScaledVector(dir,len*t*.93).addScaledVector(side,Math.sin(t*Math.PI*7)*.06*(1-t*.6)));}
+    uv.push(tube(pts,()=>.022,90,6));
+    const cone=new THREE.ConeGeometry(.075,.2,12);cone.deleteAttribute('uv');
+    cone.applyMatrix4(new THREE.Matrix4().compose(end.clone().addScaledVector(dir,-.1),new THREE.Quaternion().setFromUnitVectors(UP,dir),new V(1,1,1)));
+    uv.push(cone);
+  });
+  ov('uv',new THREE.Mesh(merge(uv),glow('#8b5cf6')),{basic:1,pulse:1});
+  const gran=(n,x0,x1,yf,col)=>{const l=[];for(let i=0;i<n;i++){const x=rr(x0,x1),y=yf(x),r=rr(.02,.032);l.push([new V(x,y,HZ+.02),null,new V(r,r,r)]);}return instanced(new THREE.SphereGeometry(1,8,6),solid(col,{roughness:.6}),l);};
+  ov('melLow',gran(70,-2.3,0,x=>rr(papTop(x,HZ)+.05,corB(x,HZ)-.03),'#4a2a19'));
+  ov('melHigh',gran(190,-1.95,-.4,x=>rr(papTop(x,HZ)+.04,corB(x,HZ)-.01),'#3f2416'));
+  ov('melDerm',gran(30,-1.9,-.5,x=>rr(.2,papTop(x,HZ)-.06),'#4b3c40'));
+  ov('spotPatch',surfacePatch(-1.15,HZ-.6,2.0,1.2,'#5e3420',.42));
+  SP.spot={melano:new V(-1.1,papTop(-1.1,HZ)+.06,HZ+.1),uv:new V(.1,3.2,HZ-.25),gran:new V(-.6,1.15,HZ+.1),epi:new V(-1.2,1.2,HZ+.1),derm:new V(-1.2,.45,HZ+.1),patch:new V(-1.15,1.5,HZ-.6)};
+
+  /* 痘疤 */
+  ov('sinflam',new THREE.Mesh(ellipsoid(new V(),.75,.55,.3,null,24,18),glow('#ff3b30')),{op:.3,basic:1}).position.set(-1.0,.25,HZ+.05);
+  ov('redMark',surfacePatch(-3.0,2.2,1.0,1.0,'#d24a43',.5));
+  ov('brownMark',surfacePatch(-1.5,2.2,1.0,1.0,'#6e4128',.55));
+  const tg=[];[1.55,1.9,2.25].forEach((x,i)=>{const top=surf(x,HZ)-.34*SITES[2].f(Math.abs(x-1.9))-.55;tg.push(tube([new V(x,top,HZ+.02),new V(x+(i-1)*.12,-1,HZ+.02),new V(x+(i-1)*.22,-2.05,HZ+.02)],()=>.04,30,6));});
+  ov('tether',new THREE.Mesh(merge(tg),solid('#f3ece4',{roughness:.6})));
+  const lp=j=>{const s=SITES[j];return new V(s.x,surf(s.x,HZ)-s.d*.5+(s.d<0?.15:0),HZ+.08);};
+  SP.scar={inflam:new V(-1.0,.3,HZ+.15),red:new V(-3.0,1.55,2.2),brown:new V(-1.5,1.55,2.2),ice:lp(0),box:lp(1),roll:lp(2),raise:lp(3),tether:new V(1.9,-1.0,HZ+.1)};
+  buildStory2();
+  buildStories();
+  buildStories2();
+}
+/* ---------------- 敏感、乾燥缺水、毛囊炎 ---------------- */
+function particles(id,n,col,size,spawn,o){
+  o=o||{};
+  const im=new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8),o.basic?glow(col):solid(col,{roughness:.2}),n);
+  im.frustumCulled=false;
+  const L=[];for(let i=0;i<n;i++)L.push(spawn(i));
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),pos=new V(),sc=new V();
+  const anim=now=>{const T=now*.001;L.forEach((p,i)=>{const f=(T*p.sp+p.ph)%1;pos.set(p.x+Math.sin(f*6.28+p.ph*9)*(p.wob||0),p.y0+(p.y1-p.y0)*f,p.z);const s=size*p.s*(o.fade?Math.sin(Math.PI*f):1)+1e-4;sc.set(s,s*(o.sy||1),s);m4.compose(pos,q,sc);im.setMatrixAt(i,m4);});im.instanceMatrix.needsUpdate=true;};
+  anim(0);ov(id,im,o);im.userData.anim=anim;return im;
+}
+function surfaceSheet(x0,x1,z0,z1,col,lift){
+  const g=new THREE.PlaneGeometry(x1-x0,z1-z0,40,14);g.rotateX(-Math.PI/2);
+  const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i)+(x0+x1)/2,z=p.getZ(i)+(z0+z1)/2;p.setXYZ(i,x,surf(x,z)+lift,z);}
+  g.computeVertexNormals();
+  return new THREE.Mesh(g,solid(col,{roughness:.12,metalness:0,depthWrite:false,side:THREE.DoubleSide}));
+}
+function buildStory2(){
+  /* 屏障放大圖 */
+  const C=new V(-1.2,3.35,HZ-.15),bw=.37,bh=.14;
+  const bricks=(broken)=>{const l=[];for(let r=0;r<4;r++)for(let c=0;c<6;c++){
+    if(broken&&R()<.33)continue;
+    let x=C.x+(c-2.5)*bw+(r%2?bw/2:0)-bw/4,y=C.y+(r-1.5)*bh,rot=0;
+    if(broken){x+=rr(-.05,.05);y+=rr(-.04,.04);rot=rr(-.18,.18);}
+    l.push([new V(x,y,C.z+.03),new THREE.Quaternion().setFromAxisAngle(new V(0,0,1),rot),new V(.33,.105,.16)]);}
+    return instanced(new THREE.BoxGeometry(1,1,1),solid('#e3a68e',{roughness:.7}),l);};
+  ov('wall',bricks(false));ov('wallBroken',bricks(true));
+  const mort=new THREE.BoxGeometry(6*bw+.12,4*bh+.08,.12);mort.deleteAttribute('uv');mort.translate(C.x,C.y,C.z-.02);
+  ov('mortar',new THREE.Mesh(mort,solid('#f5cf55',{roughness:.45})));
+  const mb=[];for(let i=0;i<9;i++){const g=new THREE.BoxGeometry(rr(.15,.4),rr(.08,.2),.1);g.deleteAttribute('uv');g.translate(C.x+rr(-1,1),C.y+rr(-.25,.25),C.z-.02);mb.push(g);}
+  ov('mortarBroken',new THREE.Mesh(merge(mb),solid('#f5cf55',{roughness:.45})));
+  const ly=surf(C.x,C.z),ring=new THREE.TorusGeometry(.32,.018,8,40);ring.deleteAttribute('uv');ring.rotateX(Math.PI/2);ring.translate(C.x,ly+.03,C.z);
+  ov('leader',new THREE.Mesh(merge([tube([new V(C.x,C.y-.38,C.z),new V(C.x,(C.y+ly)/2,C.z),new V(C.x,ly+.04,C.z)],()=>.012,12,6),ring]),glow('#1d6d8b')),{basic:1});
+  /* 水分、刺激物 */
+  particles('waterUp',44,'#3d9be9',.038,()=>{const x=rr(-2.5,.1);return{x,z:HZ+.05,y0:rr(-1.7,-1),y1:papTop(x,HZ)+.05,sp:rr(.1,.17),ph:R(),s:rr(.8,1.2),wob:.04};},{fade:1,sy:1.3});
+  particles('tewl',28,'#3d9be9',.045,()=>{const x=rr(-2.2,-.2),z=HZ-.2;return{x,z,y0:surf(x,z)+.05,y1:surf(x,z)+1.35,sp:rr(.22,.32),ph:R(),s:rr(.8,1.2),wob:.06};},{fade:1,sy:1.3});
+  particles('tewl2',50,'#3d9be9',.045,()=>{const x=rr(-2.9,.5),z=rr(2.5,3.45);return{x,z,y0:surf(x,z)+.05,y1:surf(x,z)+1.5,sp:rr(.25,.38),ph:R(),s:rr(.8,1.2),wob:.06};},{fade:1,sy:1.3});
+  particles('irritant',26,'#b03cc8',.034,()=>{const x=rr(-2.2,-.2);return{x,z:HZ+.04,y0:surf(x,HZ)+1.3,y1:surf(x,HZ)-.3,sp:rr(.15,.24),ph:R(),s:rr(.8,1.25),wob:.03};},{fade:1});
+  /* 神經末梢、泛紅 */
+  const ne=[];[-2.0,-1.4,-.8,-.2].forEach(x=>{const top=new V(x+.05,papTop(x+.05,HZ)-.07,HZ+.03),mid=new V(x,.35,HZ+.03);
+    ne.push(tube([new V(x-.05,-.3,HZ+.03),mid,top],t=>.026*(1-.5*t),20,6));
+    [[-.18,.1],[.17,.05]].forEach(d=>{const e=new V(x+d[0],papTop(x+d[0],HZ)-.1-d[1],HZ+.03);ne.push(tube([mid.clone(),mid.clone().lerp(e,.5).add(new V(0,.05,0)),e],t=>.014,12,5));});});
+  ov('nerveEnd',new THREE.Mesh(merge(ne),glow('#ffc928')),{basic:1,pulse:1});
+  ov('flush',new THREE.Mesh(ellipsoid(new V(),1.45,.42,.25,null,24,16),glow('#ff3b30')),{op:.26,basic:1}).position.set(-1.1,.55,HZ+.03);
+  ov('redPatch',surfacePatch(-1.2,HZ-.55,2.4,1.1,'#e0544b',.42));
+  /* 皮脂膜、脫屑 */
+  ov('film',surfaceSheet(-3.1,.7,2.45,HZ,'#f7e7a4',.03),{op:.5});
+  const fl=[];for(let i=0;i<34;i++){const x=rr(-3,.6),z=rr(2.55,3.4);fl.push([new V(x,surf(x,z)+.035,z),new THREE.Quaternion().setFromEuler(new THREE.Euler(rr(-.4,.4),rr(0,3),rr(-.4,.4))),new V(rr(.12,.24),.012,rr(.08,.16))]);}
+  ov('flakes',instanced(new THREE.BoxGeometry(1,1,1),solid('#f7e6dc',{roughness:.8}),fl));
+  /* 毛囊炎 */
+  const F2=FOLS.find(f=>Math.abs(f.fx-2.85)<.01)||FOLS[FOLS.length-1];
+  const P2=(t,z)=>{const v=F2.Bp.clone().lerp(F2.S,t);v.z=z;return v;};SP.P2=P2;
+  const cg=[];[[.8,0],[.88,.06],[.95,-.05],[1.02,.03],[1.1,-.08]].forEach(c=>{const ctr=P2(c[0],HZ+.2).add(new V(c[1],0,0));for(let k=0;k<7;k++)cg.push(ellipsoid(ctr.clone().add(new V(rr(-.05,.05),rr(-.05,.05),rr(0,.03))),.026,.026,.026,null,10,8));});
+  ov('cocci',new THREE.Mesh(merge(cg),solid('#8e44ad',{roughness:.35})));
+  ov('finflam',new THREE.Mesh(ellipsoid(new V(),.45,.5,.3,F2.axis,24,18),glow('#ff3b30')),{op:.3,basic:1}).position.copy(P2(.86,HZ+.06));
+  const dy=surf(F2.S.x,HZ);
+  ov('fdome',new THREE.Mesh(ellipsoid(new V(),.32,.16,.24,null,24,16),solid('#df7a6f',{roughness:.45}))).position.set(F2.S.x,dy-.03,HZ+.02);
+  ov('fpus',new THREE.Mesh(ellipsoid(new V(),.13,.075,.11,null,18,12),solid('#f4ead0',{roughness:.35}))).position.set(F2.S.x,dy+.1,HZ+.04);
+  SP.sens={brick:new V(C.x-.6,C.y+.2,C.z+.15),mortar:new V(C.x+1.05,C.y-.3,C.z+.1),gap:new V(C.x+.3,C.y+.1,C.z+.15),water:new V(-.3,surf(-.3,HZ)+.9,HZ-.2),irr:new V(-1.9,surf(-1.9,HZ)+.7,HZ+.05),nerve:new V(-.8,.45,HZ+.08),flush:new V(-1.5,.55,HZ+.1)};
+  SP.dry={up:new V(-1.2,-.4,HZ+.1),film:new V(-.2,1.55,3.1),tewl:new V(-1.2,2.3,3.0),flake:new V(-1.6,1.55,2.9)};
+  SP.fol={cocci:P2(.95,HZ+.25),pus:new V(F2.S.x+.05,dy+.22,HZ+.05),inflam:P2(.7,HZ+.2),deep:P2(.5,HZ+.2)};
+}
+function buildStories2(){
+  const S=SP.sens,Dr=SP.dry,Fo=SP.fol;
+  Object.assign(STORIES,{
+    sens:{title:'皮膚為什麼會敏感',show:[],dir:new V(.12,.35,1),cam:{t:new V(-1.2,2.2,HZ-.2),w:1.7,h:1.85},steps:[
+      {h:'健康的皮膚屏障',text:'角質層就像一道磚牆：角質細胞是磚塊，細胞之間的脂質（神經醯胺、膽固醇、脂肪酸）是水泥，把磚塊緊密黏在一起。這道牆能鎖住水分，也能擋住外界刺激。',ov:{wall:1,mortar:1,leader:1},labels:[['角質細胞（磚塊）',S.brick],['細胞間脂質（水泥）',S.mortar]]},
+      {h:'屏障受損',text:'過度清潔、頻繁去角質、太常換保養品、日曬或溫差大，都會讓脂質流失，磚牆出現縫隙。水分從縫隙跑掉，外界的刺激物卻更容易鑽進來。',ov:{wallBroken:1,mortarBroken:1,leader:1,tewl:1,irritant:1},labels:[['出現縫隙',S.gap],['水分流失',S.water],['刺激物進入',S.irr]]},
+      {h:'神經變敏感、微血管擴張',text:'刺激物碰到表皮下方的神經末梢，就容易出現刺、癢、熱、緊繃的感覺；發炎反應讓微血管擴張，皮膚看起來泛紅。這時連平常用慣的產品也可能覺得刺激。',ov:{wallBroken:1,mortarBroken:1,leader:1,irritant:1,nerveEnd:1,flush:1,redPatch:1},labels:[['神經末梢',S.nerve],['微血管擴張',S.flush]],cam:{t:new V(-1.2,1.6,HZ-.2),w:1.7,h:2.3}},
+      {h:'怎麼照顧敏感肌',text:'先做減法：溫和清潔，暫停去角質和刺激性產品，保養步驟精簡；再加強保濕修護，讓屏障慢慢恢復，並做好防曬。有些敏感和體質有關，例如異位性皮膚炎、酒糟性皮膚炎；如果長期泛紅、脫屑、發癢，建議找皮膚科醫師確認。',ov:{wall:1,mortar:1,leader:1},labels:[['屏障慢慢修復',S.brick]]}
+    ]},
+    dry:{title:'乾燥與缺水',show:[],dir:new V(.12,.45,1),cam:{t:new V(-1.2,.35,HZ-.2),w:1.7,h:1.7},steps:[
+      {h:'皮膚的水分從哪裡來',text:'水分主要從真皮往上供應。真皮裡的玻尿酸和膠原蛋白能抓住大量水分，再慢慢擴散到表皮。角質層裡的天然保濕因子負責留住水分，表面的皮脂膜則像一層薄膜，減少水分蒸發。',ov:{waterUp:1,film:1},labels:[['水分從真皮往上',Dr.up],['皮脂膜',Dr.film]]},
+      {h:'水分不斷蒸發',text:'皮膚每天都有水分從表面蒸發，叫做經皮水分散失。天氣乾冷、待在冷氣房、熱水洗太久、清潔過度，都會讓蒸發變快；補充跟不上流失，皮膚就變乾。',ov:{waterUp:1,tewl2:1,film:.5},labels:[['水分蒸發',Dr.tewl]],cam:{t:new V(-1.2,1.6,2.9),w:1.8,h:1.4},dir:new V(.12,.6,1)},
+      {h:'乾性肌和缺水肌不一樣',text:'乾性肌是油脂分泌少，皮脂膜不夠，所以容易乾；缺水則是角質層含水量不足，是一種狀態。油性肌也可能缺水，就是常聽到的外油內乾：表面泛油，裡面卻緊繃。缺水久了，角質會翹起、脫屑。',ov:{tewl2:1,film:.25,flakes:1},labels:[['皮脂膜變薄',Dr.film],['角質翹起脫屑',Dr.flake]],cam:{t:new V(-1.2,1.45,2.95),w:1.6,h:1.1},dir:new V(.1,.95,.65)},
+      {h:'乾燥的表現與照顧',text:'缺水的皮膚容易緊繃、脫屑、暗沉，細紋變明顯，屏障也比較脆弱、容易敏感。照顧方向是補水加鎖水：先用含保濕成分的產品補水，再用含油脂的乳液或乳霜鎖住。洗臉、洗澡避免水太熱、時間太長，乾燥環境可以使用加濕器。',ov:{waterUp:1,film:1},labels:[['補水加鎖水',Dr.film]]}
+    ]},
+    fol:{title:'毛囊炎',show:['follicle','hair','papilla','sebaceous','arrector'],dir:new V(.2,.28,1),cam:{t:SP.P2(.72,HZ),w:1.3,h:1.5},steps:[
+      {h:'什麼是毛囊炎',text:'毛囊炎是毛囊被細菌或黴菌感染而發炎，最常見的是金黃色葡萄球菌。病菌通常從毛孔開口，或皮膚上的小傷口進入毛囊。',ov:{cocci:1},labels:[['細菌從毛孔進入',Fo.cocci]]},
+      {h:'以毛髮為中心的紅點、膿皰',text:'發炎集中在毛囊上段，皮膚表面出現一顆顆小紅點或小膿皰，中間常可以看到一根毛髮穿出來。可能會癢或痛，常常一片分散出現。',ov:{cocci:1,finflam:1,fdome:1,fpus:1},labels:[['毛髮穿過膿皰',Fo.pus],['毛囊上段發炎',Fo.inflam]]},
+      {h:'和痘痘有什麼不同',text:'痘痘是從毛孔阻塞、形成粉刺開始；毛囊炎通常沒有粉刺，是感染直接引起。毛囊炎也常長在背部、胸口、臀部、大腿，或刮毛、除毛的部位，不只長在臉上。',ov:{cocci:1,finflam:1,fdome:1,fpus:1},labels:[['沒有粉刺，中央有毛髮',Fo.pus]]},
+      {h:'常見原因與照顧',text:'刮毛除毛造成的小傷口、悶熱流汗、衣物太緊摩擦、長期擦類固醇藥膏、免疫力下降，都容易誘發。平時保持乾爽透氣、不要擠壓，除毛工具保持清潔並順著毛流方向。如果範圍擴大、反覆發作、變成又大又痛的膿包，或伴隨發燒，請盡快就醫。',ov:{cocci:1,finflam:[1,1.8],fdome:1},labels:[['感染變深會形成癤',Fo.deep]],cam:{t:SP.P2(.6,HZ),w:1.5,h:1.8}}
+    ]}
+  });
+}
+
+let STORIES={};
+function buildStories(){
+  const A=SP.acne,S=SP.spot,C=SP.scar,F=SP.F;
+  const acneCam={t:SP.P(.62,HZ),w:1.3,h:1.5};
+  STORIES={
+    acne:{title:'痘痘怎麼形成',show:['follicle','hair','sebaceous','papilla','arrector'],dir:new V(.2,.28,1),cam:acneCam,steps:[
+      {h:'正常的毛孔',text:'皮脂腺附著在毛囊旁，分泌的皮脂沿著毛囊往上，從毛孔排到皮膚表面，形成保護膜。只要這條通道保持暢通，就不容易長痘。',labels:[['皮脂腺',A.gland],['毛孔',A.pore]]},
+      {h:'出油變多、角質卡住',text:'荷爾蒙變化、壓力、熬夜等因素會讓皮脂分泌增加。同時毛囊口的角質代謝不順，老廢角質黏在出口，慢慢形成角質栓，把毛孔堵住。',ov:{plug:1,sebum:[1,.55]},labels:[['角質栓',A.plug]]},
+      {h:'形成粉刺',text:'出口被堵住後，皮脂只能堆在毛囊裡，撐成一顆粉刺。開口封閉的是白頭粉刺；開口接觸空氣、內容物氧化變暗的是黑頭粉刺，那個黑點不是髒東西。',ov:{plug:1,plugDark:1,sebum:1},labels:[['堆積的皮脂',A.sebum],['黑頭',A.dark]]},
+      {h:'細菌大量繁殖',text:'毛囊裡缺氧又充滿皮脂，正好適合痤瘡桿菌生長。細菌分解皮脂時會產生刺激物質，引來身體的免疫反應。',ov:{plug:1,plugDark:1,sebum:1,bact:1},labels:[['痤瘡桿菌',A.sebum]]},
+      {h:'發炎：紅腫痘與膿皰',text:'免疫細胞聚集到毛囊周圍，皮膚出現紅、腫、熱、痛的丘疹。白血球和細菌、皮脂混在一起變成膿，頂端白白黃黃的，就是膿皰。',ov:{plug:1,sebum:[1,1.1],bact:1,inflam:1,dome:1,pus:1},labels:[['紅腫丘疹',A.dome],['膿頭',A.pus]],cam:{t:SP.P(.7,HZ),w:1.4,h:1.6}},
+      {h:'毛囊破裂，發炎變深',text:'發炎太嚴重，或用手擠壓、摳抓，毛囊壁可能破裂，內容物流進真皮，形成又大又痛的結節或囊腫。發炎越深、越久，越容易留下痘印和痘疤。反覆長或很痛的痘痘，建議找皮膚科醫師處理。',ov:{sebum:[1,1.1],bact:1,inflam:[1,1.3],rupture:1,dome:1},labels:[['發炎擴散到真皮',A.rupture]],cam:{t:SP.P(.55,HZ),w:1.6,h:1.9}}
+    ]},
+    spot:{title:'斑怎麼形成',show:[],dir:new V(.15,.5,1),cam:{t:new V(-1.15,.95,HZ-.2),w:1.5,h:1.1},steps:[
+      {h:'黑色素細胞',text:'表皮最底層的基底層裡，散布著黑色素細胞。它們伸出像樹枝一樣的突起，負責製造黑色素，這是皮膚天生的防曬機制。',ov:{melano:1},labels:[['黑色素細胞',S.melano]]},
+      {h:'紫外線的刺激',text:'紫外線照到皮膚時，黑色素細胞會被啟動，製造更多黑色素來保護細胞，這就是曬黑的原因。除了日曬，發炎、荷爾蒙變化、摩擦也會刺激它。',ov:{uv:1,melano:1},labels:[['紫外線',S.uv]],cam:{t:new V(-.9,1.9,HZ-.2),w:1.7,h:2.2}},
+      {h:'黑色素的輸送與代謝',text:'黑色素被包成小顆粒，送進周圍的表皮細胞，像小傘一樣遮住細胞核。正常情況下，這些細胞會隨著表皮更新往上推，最後跟著角質脫落，膚色就會慢慢恢復。',ov:{melano:1,melLow:1},labels:[['黑色素顆粒',S.gran]]},
+      {h:'堆積成斑',text:'黑色素製造太多、代謝跟不上，就會集中在某一區，形成看得見的斑。如果色素掉到真皮層，位置更深、顏色偏灰褐，也更難淡化。',ov:{melano:1,melLow:1,melHigh:1,melDerm:1,spotPatch:1},labels:[['表皮的色素',S.epi],['真皮的色素',S.derm],['表面看到的斑',S.patch]]},
+      {h:'常見的斑與預防',text:'曬斑（也叫老人斑）多和長年日曬有關；雀斑跟遺傳有關，日曬後更明顯；肝斑常在兩頰對稱出現，和荷爾蒙、日曬有關；痘痘或受傷後留下的咖啡色印，則是發炎後色素沉澱。每天防曬、不摳抓、減少摩擦是預防關鍵。斑的種類不同，處理方式也不同，建議先請皮膚科醫師判斷。',ov:{melano:1,melLow:1,melHigh:1,melDerm:1,spotPatch:1},labels:[['表面看到的斑',S.patch]]}
+    ]},
+    scar:{title:'痘疤從哪裡來',show:[],dir:new V(.15,.5,1),cam:{t:new V(-1,.6,HZ),w:1.5,h:1.3},steps:[
+      {h:'發炎傷到真皮',text:'痘痘如果只影響表皮，通常能完整修復；但發炎深入真皮，就會破壞支撐皮膚的膠原蛋白。之後修復得好不好，決定會不會留下疤。',ov:{sinflam:1},labels:[['真皮受損',C.inflam]]},
+      {h:'痘印不等於痘疤',text:'痘痘消了留下的紅色印子，是發炎後微血管擴張；咖啡色的印子，是發炎後色素沉澱。這兩種是顏色問題，皮膚表面是平的，大多會隨時間慢慢變淡。表面凹凸不平，才是真正的痘疤。',ov:{redMark:1,brownMark:1},labels:[['紅色痘印',C.red],['咖啡色痘印',C.brown]],cam:{t:new V(-2.25,1.45,2.3),w:1.7,h:1.2},dir:new V(.1,1,.5)},
+      {h:'冰鑿型痘疤',text:'開口窄、深度深，像用冰鑿刺出的小洞，可能深達真皮深層。開口雖小卻很深，是處理難度最高的一種。',dent:[1,0,0,0],labels:[['冰鑿型',C.ice]],cam:{t:new V(-3.6,.95,HZ),w:1.1,h:1}},
+      {h:'箱型痘疤',text:'洞口較寬、邊緣清楚陡直、底部平坦，像一個小箱子，常見於臉頰和太陽穴。',dent:[1,1,0,0],labels:[['箱型',C.box]],cam:{t:new V(-1.0,1.0,HZ),w:1.1,h:1}},
+      {h:'滾輪型痘疤',text:'範圍較寬、邊緣平緩，表面呈波浪狀起伏。原因是真皮下方形成纖維帶，把皮膚往下拉住。',dent:[1,1,1,0],ov:{tether:1},labels:[['滾輪型',C.roll],['纖維牽拉',C.tether]],cam:{t:new V(1.9,.2,HZ),w:1.5,h:1.9}},
+      {h:'凸起型痘疤',text:'如果修復時膠原蛋白做得太多，就會形成凸起的肥厚性疤痕；超出原本傷口範圍的叫蟹足腫，和體質有關，常見於下巴、胸口和肩背。',dent:[1,1,1,1],labels:[['肥厚性疤痕',C.raise]],cam:{t:new V(4.05,1.1,HZ),w:1.1,h:1}},
+      {h:'怎麼減少留疤',text:'及早處理發炎的痘痘、不要擠壓或摳抓、做好防曬避免痘印變深，都能降低留疤機會。已經形成的凹洞或凸疤，保養品無法填平，需要由皮膚科醫師評估適合的治療。',dent:[1,1,1,1],ov:{tether:1},labels:[['冰鑿型',C.ice],['箱型',C.box],['滾輪型',C.roll],['凸起型',C.raise]],cam:{t:new V(.2,.6,HZ),w:4.6,h:1.6}}
+    ]}
+  };
+}
+const story={on:false,id:null,i:0};
+const stSheet=$('#story'),stTopic=$('#stTopic'),stTitle=$('#stTitle'),stText=$('#stText'),stCount=$('#stCount'),stPrev=$('#stPrev'),stNext=$('#stNext');
+const tagBox=$('#storyTags');let storyTags=[];
+function setStoryLabels(list){
+  tagBox.innerHTML='';storyTags=list.map(l=>{const el=document.createElement('div');el.className='story-tag';el.textContent=l[0];tagBox.appendChild(el);return{el,pos:l[1]};});
+}
+function startStory(id){
+  if(tour.on)stopTour();setXray(false);setExplode(false);state.isolate=null;deselect();closePanels();
+  story.on=true;story.id=id;story.i=0;stSheet.hidden=false;toolBtns.problems.setAttribute('aria-pressed','true');showStep();
+}
+function endStory(silent){
+  if(!story.on)return;
+  story.on=false;stSheet.hidden=true;stopSpeak();
+  Object.keys(OV).forEach(k=>{OV[k].userData.t=0;});DENT.tgt=[0,0,0,0];setStoryLabels([]);
+  toolBtns.problems.setAttribute('aria-pressed','false');
+  if(!silent)resetView();
+}
+function showStep(){
+  const S=STORIES[story.id],st=S.steps[story.i];
+  stTopic.textContent=S.title;stTitle.textContent=st.h;stText.textContent=st.text;
+  stCount.textContent=`${story.i+1} / ${S.steps.length}`;
+  stPrev.disabled=story.i===0;stNext.textContent=story.i===S.steps.length-1?'完成':'下一步';
+  Object.keys(OV).forEach(id=>{const v=st.ov&&st.ov[id],u=OV[id].userData;if(v===undefined){u.t=0;}else if(Array.isArray(v)){u.t=v[0];u.ts=v[1];}else{u.t=v;u.ts=1;}});
+  DENT.tgt=(st.dent||[0,0,0,0]).slice();
+  setStoryLabels(st.labels||[]);
+  const cam=st.cam||S.cam,dir=(st.dir||S.dir).clone().normalize();
+  const vh=app.clientHeight,avail=Math.max(180,vh-stSheet.offsetHeight-176),k=vh/avail;
+  flyPose(cam.t.clone().addScaledVector(dir,fitDist(cam.w*1.15,(cam.h||cam.w)*k)),cam.t,1100);
+  stopSpeak();stText.parentElement.scrollTop=0;
+}
+stPrev.onclick=()=>{if(story.i>0){story.i--;showStep();}};
+stNext.onclick=()=>{const n=STORIES[story.id].steps.length;if(story.i<n-1){story.i++;showStep();}else endStory();};
+$('#stClose').onclick=()=>endStory();
+$('#stSpeak').onclick=()=>{const st=STORIES[story.id].steps[story.i];speak(st.h+'。'+st.text);};
+document.querySelectorAll('[data-story]').forEach(b=>b.onclick=()=>startStory(b.dataset.story));
+function tickStory(now){
+  Object.keys(OV).forEach(id=>{
+    const m=OV[id],u=m.userData;
+    u.op+=(u.t-u.op)*.12;if(Math.abs(u.t-u.op)<.004)u.op=u.t;
+    m.visible=u.op>.01;
+    if(m.visible&&m.userData.anim)m.userData.anim(now);
+    m.material.opacity=u.op*m.material.userData.baseOp*(u.pulse?(.6+.4*Math.sin(now*.006)):1);
+    if(!u.basic)m.material.depthWrite=u.op>.6;
+    const s=m.scale.x+(u.ts-m.scale.x)*.1;m.scale.setScalar(Math.abs(u.ts-s)<.002?u.ts:s);
+  });
+  let ch=false;
+  for(let j=0;j<4;j++){const d=DENT.tgt[j]-DENT.amt[j];if(Math.abs(d)>.003){DENT.amt[j]+=d*.1;ch=true;}else if(DENT.amt[j]!==DENT.tgt[j]){DENT.amt[j]=DENT.tgt[j];ch=true;}}
+  if(ch)applyDent();
+  storyTags.forEach(t=>{const p=project(t.pos);if(p.z<1){t.el.style.display='';t.el.style.left=p.x+'px';t.el.style.top=p.y+'px';}else t.el.style.display='none';});
+}
+
+/* ---------------- 地面陰影 ---------------- */
+function buildShadow(){
+  const t=canvasTex((g,s)=>{const gr=g.createRadialGradient(s/2,s/2,s*.08,s/2,s/2,s*.5);gr.addColorStop(0,'rgba(20,35,45,.38)');gr.addColorStop(1,'rgba(20,35,45,0)');g.fillStyle=gr;g.fillRect(0,0,s,s);},256);
+  t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(17,13),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));
+  m.rotation.x=-Math.PI/2;m.position.y=-5.45;scene.add(m);
+}
+
+/* ---------------- 狀態與互動 ---------------- */
+const state={sel:null,isolate:null,xray:false,explode:false,pinPoint:null};
+const pin=$('#pin'),pinTag=$('#pinTag');
+const info=$('#info'),infoTitle=$('#infoTitle'),infoSub=$('#infoSub'),infoText=$('#infoText'),btnIso=$('#btnIsolate');
+const panels={layers:$('#layersPanel'),catalog:$('#catalogPanel'),problems:$('#probPanel')};
+const toolBtns={};document.querySelectorAll('.toolbar button').forEach(b=>toolBtns[b.dataset.act]=b);
+
+function closePanels(){Object.keys(panels).forEach(k=>{panels[k].hidden=true;toolBtns[k].setAttribute('aria-pressed','false');});}
+function openPanel(k){const was=!panels[k].hidden;closePanels();if(was)return;info.hidden=true;panels[k].hidden=false;toolBtns[k].setAttribute('aria-pressed','true');}
+
+function select(key,point,focus){
+  state.sel=key;
+  const I=INFO[key];
+  state.pinPoint=(point||ANCH[key]||new V(0,0,HZ)).clone();
+  pinTag.textContent=I.zh;
+  infoTitle.textContent=I.zh;infoSub.textContent=I.en;infoText.textContent=I.text;
+  closePanels();info.hidden=false;
+  btnIso.setAttribute('aria-pressed',String(state.isolate===key));
+  btnIso.textContent=state.isolate===key?'顯示全部':'只看這個';
+  if(focus)flyTo(state.pinPoint,focusDist());
+}
+function deselect(){state.sel=null;state.pinPoint=null;info.hidden=true;pin.hidden=true;if(state.isolate&&!tour.on){state.isolate=null;}}
+function setIsolate(k){state.isolate=k;if(k&&state.explode)setExplode(false);btnIso.setAttribute('aria-pressed',String(!!k&&k===state.sel));btnIso.textContent=k&&k===state.sel?'顯示全部':'只看這個';}
+function setXray(on){state.xray=on;toolBtns.xray.setAttribute('aria-pressed',String(on));if(on&&state.explode)setExplode(false);}
+function setExplode(on){state.explode=on;toolBtns.explode.setAttribute('aria-pressed',String(on));if(on){state.isolate=null;if(state.xray)setXray(false);if(state.sel&&INFO[state.sel]&&SM[state.sel])deselect();}}
+
+/* 相機動畫 */
+let fly=null;
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function flyPose(pos,tgt,dur){fly={t0:performance.now(),dur:dur||900,fp:camera.position.clone(),tp:pos.clone(),ft:controls.target.clone(),tt:tgt.clone()};}
+function flyTo(tgt,dist){const dir=camera.position.clone().sub(controls.target).normalize();flyPose(tgt.clone().addScaledVector(dir,dist),tgt);}
+function fitDist(halfW,halfH){const vf=camera.fov*Math.PI/360;const hf=Math.atan(Math.tan(vf)*camera.aspect);return Math.max(halfW/Math.tan(hf),halfH/Math.tan(vf));}
+function focusDist(){return Math.max(6,fitDist(2.6,2.2));}
+function defaultPose(){const tgt=new V(0,-1.35,0),dir=new V(.56,.42,.72).normalize();return{pos:tgt.clone().addScaledVector(dir,fitDist(7.4,6.4)),tgt};}
+controls.addEventListener('start',()=>{fly=null;});
+
+/* 點選 */
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+function visibleDeep(o){while(o){if(!o.visible)return false;o=o.parent;}return true;}
+function pick(cx,cy){
+  const r=canvas.getBoundingClientRect();
+  ndc.set((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const cands=pickables.filter(o=>{const m=Array.isArray(o.material)?o.material[0]:o.material;return m.opacity>.3&&visibleDeep(o);});
+  const hits=ray.intersectObjects(cands,false);
+  for(const h of hits){
+    const m=Array.isArray(h.object.material)?h.object.material[0]:h.object.material;
+    if(m.clippingPlanes&&(h.point.x>HX+PO+.001||h.point.z>HZ+PO+.001))continue;
+    return h;
+  }
+  return null;
+}
+let down=null;
+canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now(),id:e.pointerId};});
+canvas.addEventListener('pointerup',e=>{
+  if(!down||down.id!==e.pointerId)return;
+  const dx=e.clientX-down.x,dy=e.clientY-down.y;
+  if(!story.on&&dx*dx+dy*dy<64&&performance.now()-down.t<450){
+    if(tour.on)stopTour();
+    const h=pick(e.clientX,e.clientY);
+    if(h)select(h.object.userData.key,h.point,false);else deselect();
+  }
+  down=null;
+});
+
+/* 語音 */
+let voice=null;
+function loadVoice(){if(!('speechSynthesis'in window))return;const vs=speechSynthesis.getVoices();voice=vs.find(v=>/zh[-_]TW/i.test(v.lang))||vs.find(v=>/zh[-_](HK|Hant)/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null;}
+if('speechSynthesis'in window){loadVoice();speechSynthesis.onvoiceschanged=loadVoice;}
+let speakTimer=null;
+function speak(text,onend){
+  clearTimeout(speakTimer);
+  let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(speakTimer);onend&&onend();};
+  if(!('speechSynthesis'in window)){if(onend)speakTimer=setTimeout(fin,Math.max(4500,text.length*230));return;}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang='zh-TW';if(voice)u.voice=voice;u.rate=1;
+  u.onend=fin;u.onerror=fin;
+  setTimeout(()=>speechSynthesis.speak(u),60);
+  if(onend)speakTimer=setTimeout(fin,text.length*320+3500);
+}
+function stopSpeak(){clearTimeout(speakTimer);if('speechSynthesis'in window)speechSynthesis.cancel();}
+
+/* 導覽 */
+const tour={on:false,i:0,token:0};
+const tourBar=$('#tourBar'),tourCount=$('#tourCount');
+function startTour(){if(state.explode)setExplode(false);if(state.xray)setXray(false);tour.on=true;tour.i=0;tourBar.hidden=false;toolBtns.tour.setAttribute('aria-pressed','true');tourStep();}
+function stopTour(){tour.on=false;tour.token++;stopSpeak();tourBar.hidden=true;toolBtns.tour.setAttribute('aria-pressed','false');state.isolate=null;btnIso.setAttribute('aria-pressed','false');btnIso.textContent='只看這個';}
+function tourStep(){
+  if(!tour.on)return;
+  if(tour.i<0)tour.i=0;
+  if(tour.i>=TOUR.length){stopTour();resetView();return;}
+  const k=TOUR[tour.i],I=INFO[k],my=++tour.token;
+  tourCount.textContent=`導覽 ${tour.i+1}/${TOUR.length}`;
+  state.isolate=k;select(k,ANCH[k],true);
+  speak(I.zh+'。'+I.text,()=>{if(tour.on&&tour.token===my){setTimeout(()=>{if(tour.on&&tour.token===my){tour.i++;tourStep();}},700);}});
+}
+$('#tourNext').onclick=()=>{tour.i++;tourStep();};
+$('#tourPrev').onclick=()=>{tour.i--;tourStep();};
+$('#tourStop').onclick=()=>{stopTour();};
+
+/* 按鈕 */
+toolBtns.problems.onclick=()=>{if(story.on){endStory();return;}openPanel('problems');};
+document.querySelectorAll('.toolbar button').forEach(b=>{if(b.dataset.act!=='problems'&&b.dataset.act!=='layers')b.addEventListener('click',()=>endStory(true),true);});
+toolBtns.layers.onclick=()=>openPanel('layers');
+toolBtns.catalog.onclick=()=>openPanel('catalog');
+toolBtns.xray.onclick=()=>{if(tour.on)stopTour();state.isolate=null;setXray(!state.xray);};
+toolBtns.explode.onclick=()=>{if(tour.on)stopTour();setExplode(!state.explode);if(state.explode)flyPose(defaultPose().pos.clone().multiplyScalar(1.12),new V(0,-1.2,0));};
+toolBtns.tour.onclick=()=>{closePanels();tour.on?stopTour():startTour();};
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closePanels);
+$('#infoClose').onclick=()=>{if(tour.on)stopTour();deselect();};
+$('#btnSpeak').onclick=()=>{if(state.sel){const I=INFO[state.sel];speak(I.zh+'。'+I.text);}};
+btnIso.onclick=()=>{if(!state.sel)return;if(tour.on)stopTour();setIsolate(state.isolate===state.sel?null:state.sel);};
+function resetView(){const p=defaultPose();flyPose(p.pos,p.tgt,1000);}
+$('#btnReset').onclick=()=>{endStory(true);if(tour.on)stopTour();setXray(false);setExplode(false);state.isolate=null;deselect();resetView();};
+
+/* 圖層面板 */
+function buildPanels(){
+  const ll=$('#layerList');
+  GROUPS.forEach(g=>{
+    const row=document.createElement('div');row.className='toggle-row';
+    row.innerHTML=`<span><span class="swatch" style="background:${g.sw}"></span>${g.zh}</span>`;
+    const sw=document.createElement('button');sw.className='switch';sw.setAttribute('role','switch');sw.setAttribute('aria-checked','true');sw.setAttribute('aria-label',g.zh);
+    sw.onclick=()=>{const on=sw.getAttribute('aria-checked')!=='true';sw.setAttribute('aria-checked',String(on));visGroups[g.id].visible=on;};
+    row.appendChild(sw);ll.appendChild(row);
+  });
+  const cl=$('#catalogList');
+  GROUPS.forEach(g=>{
+    const keys=Object.keys(INFO).filter(k=>INFO[k].g===g.id);if(!keys.length)return;
+    const h=document.createElement('div');h.className='list-title';h.textContent=g.zh;cl.appendChild(h);
+    const wrap=document.createElement('div');wrap.className='grid';
+    keys.forEach(k=>{const b=document.createElement('button');b.className='chip';b.textContent=INFO[k].zh;
+      b.onclick=()=>{if(tour.on)stopTour();if(!visGroups[g.id].visible){visGroups[g.id].visible=true;const s=ll.querySelector(`[aria-label="${g.zh}"]`);if(s)s.setAttribute('aria-checked','true');}
+        if(state.explode&&SM[k])setExplode(false);select(k,ANCH[k],true);};
+      wrap.appendChild(b);});
+    cl.appendChild(wrap);
+  });
+}
+
+/* 分層標籤 */
+const layerTagEls={};
+function buildLayerTags(){
+  const box=$('#layerTags');
+  LAYERS.forEach(L=>{const el=document.createElement('div');el.className='layer-tag';el.hidden=true;el.textContent=INFO[L.key].zh;box.appendChild(el);layerTagEls[L.key]=el;});
+}
+
+/* ---------------- 渲染迴圈 ---------------- */
+const tmp=new V();
+function project(v){tmp.copy(v).project(camera);const r=canvas.getBoundingClientRect();return{x:(tmp.x*.5+.5)*r.width,y:(-tmp.y*.5+.5)*r.height,z:tmp.z};}
+const hiCol=new THREE.Color(.1,.42,.62);
+function targetOp(m){
+  const u=m.userData;
+  if(story.on)return u.kind==='tissue'?1:(STORIES[story.id].show.indexOf(u.key)>=0?1:0);
+  if(state.isolate)return u.key===state.isolate?1:(u.kind==='tissue'?.06:.07);
+  if(state.explode)return u.kind==='tissue'?1:0;
+  if(state.xray)return u.kind==='tissue'?.13:1;
+  return 1;
+}
+function tick(now){
+  requestAnimationFrame(tick);
+  if(fly){const k=Math.min(1,(now-fly.t0)/fly.dur),e=ease(k);camera.position.lerpVectors(fly.fp,fly.tp,e);controls.target.lerpVectors(fly.ft,fly.tt,e);if(k>=1)fly=null;}
+  controls.update();
+  const pulse=.55+.45*Math.sin(now*.005);
+  MATS.forEach(m=>{
+    const u=m.userData,t=targetOp(m);
+    u.op+=(t-u.op)*.14;if(Math.abs(t-u.op)<.004)u.op=t;
+    m.opacity=u.op;
+    const tr=u.op<.995;if(m.transparent!==tr){m.transparent=tr;m.needsUpdate=true;}
+    m.depthWrite=u.op>.5;
+    u.meshes.forEach(ms=>{ms.visible=u.op>.01;});
+    if(m.emissive){if(u.key===state.sel)m.emissive.copy(hiCol).multiplyScalar(.35*pulse);else if(m.emissive.r||m.emissive.g||m.emissive.b)m.emissive.setRGB(0,0,0);}
+  });
+  LAYERS.forEach(L=>{const g=tissueGroups[L.key];if(!g)return;const ty=state.explode?L.off:0;g.position.y+=(ty-g.position.y)*.12;if(Math.abs(ty-g.position.y)<.002)g.position.y=ty;});
+  // 標記
+  if(state.pinPoint&&!(state.explode&&SM[state.sel])){
+    const off=(state.sel&&tissueGroups[state.sel])?tissueGroups[state.sel].position.y:0;
+    const p=project(tmp.copy(state.pinPoint).add(new V(0,off,0)));
+    if(p.z<1){pin.hidden=false;pin.style.transform=`translate(${p.x}px,${p.y}px)`;}else pin.hidden=true;
+  }else pin.hidden=true;
+  LAYERS.forEach(L=>{
+    const el=layerTagEls[L.key];if(!el)return;
+    const show=state.explode&&tissueGroups[L.key].position.y!==0||(state.explode&&L.key==='reticular');
+    if(!show||!visGroups[INFO[L.key].g].visible){el.hidden=true;return;}
+    const y=(L.top(HX,HZ)+L.bot(HX,HZ))/2+tissueGroups[L.key].position.y;
+    const p=project(new V(HX,y,HZ));el.hidden=false;el.style.left=p.x+'px';el.style.top=p.y+'px';
+  });
+  tickStory(now);
+  const vh=app.clientHeight,vw=app.clientWidth,sheet=story.on?stSheet:(!info.hidden?info:null);
+  const want=sheet?Math.min(sheet.offsetHeight*.5+8,vh*.3):0;
+  if(Math.abs(want-viewOff)>.5){viewOff+=(want-viewOff)*.15;camera.setViewOffset(vw,vh,0,viewOff,vw,vh);}
+  renderer.render(scene,camera);
+}
+let viewOff=0;
+function resize(){const w=app.clientWidth,h=app.clientHeight;renderer.setSize(w,h,false);canvas.style.width=w+'px';canvas.style.height=h+'px';camera.aspect=w/h;camera.setViewOffset(w,h,0,viewOff,w,h);camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+/* ---------------- 啟動 ---------------- */
+setTimeout(()=>{
+  try{
+    buildTextures();buildLayers();buildHair();buildSweat();buildVessels();buildStructures();buildStory();buildShadow();buildPanels();buildLayerTags();
+  }catch(err){$('#loading').textContent='模型建立失敗：'+err.message;console.error(err);return;}
+  resize();
+  const p=defaultPose();
+  camera.position.copy(p.pos.clone().sub(p.tgt).applyAxisAngle(UP,-.9).multiplyScalar(1.5).add(p.tgt));
+  controls.target.copy(p.tgt);
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){camera.position.copy(p.pos);}else flyPose(p.pos,p.tgt,1800);
+  $('#loading').classList.add('done');
+  requestAnimationFrame(tick);
+},30);
+})();
+</script>
+</body>
+</html>
